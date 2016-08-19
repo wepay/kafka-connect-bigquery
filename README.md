@@ -33,22 +33,25 @@ save the properties file.
 Once you get more familiar with the connector, you might want to revisit the connector.properties
 file and experiment with tweaking its settings.
 
-### Building and extracting a Tarball
+### Cherry-picking Schema Registry patches
 
-kafka-connect bigquery depends on some commits in confluent io's 
+The connector depends on some commits in Confluent's 
 [schema-registry](https://github.com/confluentinc/schema-registry) that have not yet been included
-in a release version. Therefore, there is currently a bit of external work involved in getting a
-kafka-connect tarball built. Here is what you need to do first:
+in a released version. As a result, there is some external work involved in building the connector.
+Here is what you need to do before building:
 
-1. checkout [confluentinc/schema-registry](https://github.com/confluentinc/schema-registry)
+1. Checkout [confluentinc/schema-registry](https://github.com/confluentinc/schema-registry)
    locally.
-2. checkout the v3.0.0 release tag `git checkout v3.0.0`
-3. cherry-pick the following two commits: `git cherry-pick -m 1 <commit-hash>`
-     1. f835af3a2fd97911c633c0a13c72c1d6f91dc1eb
-     2. b3fba7f9f8cc2a117aafa9aff8ac2f50c8dc38e9
+2. Checkout the v3.0.0 release tag: `git checkout v3.0.0`
+3. Cherry-pick the following two commits:
+     1. `git cherry-pick -m 1 f835af3a2fd97911c633c0a13c72c1d6f91dc1eb`
+     2. `git cherry-pick -m 1 b3fba7f9f8cc2a117aafa9aff8ac2f50c8dc38e9`
 4. Run `mvn install` in your local schema-registry to install a modified schema-registry 3.0.0 into
    your local maven repository
-5. You should now be able to create the tarball!
+   
+Once a new version of Schema Registry is released, these steps should no loger be required.
+   
+### Building and extracting a tarball
 
 Begin by creating a tarball of the connector:
 
