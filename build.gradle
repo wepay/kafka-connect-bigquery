@@ -5,7 +5,7 @@ apply plugin: 'findbugs'
 apply plugin: 'jacoco'
 
 sourceCompatibility = 1.8
-version = '0.1'
+version = '0.2'
 
 jar {
   manifest {

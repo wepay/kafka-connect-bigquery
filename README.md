@@ -41,7 +41,7 @@ Begin by creating a tarball of the connector:
 
 And then extract its contents:
 
-`$ tar -C build/distributions/ -xvf build/distributions/kafka-connect-bigquery-dist-0.1.tar`
+`$ tar -C build/distributions/ -xvf build/distributions/kafka-connect-bigquery-dist-0.2.tar`
 
 ### Setting up background processes
 
