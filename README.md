@@ -35,6 +35,21 @@ file and experiment with tweaking its settings.
 
 ### Building and extracting a Tarball
 
+kafka-connect bigquery depends on some commits in confluent io's 
+[schema-registry](https://github.com/confluentinc/schema-registry) that have not yet been included
+in a release version. Therefore, there is currently a bit of external work involved in getting a
+kafka-connect tarball built. Here is what you need to do first:
+
+1. checkout [confluentinc/schema-registry](https://github.com/confluentinc/schema-registry)
+   locally.
+2. checkout the v3.0.0 release tag `git checkout v3.0.0`
+3. cherry-pick the following two commits: `git cherry-pick -m 1 <commit-hash>`
+     1. f835af3a2fd97911c633c0a13c72c1d6f91dc1eb
+     2. b3fba7f9f8cc2a117aafa9aff8ac2f50c8dc38e9
+4. Run `mvn install` in your local schema-registry to install a modified schema-registry 3.0.0 into
+   your local maven repository
+5. You should now be able to create the tarball!
+
 Begin by creating a tarball of the connector:
 
 `$ ./gradlew tarBall`
