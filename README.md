@@ -35,6 +35,9 @@ file and experiment with tweaking its settings.
 
 ### Cherry-picking Schema Registry patches
 
+**NOTE: You can skip this step if you don't plan on using multiple topics with different names but
+identical schemas, or the Avro bytes type**
+
 The connector depends on some commits in Confluent's 
 [schema-registry](https://github.com/confluentinc/schema-registry) that have not yet been included
 in a released version. As a result, there is some external work involved in building the connector.
