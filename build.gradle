@@ -8,9 +8,7 @@ apply plugin: 'signing'
 
 sourceCompatibility = 1.8
 
-group = 'com.wepay'
 archivesBaseName = 'kafka-connect-bigquery'
-version = '0.2.1'
 
 task javadocJar(type: Jar) {
   classifier = 'javadoc'
