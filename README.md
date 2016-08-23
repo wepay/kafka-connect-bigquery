@@ -2,7 +2,7 @@
 
 [![Source](https://img.shields.io/badge/source-wepay/kafka–connect–bigquery-blue.svg?style=flat-square)](https://github.com/wepay/kafka-connect-bigquery)
 [![Release](https://img.shields.io/github/release/wepay/kafka-connect-bigquery.svg?style=flat-square)](https://github.com/wepay/kafka-connect-bigquery/releases)
-[![Maven Central](https://img.shields.io/maven-central/v/com.wepay/kafka-connect-bigquery.svg?style=flat-square)](https://repo1.maven.org/maven2/com/wepay/kafka-connect-bigquery/)
+[![Maven Central](https://img.shields.io/maven-central/v/com.wepay/kafka-connect-bigquery.svg?style=flat-square)](http://search.maven.org/#search%7Cgav%7C1%7Cg%3A%22com.wepay%22%20AND%20a%3A%22kafka-connect-bigquery%22)
 [![Open Issues](https://img.shields.io/github/issues/wepay/kafka-connect-bigquery.svg?style=flat-square)](https://github.com/wepay/kafka-connect-bigquery/issues)
 [![Pull Requests](https://img.shields.io/github/issues-pr/wepay/kafka-connect-bigquery.svg?style=flat-square)](https://github.com/wepay/kafka-connect-bigquery/pulls)
 [![Build Status](https://img.shields.io/travis/wepay/kafka-connect-bigquery.svg?style=flat-square)](https://travis-ci.org/wepay/kafka-connect-bigquery)
