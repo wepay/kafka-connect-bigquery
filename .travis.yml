@@ -10,8 +10,6 @@ jdk:
 matrix:
   fast_finish: true
 
-# before_script:
-
 script:
   - gradle test
 
