@@ -1,14 +1,14 @@
 package com.wepay.kafka.connect.bigquery;
 
 /*
- * Copyright 2016 Wepay, Inc.
- * 
+ * Copyright 2016 WePay, Inc.
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -56,8 +56,10 @@ public class SchemaManagerTest {
     final String dataset = "data";
     final TableId table = TableId.of(dataset, "create_table_test");
     final String schemaName = topic + "-value";
-    final String fakeSchemaString = "{\"type\":\"record\",\"name\":\"testrecord\",\"fields\":[{\"name\":\"f1\",\"type\":\"string\"}]}";
-    final org.apache.avro.Schema fakeAvroSchema = mock(org.apache.avro.Schema.class);
+    final String fakeSchemaString =
+        "{\"type\":\"record\","
+            + "\"name\":\"testrecord\","
+            + "\"fields\":[{\"name\":\"f1\",\"type\":\"string\"}]}";
     final org.apache.kafka.connect.data.Schema fakeKafkaConnectSchema =
         mock(org.apache.kafka.connect.data.Schema.class);
     final Schema fakeBigQuerySchema = Schema.of(Field.of("mock field", Field.Type.string()));
@@ -70,7 +72,8 @@ public class SchemaManagerTest {
     when(schemaRegistryClient.getLatestSchemaMetadata(schemaName)).thenReturn(fakeSchemaMetadata);
 
     AvroData avroData = mock(AvroData.class);
-    when(avroData.toConnectSchema(any(org.apache.avro.Schema.class))).thenReturn(fakeKafkaConnectSchema);
+    when(avroData.toConnectSchema(any(org.apache.avro.Schema.class)))
+        .thenReturn(fakeKafkaConnectSchema);
 
     SchemaConverter<Schema> schemaConverter = mock(BigQuerySchemaConverter.class);
     when(schemaConverter.convertSchema(fakeKafkaConnectSchema)).thenReturn(fakeBigQuerySchema);
@@ -100,7 +103,10 @@ public class SchemaManagerTest {
     final String dataset = "data";
     final TableId table = TableId.of(dataset, "update_table_test");
     final String schemaName = topic + "-value";
-    final String fakeSchemaString = "{\"type\":\"record\",\"name\":\"testrecord\",\"fields\":[{\"name\":\"f1\",\"type\":\"string\"}]}";
+    final String fakeSchemaString =
+        "{\"type\":\"record\","
+        + "\"name\":\"testrecord\","
+        + "\"fields\":[{\"name\":\"f1\",\"type\":\"string\"}]}";
     final org.apache.kafka.connect.data.Schema fakeKafkaConnectSchema =
         mock(org.apache.kafka.connect.data.Schema.class);
     final Schema fakeBigQuerySchema = Schema.of(Field.of("mock field", Field.Type.string()));
@@ -113,7 +119,8 @@ public class SchemaManagerTest {
     when(schemaRegistryClient.getLatestSchemaMetadata(schemaName)).thenReturn(fakeSchemaMetadata);
 
     AvroData avroData = mock(AvroData.class);
-    when(avroData.toConnectSchema(any(org.apache.avro.Schema.class))).thenReturn(fakeKafkaConnectSchema);
+    when(avroData.toConnectSchema(any(org.apache.avro.Schema.class)))
+        .thenReturn(fakeKafkaConnectSchema);
 
     SchemaConverter<Schema> schemaConverter = mock(BigQuerySchemaConverter.class);
     when(schemaConverter.convertSchema(fakeKafkaConnectSchema)).thenReturn(fakeBigQuerySchema);

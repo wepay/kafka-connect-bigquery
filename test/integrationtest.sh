@@ -1,12 +1,12 @@
-#!/usr/bin/env bash
-# Copyright 2016 Wepay, Inc.
-# 
+#! /usr/bin/env bash
+# Copyright 2016 WePay, Inc.
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #   http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -203,7 +203,8 @@ gradle -Pkcbq_test_keyfile="$KCBQ_TEST_KEYFILE" \
 # Executing connector in standalone mode (this is the execution portion of the actual test)
 statusupdate 'Executing Kafka Connect in Docker'
 
-gradle -q -p "$BASE_DIR/.." tar
+# Run clean task to ensure there's only one connector tarball in the build directory
+gradle -q -p "$BASE_DIR/.." clean tar
 
 [[ ! -e "$DOCKER_DIR/connect/properties" ]] && mkdir "$DOCKER_DIR/connect/properties"
 RESOURCES_DIR="$BASE_DIR/resources"
@@ -229,7 +230,7 @@ echo >> "$CONNECTOR_PROPS"
 CONNECT_DOCKER_IMAGE='kcbq/connect'
 CONNECT_DOCKER_NAME='kcbq_test_connect'
 
-cp "$BASE_DIR/../build/distributions/kafka-connect-bigquery-dist-0.2.tar" "$DOCKER_DIR/connect/kcbq.tar"
+cp "$BASE_DIR"/../build/distributions/kafka-connect-bigquery-*-dist.tar "$DOCKER_DIR/connect/kcbq.tar"
 cp "$KCBQ_TEST_KEYFILE" "$DOCKER_DIR/connect/key.json"
 
 if ! dockerimageexists "$CONNECT_DOCKER_IMAGE"; then
