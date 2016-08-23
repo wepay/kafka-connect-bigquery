@@ -52,6 +52,12 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigException;
 
+import org.apache.kafka.common.metrics.Metrics;
+import org.apache.kafka.common.metrics.Sensor;
+import org.apache.kafka.common.metrics.stats.Avg;
+import org.apache.kafka.common.metrics.stats.Max;
+import org.apache.kafka.common.metrics.stats.Rate;
+
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.sink.SinkRecord;
@@ -96,6 +102,8 @@ public class BigQuerySinkTask extends SinkTask {
   private Map<String, String> topicsToDatasets;
   private Map<TableId, String> tablesToTopics;
   private BigQueryWriter bigQueryWriter;
+  private Metrics metrics;
+  private Sensor rowsRead;
 
   public BigQuerySinkTask() {
     testBigQuery = null;
@@ -276,6 +284,7 @@ public class BigQuerySinkTask extends SinkTask {
         pauseAllPartitions(tablesToTopics.get(table));
       }
     }
+    rowsRead.record(records.size());
   }
 
   private RecordConverter<Map<String, Object>> getConverter() {
@@ -312,10 +321,27 @@ public class BigQuerySinkTask extends SinkTask {
     long retryWait = config.getLong(config.BIGQUERY_RETRY_WAIT_CONFIG);
     BigQuery bigQuery = getBigQuery();
     if (updateSchemas) {
-      return new AdaptiveBigQueryWriter(bigQuery, getSchemaManager(bigQuery), retry, retryWait);
+      return new AdaptiveBigQueryWriter(bigQuery, getSchemaManager(bigQuery), retry, retryWait,  metrics);
     } else {
-      return new SimpleBigQueryWriter(bigQuery, retry, retryWait);
+      return new SimpleBigQueryWriter(bigQuery, retry, retryWait, metrics);
     }
+  }
+
+  private void configureMetrics() {
+    metrics = new Metrics();
+    rowsRead = metrics.sensor("rows-read");
+    rowsRead.add(metrics.metricName("rows-written-avg",
+                                    "kcbq",
+                                    "The average number of rows written per request"),
+                 new Avg());
+    rowsRead.add(metrics.metricName("rows-written-max",
+                                    "kcbq",
+                                    "The maximum number of rows written per request"),
+                 new Max());
+    rowsRead.add(metrics.metricName("rows-written-rate",
+                                    "kcbq",
+                                    "The average number of rows written per second"),
+                 new Rate());
   }
 
   @Override
@@ -338,6 +364,8 @@ public class BigQuerySinkTask extends SinkTask {
     tableSchemas = new HashMap<>();
     rowPartitioner = getPartitioner();
     bigQueryWriter = getWriter();
+
+    configureMetrics();
   }
 
   @Override

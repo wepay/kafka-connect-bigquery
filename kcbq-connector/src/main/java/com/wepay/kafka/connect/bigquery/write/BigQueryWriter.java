@@ -24,6 +24,12 @@ import com.google.cloud.bigquery.TableId;
 
 import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
 
+import org.apache.kafka.common.metrics.Metrics;
+import org.apache.kafka.common.metrics.Sensor;
+import org.apache.kafka.common.metrics.stats.Avg;
+import org.apache.kafka.common.metrics.stats.Max;
+import org.apache.kafka.common.metrics.stats.Rate;
+
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
 
@@ -43,12 +49,28 @@ public abstract class BigQueryWriter {
 
   private static final Logger logger = LoggerFactory.getLogger(BigQueryWriter.class);
 
+  public final Sensor rowsWritten;
+
   private int retries;
   private long retryWaitMs;
 
-  public BigQueryWriter(int retries, long retryWaitMs) {
+  public BigQueryWriter(int retries, long retryWaitMs, Metrics metrics) {
     this.retries = retries;
     this.retryWaitMs = retryWaitMs;
+
+    rowsWritten = metrics.sensor("rows-written");
+    rowsWritten.add(metrics.metricName("rows-written-avg",
+                                       "kcbq",
+                                       "The average number of rows written per request"),
+                    new Avg());
+    rowsWritten.add(metrics.metricName("rows-written-max",
+                                       "kcbq",
+                                       "The maximum number of rows written per request"),
+                    new Max());
+    rowsWritten.add(metrics.metricName("rows-written-rate",
+                                       "kcbq",
+                                       "The average number of rows written per second"),
+                    new Rate());
   }
 
   /**
