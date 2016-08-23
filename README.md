@@ -1,8 +1,12 @@
 # Kafka-BigQuery Connector
 
 [![Source](https://img.shields.io/badge/source-wepay/kafka–connect–bigquery-blue.svg?style=flat-square)](https://github.com/wepay/kafka-connect-bigquery)
+[![Release](https://img.shields.io/github/release/wepay/kafka-connect-bigquery.svg?style=flat-square)](https://travis-ci.org/wepay/kafka-connect-bigquery)
 [![Open Issues](https://img.shields.io/github/issues/wepay/kafka-connect-bigquery.svg?style=flat-square)](https://github.com/wepay/kafka-connect-bigquery/issues)
+[![Pull Requests](https://img.shields.io/github/issues-pr/wepay/kafka-connect-bigquery.svg?style=flat-square)](https://github.com/wepay/kafka-connect-bigquery/pulls)
 [![Build Status](https://img.shields.io/travis/wepay/kafka-connect-bigquery.svg?style=flat-square)](https://travis-ci.org/wepay/kafka-connect-bigquery)
+[![License](https://img.shields.io/github/license/wepay/kafka-connect-bigquery.svg)](https://github.com/wepay/kafka-connect-bigquery/blob/master/LICENSE.md)
+[![Author](http://img.shields.io/badge/author-C0urante-blue.svg?style=flat-square)](https://github.com/C0urante)
 
 This is an implementation of a sink connector from [Apache Kafka] to [Google BigQuery], built on top 
 of [Apache Kafka Connect].
