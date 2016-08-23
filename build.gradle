@@ -175,9 +175,3 @@ checkstyle {
   configFile = file("${project.rootDir}/config/checkstyle/google_checks.xml")
   toolVersion = '6.18'
 }
-
-jacocoTestReport {
-    reports {
-        xml.enabled true
-    }
-}
