@@ -5,7 +5,6 @@ apply plugin: 'findbugs'
 apply plugin: 'jacoco'
 apply plugin: 'maven'
 apply plugin: 'signing'
-apply plugin: 'jacoco'
 
 sourceCompatibility = 1.8
 
@@ -100,6 +99,7 @@ jar {
 jacocoTestReport {
   reports {
     html.destination "$buildDir/reports/jacoco/"
+    xml.enabled true
   }
 }
 
@@ -174,10 +174,4 @@ dependencies {
 checkstyle {
   configFile = file("${project.rootDir}/config/checkstyle/google_checks.xml")
   toolVersion = '6.18'
-}
-
-jacocoTestReport {
-    reports {
-        xml.enabled true
-    }
 }

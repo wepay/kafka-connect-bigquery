@@ -9,6 +9,7 @@
 [![Code Quality](https://img.shields.io/codacy/grade/547616ddaf5141bc9b10cd48fa9e0acb.svg?style=flat-square)](https://www.codacy.com/app/skyzyx/kafka-connect-bigquery/dashboard)
 [![License](https://img.shields.io/github/license/wepay/kafka-connect-bigquery.svg)](https://github.com/wepay/kafka-connect-bigquery/blob/master/LICENSE.md)
 [![Author](http://img.shields.io/badge/author-C0urante-blue.svg?style=flat-square)](https://github.com/C0urante)
+[![Author](http://img.shields.io/badge/author-mtagle-blue.svg?style=flat-square)](https://github.com/mtagle)
 
 This is an implementation of a sink connector from [Apache Kafka] to [Google BigQuery], built on top 
 of [Apache Kafka Connect].
