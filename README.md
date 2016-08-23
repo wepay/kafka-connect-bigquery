@@ -1,4 +1,4 @@
-# Kafka-BigQuery Connector
+# Kafka Connect BigQuery Connector
 
 [![Source](https://img.shields.io/badge/source-wepay/kafka–connect–bigquery-blue.svg?style=flat-square)](https://github.com/wepay/kafka-connect-bigquery)
 [![Release](https://img.shields.io/github/release/wepay/kafka-connect-bigquery.svg?style=flat-square)](https://travis-ci.org/wepay/kafka-connect-bigquery)
@@ -158,7 +158,7 @@ tests for the connector.
 ### How Integration Testing Works
 
 Integration tests run by creating [Docker] instances for [Zookeeper], [Kafka], [Schema Registry], 
-and the Kafka-BigQuery connector itself, then verifying the results using a [JUnit] test.
+and the BigQuery Connector itself, then verifying the results using a [JUnit] test.
 
 They use schemas and data that can be found in the `test/docker/populate/test_schemas/` directory, 
 and rely on a user-provided JSON key file (like in the `quickstart` example) to access BigQuery.
