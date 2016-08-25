@@ -5,8 +5,6 @@ import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.wepay.kafka.connect.bigquery.api.SchemaRetriever;
-
 import io.confluent.connect.avro.AvroData;
 
 import io.confluent.kafka.schemaregistry.client.SchemaMetadata;

@@ -83,7 +83,7 @@ log() {
   echo
 }
 
-BASE_DIR=`dirname "$0"`
+BASE_DIR=$(dirname "$0")
 GRADLEW="$BASE_DIR/../../gradlew"
 
 ####################################################################################################
@@ -198,7 +198,7 @@ warn 'Deleting existing BigQuery test tables'
     -Pkcbq_test_keyfile="$KCBQ_TEST_KEYFILE" \
     -Pkcbq_test_project="$KCBQ_TEST_PROJECT" \
     -Pkcbq_test_dataset="$KCBQ_TEST_DATASET" \
-    -Pkcbq_test_tables="`basename "$BASE_DIR"/resources/test_schemas/* | sed -E -e 's/[^a-zA-Z0-9_]/_/g' -e 's/^(.*)$/kcbq_test_\1/' | xargs echo -n`" \
+    -Pkcbq_test_tables="$(basename "$BASE_DIR"/resources/test_schemas/* | sed -E -e 's/[^a-zA-Z0-9_]/_/g' -e 's/^(.*)$/kcbq_test_\1/' | xargs echo -n)" \
     integrationTestPrep
 
 ####################################################################################################
@@ -263,4 +263,4 @@ echo "keyfile=$KCBQ_TEST_KEYFILE" > "$INTEGRATION_TEST_PROPERTIES_FILE"
 echo "project=$KCBQ_TEST_PROJECT" >> "$INTEGRATION_TEST_PROPERTIES_FILE"
 echo "dataset=$KCBQ_TEST_DATASET" >> "$INTEGRATION_TEST_PROPERTIES_FILE"
 
-gradle -p "$BASE_DIR/.." cleanIntegrationTest integrationTest
+"$GRADLEW" -p "$BASE_DIR/.." cleanIntegrationTestintegrationTest

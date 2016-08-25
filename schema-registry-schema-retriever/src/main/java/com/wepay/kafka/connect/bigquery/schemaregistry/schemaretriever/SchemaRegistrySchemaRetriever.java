@@ -20,7 +20,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -30,11 +29,17 @@ import java.util.Set;
 public class SchemaRegistrySchemaRetriever implements SchemaRetriever {
   private static final Logger logger = LoggerFactory.getLogger(SchemaRegistrySchemaRetriever.class);
 
-  private SchemaRegistrySchemaRetrieverConfig config;
-
   private SchemaRegistryClient schemaRegistryClient;
 
   private AvroData avroData;
+
+  /**
+   * Only here because the package-private constructor (only used in testing) would otherwise cover
+   * up the no-args constructor.
+   */
+  public SchemaRegistrySchemaRetriever() {
+    return;
+  }
 
   // For testing purposes only
   SchemaRegistrySchemaRetriever(SchemaRegistryClient schemaRegistryClient, AvroData avroData) {
@@ -44,7 +49,8 @@ public class SchemaRegistrySchemaRetriever implements SchemaRetriever {
 
   @Override
   public void configure(Map<String, String> properties) {
-    config = new SchemaRegistrySchemaRetrieverConfig(properties);
+    SchemaRegistrySchemaRetrieverConfig config =
+        new SchemaRegistrySchemaRetrieverConfig(properties);
     schemaRegistryClient =
         new CachedSchemaRegistryClient(config.getString(config.LOCATION_CONFIG), 0);
     avroData = new AvroData(config.getInt(config.AVRO_DATA_CACHE_SIZE_CONFIG));
