@@ -356,6 +356,8 @@ public class BigQuerySinkTask extends SinkTask {
       );
     }
 
+    configureMetrics();
+
     topicsToDatasets = config.getTopicsToDatasets();
     tablesToTopics = config.getTablesToTopics(topicsToDatasets);
 
@@ -364,8 +366,6 @@ public class BigQuerySinkTask extends SinkTask {
     tableSchemas = new HashMap<>();
     rowPartitioner = getPartitioner();
     bigQueryWriter = getWriter();
-
-    configureMetrics();
   }
 
   @Override
