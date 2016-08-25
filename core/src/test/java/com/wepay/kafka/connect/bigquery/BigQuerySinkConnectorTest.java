@@ -56,14 +56,16 @@ public class BigQuerySinkConnectorTest {
 
   // Would just use Mockito, but can't provide the name of an anonymous class to the config file
   public static class MockSchemaRetriever implements SchemaRetriever {
+    @Override
     public void configure(Map<String, String> properties) {
-      return;
     }
 
+    @Override
     public Schema retrieveSchema(String topic) {
       return null;
     }
 
+    @Override
     public Schema retrieveSchema(String topic, Set<Schema> schemas) {
       return null;
     }

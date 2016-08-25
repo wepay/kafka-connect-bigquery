@@ -38,7 +38,6 @@ public class SchemaRegistrySchemaRetriever implements SchemaRetriever {
    * up the no-args constructor.
    */
   public SchemaRegistrySchemaRetriever() {
-    return;
   }
 
   // For testing purposes only
