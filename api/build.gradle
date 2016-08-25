@@ -1,0 +1,34 @@
+sourceCompatibility = 1.8
+
+jar {
+    manifest {
+        attributes  'Implementation-Title': 'Kafka Connect BigQuery API',
+                    'Implementation-Version': version
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+javadoc {
+    options.links 'http://docs.oracle.com/javase/8/docs/api/'
+    options.links 'http://docs.confluent.io/3.0.0/connect/javadocs/'
+}
+
+dependencies {
+    compile group: 'org.apache.kafka', name: 'connect-api', version: '0.10.0.0'
+}
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            pom.project {
+                name 'Kafka Connect BigQuery Connector API'
+                packaging 'jar'
+                description 'A small API for the Kafka Connector used to load data into BigQuery'
+                url 'https://github.com/wepay/kafka-connect-bigquery'
+            }
+        }
+    }
+}

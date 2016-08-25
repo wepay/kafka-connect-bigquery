@@ -1,177 +1,98 @@
-apply plugin: 'java'
-apply plugin: 'idea'
-apply plugin: 'checkstyle'
-apply plugin: 'findbugs'
-apply plugin: 'jacoco'
-apply plugin: 'maven'
-apply plugin: 'signing'
+subprojects { subproject ->
 
-sourceCompatibility = 1.8
+    apply plugin: 'java'
+    apply plugin: 'maven'
+    apply plugin: 'signing'
+    apply plugin: 'checkstyle'
+    apply plugin: 'findbugs'
+    apply plugin: 'idea'
 
-archivesBaseName = 'kafka-connect-bigquery'
+    jar.baseName = 'kafka-connect-bigquery'
+    jar.appendix = subproject.name
 
-task javadocJar(type: Jar) {
-  classifier = 'javadoc'
-  from javadoc
-}
-
-task sourcesJar(type: Jar) {
-  classifier = 'sources'
-  from sourceSets.main.allSource
-}
-
-task tarBall(type: Tar) {
-  classifier = 'dist'
-  from configurations.runtime
-  from jar
-}
-
-artifacts {
-  archives javadocJar, sourcesJar, tarBall
-}
-
-signing {
-  sign configurations.archives
-  required {
-    gradle.taskGraph.hasTask("uploadArchives")
-  }
-}
-
-uploadArchives {
-  repositories {
-    mavenDeployer {
-      beforeDeployment {
-        MavenDeployment deployment -> signing.signPom(deployment)
-      }
-
-      repository(url: 'https://oss.sonatype.org/service/local/staging/deploy/maven2') {
-        authentication(userName: findProperty('ossrhUsername') ?: '', password: findProperty('ossrhPassword') ?: '')
-      }
-
-      snapshotRepository(url: 'https://oss.sonatype.org/content/repositories/snapshots') {
-        authentication(userName: findProperty('ossrhUsername') ?: '', password: findProperty('ossrhPassword') ?: '')
-      }
-
-      pom.project {
-        name 'Kafka-Connect-BigQuery'
-        packaging 'jar'
-        description 'A Kafka Connector used to load data into BigQuery'
-        url 'https://github.com/wepay/kafka-connect-bigquery'
-
-        licenses {
-          license {
-            name 'The Apache License, Version 2.0'
-            url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-          }
-        }
-
-        scm {
-          connection 'scm:git:git://github.com/wepay/kafka-connect-bigquery.git'
-          developerConnection 'scm:git:ssh://github.com:wepay/kafka-connect-bigquery.git'
-          url 'https://github.com/wepay/kafka-connect-bigquery'
-        }
-
-        developers {
-          developer {
-            id 'C0urante'
-            name 'Chris Egerton'
-            email 'chrise@wepay.com'
-          }
-
-          developer {
-            id 'moirat'
-            name 'Moira Tagle'
-            email 'moirat@wepay.com'
-          }
-        }
-      }
+    [compileJava, compileTestJava].each {
+        it.options.compilerArgs << '-Xlint:unchecked'
     }
-  }
-}
 
-jar {
-  manifest {
-    attributes  'Implementation-Title': 'Kafka-Connect-BigQuery',
-                'Implementation-Version': version
-  }
-}
-
-jacocoTestReport {
-  reports {
-    html.destination "$buildDir/reports/jacoco/"
-    xml.enabled true
-  }
-}
-
-repositories {
-  mavenLocal()
-  mavenCentral()
-  maven {
-    url 'http://packages.confluent.io/maven'
-  }
-  jcenter()
-}
-
-sourceSets {
-  integrationTest {
-    java {
-      compileClasspath += main.output
-      runtimeClasspath += main.output
-      srcDir file('src/integration-test/java')
+    checkstyle {
+        configFile = file("${rootDir}/config/checkstyle/google_checks.xml")
+        toolVersion = '6.18'
     }
-    resources.srcDir file('src/integration-test/resources')
-  }
-}
 
-task integrationTestPrep(type: JavaExec) {
-  main = 'com.wepay.kafka.connect.bigquery.it.utils.TableClearer'
-  classpath = sourceSets.integrationTest.runtimeClasspath
-  args findProperty('kcbq_test_keyfile') ?: ''
-  args findProperty('kcbq_test_project') ?: ''
-  args findProperty('kcbq_test_dataset') ?: ''
-  if (findProperty('kcbq_test_tables') != null)
-    args findProperty('kcbq_test_tables').split(' ')
-}
+    task javadocJar(type: Jar) {
+        classifier = 'javadoc'
+        from javadoc
+    }
 
-task integrationTest(type: Test) {
-  testClassesDir = sourceSets.integrationTest.output.classesDir
-  classpath = sourceSets.integrationTest.runtimeClasspath
-}
+    task sourcesJar(type: Jar) {
+        classifier = 'sources'
+        from sourceSets.main.allSource
+    }
 
-configurations {
-  integrationTestCompile.extendsFrom testCompile
-  integrationTestRuntime.extendsFrom testRuntime
-}
+    task tarBall(type: Tar) {
+        classifier = 'dist'
+        baseName = 'kafka-connect-bigquery'
+        appendix = subproject.name
+        from subproject.configurations.runtime
+        from jar
+    }
 
-javadoc {
-  options.links 'http://docs.oracle.com/javase/8/docs/api/'
-  options.links 'http://docs.confluent.io/3.0.0/connect/javadocs/'
-  options.links 'http://googlecloudplatform.github.io/gcloud-java/0.2.7/apidocs/'
-  options.links 'https://kafka.apache.org/0100/javadoc/'
-  options.links 'https://avro.apache.org/docs/1.8.1/api/java/'
-}
+    artifacts {
+        archives javadocJar, sourcesJar, tarBall
+    }
 
-dependencies {
-  compile group: 'com.google.cloud', name: 'gcloud-java', version: '0.2.7'
+    signing {
+        sign configurations.archives
+        required {
+            gradle.taskGraph.hasTask("uploadArchives")
+        }
+    }
 
-  compile group: 'io.confluent', name: 'kafka-connect-avro-converter', version: '3.0.0'
-  compile group: 'io.confluent', name: 'kafka-avro-serializer', version: '3.0.0'
-  compile group: 'io.confluent', name: 'kafka-schema-registry', version: '3.0.0'
+    uploadArchives {
+        repositories {
+            mavenDeployer {
+                beforeDeployment {
+                    MavenDeployment deployment -> signing.signPom(deployment)
+                }
 
-  compile group: 'org.apache.avro', name: 'avro', version: '1.8.1'
-  compile group: 'org.apache.kafka', name: 'connect-api', version: '0.10.0.0'
+                repository(url: 'https://oss.sonatype.org/service/local/staging/deploy/maven2') {
+                    authentication(userName: findProperty('ossrhUsername') ?: '', password: findProperty('ossrhPassword') ?: '')
+                }
 
-  compile group: 'org.slf4j', name: 'slf4j-api', version: '1.6.1'
+                snapshotRepository(url: 'https://oss.sonatype.org/content/repositories/snapshots') {
+                    authentication(userName: findProperty('ossrhUsername') ?: '', password: findProperty('ossrhPassword') ?: '')
+                }
 
-  testCompile group: 'junit', name: 'junit', version: '4.12'
-  testCompile group: 'org.mockito', name: 'mockito-core', version: '1.10.19'
-}
+                pom.project {
 
-[compileJava, compileTestJava, compileIntegrationTestJava].each {
-  it.options.compilerArgs << '-Xlint:unchecked'
-}
+                    licenses {
+                        license {
+                            name 'The Apache License, Version 2.0'
+                            url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                        }
+                    }
 
-checkstyle {
-  configFile = file("${project.rootDir}/config/checkstyle/google_checks.xml")
-  toolVersion = '6.18'
+                    scm {
+                        connection 'scm:git:git://github.com/wepay/kafka-connect-bigquery.git'
+                        developerConnection 'scm:git:ssh://github.com:wepay/kafka-connect-bigquery.git'
+                        url 'https://github.com/wepay/kafka-connect-bigquery'
+                    }
+
+                    developers {
+                        developer {
+                            id 'C0urante'
+                            name 'Chris Egerton'
+                            email 'chrise@wepay.com'
+                        }
+
+                        developer {
+                            id 'moirat'
+                            name 'Moira Tagle'
+                            email 'moirat@wepay.com'
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
