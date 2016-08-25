@@ -58,15 +58,18 @@ public class BigQuerySinkConnectorTest {
   public static class MockSchemaRetriever implements SchemaRetriever {
     @Override
     public void configure(Map<String, String> properties) {
+      // Shouldn't be called
     }
 
     @Override
     public Schema retrieveSchema(String topic) {
+      // Shouldn't be called
       return null;
     }
 
     @Override
     public Schema retrieveSchema(String topic, Set<Schema> schemas) {
+      // Shouldn't be called
       return null;
     }
   }
