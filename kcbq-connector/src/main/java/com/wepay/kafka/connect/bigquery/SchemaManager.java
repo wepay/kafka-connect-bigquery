@@ -41,7 +41,7 @@ public class SchemaManager {
    * @param topic The Kafka topic used to determine the schema.
    */
   public void createTable(TableId table, String topic) {
-    Schema kafkaConnectSchema = schemaRetriever.retrieveSchema(topic);
+    Schema kafkaConnectSchema = schemaRetriever.retrieveSchema(table, topic);
     bigQuery.create(constructTableInfo(table, kafkaConnectSchema));
   }
 
@@ -52,7 +52,7 @@ public class SchemaManager {
    * @param schemas The Kafka Connect schemas recently used in an attempt to write to BigQuery.
    */
   public void updateSchema(TableId table, String topic, Set<Schema> schemas) {
-    Schema kafkaConnectSchema = schemaRetriever.retrieveSchema(topic, schemas);
+    Schema kafkaConnectSchema = schemaRetriever.retrieveSchema(table, topic, schemas);
     bigQuery.update(constructTableInfo(table, kafkaConnectSchema));
   }
 

@@ -212,6 +212,8 @@ project('kcbq-api') {
     }
 
     dependencies {
+        compile group: 'com.google.cloud', name: 'gcloud-java', version: '0.2.7'
+
         compile group: 'org.apache.kafka', name: 'connect-api', version: '0.10.0.0'
     }
 
@@ -257,13 +259,15 @@ project('kcbq-confluent') {
     dependencies {
         compile project(':kcbq-api')
 
+        compile group: 'com.google.cloud', name: 'gcloud-java', version: '0.2.7'
+
+        compile group: 'io.confluent', name: 'kafka-connect-avro-converter', version: '3.0.0'
+        compile group: 'io.confluent', name: 'kafka-schema-registry-client', version: '3.0.0'
+
         compile group: 'org.apache.avro', name: 'avro', version: '1.8.1'
 
         compile group: 'org.apache.kafka', name: 'connect-api', version: '0.10.0.0'
         compile group: 'org.apache.kafka', name: 'kafka-clients', version: '0.10.0.0'
-
-        compile group: 'io.confluent', name: 'kafka-connect-avro-converter', version: '3.0.0'
-        compile group: 'io.confluent', name: 'kafka-schema-registry-client', version: '3.0.0'
 
         compile group: 'org.slf4j', name: 'slf4j-api', version: '1.6.1'
 

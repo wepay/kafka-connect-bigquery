@@ -62,13 +62,13 @@ public class BigQuerySinkConnectorTest {
     }
 
     @Override
-    public Schema retrieveSchema(String topic) {
+    public Schema retrieveSchema(TableId table, String topic) {
       // Shouldn't be called
       return null;
     }
 
     @Override
-    public Schema retrieveSchema(String topic, Set<Schema> schemas) {
+    public Schema retrieveSchema(TableId table, String topic, Set<Schema> schemas) {
       // Shouldn't be called
       return null;
     }

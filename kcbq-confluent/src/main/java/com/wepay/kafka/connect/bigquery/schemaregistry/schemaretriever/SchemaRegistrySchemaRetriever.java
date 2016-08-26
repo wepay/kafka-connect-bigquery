@@ -1,5 +1,7 @@
 package com.wepay.kafka.connect.bigquery.schemaregistry.schemaretriever;
 
+import com.google.cloud.bigquery.TableId;
+
 import com.wepay.kafka.connect.bigquery.api.SchemaRetriever;
 
 import io.confluent.connect.avro.AvroData;
@@ -30,12 +32,11 @@ public class SchemaRegistrySchemaRetriever implements SchemaRetriever {
   private static final Logger logger = LoggerFactory.getLogger(SchemaRegistrySchemaRetriever.class);
 
   private SchemaRegistryClient schemaRegistryClient;
-
   private AvroData avroData;
 
   /**
-   * Only here because the package-private constructor (only used in testing) would otherwise cover
-   * up the no-args constructor.
+   * Only here because the package-private constructor (which is only used in testing) would
+   * otherwise cover up the no-args constructor.
    */
   public SchemaRegistrySchemaRetriever() {
   }
@@ -56,7 +57,7 @@ public class SchemaRegistrySchemaRetriever implements SchemaRetriever {
   }
 
   @Override
-  public Schema retrieveSchema(String topic) {
+  public Schema retrieveSchema(TableId table, String topic) {
     try {
       String subject = getSubject(topic);
       logger.debug("Retrieving schema information for topic {} with subject {}", topic, subject);
@@ -72,10 +73,10 @@ public class SchemaRegistrySchemaRetriever implements SchemaRetriever {
   }
 
   @Override
-  public Schema retrieveSchema(String topic, Set<Schema> schemas) {
+  public Schema retrieveSchema(TableId table, String topic, Set<Schema> schemas) {
     // Don't care about the records' schemas, Schema Registry can let us request the most recent
     // Schema
-    return retrieveSchema(topic);
+    return retrieveSchema(table, topic);
   }
 
   private String getSubject(String topic) {

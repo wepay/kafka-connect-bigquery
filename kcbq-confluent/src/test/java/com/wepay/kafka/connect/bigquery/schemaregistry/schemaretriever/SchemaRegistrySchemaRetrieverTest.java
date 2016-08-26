@@ -5,6 +5,8 @@ import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.google.cloud.bigquery.TableId;
+
 import io.confluent.connect.avro.AvroData;
 
 import io.confluent.kafka.schemaregistry.client.SchemaMetadata;
@@ -18,6 +20,7 @@ import org.junit.Test;
 public class SchemaRegistrySchemaRetrieverTest {
   @Test
   public void testRetrieveSchema() throws Exception {
+    final TableId table = TableId.of("test", "kafka_topic");
     final String testTopic = "kafka-topic";
     final String testSubject = "kafka-topic-value";
     final String testAvroSchemaString =
@@ -37,6 +40,6 @@ public class SchemaRegistrySchemaRetrieverTest {
     Schema expectedKafkaConnectSchema =
         SchemaBuilder.struct().field("f1", Schema.STRING_SCHEMA).name("testrecord").build();
 
-    assertEquals(expectedKafkaConnectSchema, testSchemaRetriever.retrieveSchema(testTopic));
+    assertEquals(expectedKafkaConnectSchema, testSchemaRetriever.retrieveSchema(table, testTopic));
   }
 }
