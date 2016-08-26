@@ -109,6 +109,7 @@ project(':kcbq-connector') {
         manifest {
             attributes  'Implementation-Title': 'Kafka Connect BigQuery Connector',
                         'Implementation-Version': version
+
         }
     }
 
