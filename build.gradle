@@ -1,7 +1,8 @@
+version = '0.3.0-SNAPSHOT'
+
 // BEGIN ALL PROJECTS //
 allprojects {
     apply plugin: 'java'
-    version = '0.3.0-SNAPSHOT'
 }
 // END ALL PROJECTS
 
