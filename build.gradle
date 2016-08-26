@@ -292,7 +292,7 @@ project('kcbq-confluent') {
 }
 
 task tarBall(type: Tar) {
-    destinationDir = file("${rootDir}/bin")
+    destinationDir = file("${rootDir}/bin/tar/")
     baseName = 'kcbq-connector'
     classifier = 'dist'
     version = project(':kcbq-connector').version
@@ -300,15 +300,15 @@ task tarBall(type: Tar) {
 }
 
 task confluentTarBall(type: Tar) {
-    destinationDir = file("${rootDir}/bin")
+    destinationDir = file("${rootDir}/bin/tar/")
     baseName = 'kcbq-connector'
     classifier = 'confluent-dist'
     version = project(':kcbq-connector').version
     with project(':kcbq-connector').tarBall
     with project(':kcbq-confluent').tarBall
+    exclude 'jackson-core-2.1.3.jar' // Runtime conflicts occur if this is left in; thankfully, 2.5.4 is compatible
 }
 
 clean {
-    println "Deleting '${rootDir}/bin/'..."
     delete "${rootDir}/bin/"
 }
