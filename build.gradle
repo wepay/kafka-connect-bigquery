@@ -1,3 +1,5 @@
+apply plugin: 'java'
+
 subprojects { subproject ->
 
     apply plugin: 'java'
@@ -106,7 +108,7 @@ project(':kcbq-connector') {
     jar {
         manifest {
             attributes  'Implementation-Title': 'Kafka Connect BigQuery Connector',
-                    'Implementation-Version': version
+                        'Implementation-Version': version
         }
     }
 
@@ -198,7 +200,7 @@ project('kcbq-api') {
     jar {
         manifest {
             attributes  'Implementation-Title': 'Kafka Connect BigQuery API',
-                    'Implementation-Version': version
+                        'Implementation-Version': version
         }
     }
 
@@ -238,7 +240,7 @@ project('kcbq-confluent') {
     jar {
         manifest {
             attributes  'Implementation-Title': 'Kafka Connect BigQuery Schema Registry Schema Retriever',
-                    'Implementation-Version': version
+                        'Implementation-Version': version
         }
     }
 
@@ -287,4 +289,26 @@ project('kcbq-confluent') {
             }
         }
     }
+}
+
+task tarBall(type: Tar) {
+    destinationDir = file("${rootDir}/bin")
+    baseName = 'kcbq-connector'
+    classifier = 'dist'
+    version = project(':kcbq-connector').version
+    with project(':kcbq-connector').tarBall
+}
+
+task confluentTarBall(type: Tar) {
+    destinationDir = file("${rootDir}/bin")
+    baseName = 'kcbq-connector'
+    classifier = 'confluent-dist'
+    version = project(':kcbq-connector').version
+    with project(':kcbq-connector').tarBall
+    with project(':kcbq-confluent').tarBall
+}
+
+clean {
+    println "Deleting '${rootDir}/bin/'..."
+    delete "${rootDir}/bin/"
 }
