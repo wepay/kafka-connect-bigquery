@@ -1,8 +1,7 @@
-version = '0.3.0-SNAPSHOT'
-
 // BEGIN ALL PROJECTS //
 allprojects {
     apply plugin: 'java'
+    version = '0.3.0-SNAPSHOT'
 }
 // END ALL PROJECTS
 
@@ -14,9 +13,6 @@ subprojects { subproject ->
     apply plugin: 'checkstyle'
     apply plugin: 'findbugs'
     apply plugin: 'idea'
-
-    group = 'com.wepay.kcbq'
-    sourceCompatibility = 1.8
 
     jar.baseName = subproject.name
 
