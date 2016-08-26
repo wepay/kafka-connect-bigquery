@@ -7,8 +7,7 @@ subprojects { subproject ->
     apply plugin: 'findbugs'
     apply plugin: 'idea'
 
-    jar.baseName = 'kafka-connect-bigquery'
-    jar.appendix = subproject.name
+    jar.baseName = subproject.name
 
     [compileJava, compileTestJava].each {
         it.options.compilerArgs << '-Xlint:unchecked'
@@ -31,8 +30,7 @@ subprojects { subproject ->
 
     task tarBall(type: Tar) {
         classifier = 'dist'
-        baseName = 'kafka-connect-bigquery'
-        appendix = subproject.name
+        baseName = subproject.name
         from subproject.configurations.runtime
         from jar
     }

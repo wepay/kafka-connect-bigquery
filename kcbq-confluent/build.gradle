@@ -22,7 +22,7 @@ javadoc {
 }
 
 dependencies {
-    compile project(':api')
+    compile project(':kcbq-api')
 
     compile group: 'org.apache.avro', name: 'avro', version: '1.8.1'
 

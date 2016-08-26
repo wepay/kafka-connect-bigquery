@@ -209,7 +209,7 @@ statusupdate 'Executing Kafka Connect in Docker'
 "$GRADLEW" -q -p "$BASE_DIR/.." clean tarBall
 
 # Build the Schema Registry Schema Retriever
-"$GRADLEW" -q -p "$BASE_DIR/../../schema-registry-schema-retriever" clean tarBall
+"$GRADLEW" -q -p "$BASE_DIR/../../kcbq-confluent" clean tarBall
 
 [[ ! -e "$DOCKER_DIR/connect/properties" ]] && mkdir "$DOCKER_DIR/connect/properties"
 RESOURCES_DIR="$BASE_DIR/resources"
@@ -235,8 +235,8 @@ echo >> "$CONNECTOR_PROPS"
 CONNECT_DOCKER_IMAGE='kcbq/connect'
 CONNECT_DOCKER_NAME='kcbq_test_connect'
 
-cp "$BASE_DIR"/../build/distributions/kafka-connect-bigquery-*-dist.tar "$DOCKER_DIR/connect/kcbq.tar"
-cp "$BASE_DIR"/../../schema-registry-schema-retriever/build/distributions/kafka-connect-bigquery-schema-registry-schema-retriever-*-dist.tar "$DOCKER_DIR/connect/retriever.tar"
+cp "$BASE_DIR"/../build/distributions/kcbq-connector-*-dist.tar "$DOCKER_DIR/connect/kcbq.tar"
+cp "$BASE_DIR"/../../kcbq-confluent/build/distributions/kcbq-confluent-*-dist.tar "$DOCKER_DIR/connect/retriever.tar"
 cp "$KCBQ_TEST_KEYFILE" "$DOCKER_DIR/connect/key.json"
 
 if ! dockerimageexists "$CONNECT_DOCKER_IMAGE"; then

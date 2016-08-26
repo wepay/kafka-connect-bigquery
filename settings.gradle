@@ -1,1 +1,1 @@
-include 'core', 'api', 'schema-registry-schema-retriever'
+include 'kcbq-connector', 'kcbq-api', 'kcbq-confluent'
