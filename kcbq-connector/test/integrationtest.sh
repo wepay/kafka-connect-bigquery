@@ -206,10 +206,7 @@ warn 'Deleting existing BigQuery test tables'
 statusupdate 'Executing Kafka Connect in Docker'
 
 # Run clean task to ensure there's only one connector tarball in the build directory
-"$GRADLEW" -q -p "$BASE_DIR/.." clean tarBall
-
-# Build the Schema Registry Schema Retriever
-"$GRADLEW" -q -p "$BASE_DIR/../../kcbq-confluent" clean tarBall
+"$GRADLEW" -q -p "$BASE_DIR/../.." clean confluentTarBall
 
 [[ ! -e "$DOCKER_DIR/connect/properties" ]] && mkdir "$DOCKER_DIR/connect/properties"
 RESOURCES_DIR="$BASE_DIR/resources"
@@ -235,8 +232,7 @@ echo >> "$CONNECTOR_PROPS"
 CONNECT_DOCKER_IMAGE='kcbq/connect'
 CONNECT_DOCKER_NAME='kcbq_test_connect'
 
-cp "$BASE_DIR"/../build/distributions/kcbq-connector-*-dist.tar "$DOCKER_DIR/connect/kcbq.tar"
-cp "$BASE_DIR"/../../kcbq-confluent/build/distributions/kcbq-confluent-*-dist.tar "$DOCKER_DIR/connect/retriever.tar"
+cp "$BASE_DIR"/../../bin/tar/kcbq-connector-*-confluent-dist.tar "$DOCKER_DIR/connect/kcbq.tar"
 cp "$KCBQ_TEST_KEYFILE" "$DOCKER_DIR/connect/key.json"
 
 if ! dockerimageexists "$CONNECT_DOCKER_IMAGE"; then
@@ -246,7 +242,6 @@ docker create --name "$CONNECT_DOCKER_NAME" \
               --link "$KAFKA_DOCKER_NAME:kafka" --link "$SCHEMA_REGISTRY_DOCKER_NAME:schema-registry" \
               -t "$CONNECT_DOCKER_IMAGE" /bin/bash
 docker cp "$DOCKER_DIR/connect/kcbq.tar" "$CONNECT_DOCKER_NAME:/usr/share/java/kafka-connect-bigquery/kcbq.tar"
-docker cp "$DOCKER_DIR/connect/retriever.tar" "$CONNECT_DOCKER_NAME:/usr/share/java/kafka-connect-bigquery/retriever.tar"
 docker cp "$DOCKER_DIR/connect/properties/" "$CONNECT_DOCKER_NAME:/etc/kafka-connect-bigquery/"
 docker cp "$DOCKER_DIR/connect/key.json" "$CONNECT_DOCKER_NAME:/tmp/key.json"
 docker start -a "$CONNECT_DOCKER_NAME"
