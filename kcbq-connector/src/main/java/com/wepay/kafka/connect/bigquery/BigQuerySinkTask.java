@@ -330,15 +330,15 @@ public class BigQuerySinkTask extends SinkTask {
   private void configureMetrics() {
     metrics = new Metrics();
     rowsRead = metrics.sensor("rows-read");
-    rowsRead.add(metrics.metricName("rows-written-avg",
+    rowsRead.add(metrics.metricName("rows-read-avg",
                                     "kcbq",
                                     "The average number of rows written per request"),
                  new Avg());
-    rowsRead.add(metrics.metricName("rows-written-max",
+    rowsRead.add(metrics.metricName("rows-read-max",
                                     "kcbq",
                                     "The maximum number of rows written per request"),
                  new Max());
-    rowsRead.add(metrics.metricName("rows-written-rate",
+    rowsRead.add(metrics.metricName("rows-read-rate",
                                     "kcbq",
                                     "The average number of rows written per second"),
                  new Rate());
