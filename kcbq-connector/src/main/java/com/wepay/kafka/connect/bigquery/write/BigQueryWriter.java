@@ -24,6 +24,7 @@ import com.google.cloud.bigquery.TableId;
 
 import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
 
+import com.wepay.kafka.connect.bigquery.utils.MetricsConstants;
 import org.apache.kafka.common.metrics.Metrics;
 import org.apache.kafka.common.metrics.Sensor;
 import org.apache.kafka.common.metrics.stats.Avg;
@@ -60,15 +61,15 @@ public abstract class BigQueryWriter {
 
     rowsWritten = metrics.sensor("rows-written");
     rowsWritten.add(metrics.metricName("rows-written-avg",
-                                       "kcbq",
+                                       MetricsConstants.groupName,
                                        "The average number of rows written per request"),
                     new Avg());
     rowsWritten.add(metrics.metricName("rows-written-max",
-                                       "kcbq",
+                                       MetricsConstants.groupName,
                                        "The maximum number of rows written per request"),
                     new Max());
     rowsWritten.add(metrics.metricName("rows-written-rate",
-                                       "kcbq",
+                                       MetricsConstants.groupName,
                                        "The average number of rows written per second"),
                     new Rate());
   }

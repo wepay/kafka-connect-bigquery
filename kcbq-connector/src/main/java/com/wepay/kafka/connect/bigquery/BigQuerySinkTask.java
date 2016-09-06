@@ -41,6 +41,7 @@ import com.wepay.kafka.connect.bigquery.partition.EqualPartitioner;
 import com.wepay.kafka.connect.bigquery.partition.Partitioner;
 import com.wepay.kafka.connect.bigquery.partition.SinglePartitioner;
 
+import com.wepay.kafka.connect.bigquery.utils.MetricsConstants;
 import com.wepay.kafka.connect.bigquery.utils.Version;
 
 import com.wepay.kafka.connect.bigquery.write.AdaptiveBigQueryWriter;
@@ -331,15 +332,15 @@ public class BigQuerySinkTask extends SinkTask {
     metrics = new Metrics();
     rowsRead = metrics.sensor("rows-read");
     rowsRead.add(metrics.metricName("rows-read-avg",
-                                    "kcbq",
+                                    MetricsConstants.groupName,
                                     "The average number of rows written per request"),
                  new Avg());
     rowsRead.add(metrics.metricName("rows-read-max",
-                                    "kcbq",
+                                    MetricsConstants.groupName,
                                     "The maximum number of rows written per request"),
                  new Max());
     rowsRead.add(metrics.metricName("rows-read-rate",
-                                    "kcbq",
+                                    MetricsConstants.groupName,
                                     "The average number of rows written per second"),
                  new Rate());
   }
