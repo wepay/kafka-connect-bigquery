@@ -234,10 +234,13 @@ public class BigQuerySinkTask extends SinkTask {
     }
   }
 
-  private Map<TableId, List<SinkRecord>> partitionRecordsByTable(
-      Collection<SinkRecord> records) {
+  private Map<TableId, List<SinkRecord>> partitionRecordsByTable(Collection<SinkRecord> records) {
     Map<TableId, List<SinkRecord>> tableRecords = new HashMap<>();
     for (SinkRecord record : records) {
+      if (recordEmpty(record)) {
+        // ignore it
+        continue;
+      }
       TableId tableId = getRecordTable(record);
       if (!tableRecords.containsKey(tableId)) {
         tableRecords.put(tableId, new ArrayList<>());
@@ -259,8 +262,8 @@ public class BigQuerySinkTask extends SinkTask {
 
   @Override
   public void put(Collection<SinkRecord> records) {
-    for (Map.Entry<TableId, List<SinkRecord>> tableRecords
-        : partitionRecordsByTable(records).entrySet()) {
+    Map<TableId, List<SinkRecord>> partitionedRecords = partitionRecordsByTable(records);
+    for (Map.Entry<TableId, List<SinkRecord>> tableRecords : partitionedRecords.entrySet()) {
       TableId table = tableRecords.getKey();
 
       if (!tableBuffers.containsKey(table)) {
@@ -286,6 +289,15 @@ public class BigQuerySinkTask extends SinkTask {
       }
     }
     rowsRead.record(records.size());
+  }
+
+  /**
+   * Returns true if the given {@link SinkRecord} contains no value.
+   * @param record the {@link SinkRecord} to check.
+   * @return true if the record has no value, false otherwise.
+   */
+  private boolean recordEmpty(SinkRecord record) {
+    return record.value() == null;
   }
 
   private RecordConverter<Map<String, Object>> getConverter() {
