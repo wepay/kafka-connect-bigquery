@@ -239,6 +239,7 @@ public class BigQuerySinkTask extends SinkTask {
     for (SinkRecord record : records) {
       if (recordEmpty(record)) {
         // ignore it
+        logger.debug("ignoring empty record value for topic: " + record.topic());
         continue;
       }
       TableId tableId = getRecordTable(record);
