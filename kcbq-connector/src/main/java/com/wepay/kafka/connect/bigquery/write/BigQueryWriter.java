@@ -45,6 +45,9 @@ import java.util.Set;
  */
 public abstract class BigQueryWriter {
 
+  private static final int QUOTA_EXCEEDED = 403;
+  // note: 403 covers more than just quota exceeded:
+  // https://cloud.google.com/bigquery/troubleshooting-errors
   private static final int INTERNAL_SERVICE_ERROR = 500;
   private static final int SERVICE_UNAVAILABLE = 503;
 
@@ -123,6 +126,8 @@ public abstract class BigQueryWriter {
         if (err.code() == INTERNAL_SERVICE_ERROR || err.code() == SERVICE_UNAVAILABLE) {
           // backend error: https://cloud.google.com/bigquery/troubleshooting-errors
           retryCount++;
+        } else if (err.code() == QUOTA_EXCEEDED){
+          // wait and retry
         } else {
           throw new BigQueryConnectException("Failed to write to BigQuery table " + table, err);
         }
