@@ -32,7 +32,6 @@ import org.apache.kafka.common.metrics.stats.Max;
 import org.apache.kafka.common.metrics.stats.Rate;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.errors.ConnectException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,8 +50,7 @@ public abstract class BigQueryWriter {
   private static final int SERVICE_UNAVAILABLE = 503;
   private static final String QUOTA_EXCEEDED_REASON = "quotaExceeded";
 
-  public static final long QUOTA_EXCEEDED_MIN_WAIT = 1000L;
-  public static final int QUOTA_EXCEEDED_MAX_EXTRA = 1000;
+  public static final int WAIT_MAX_JITTER = 1000;
 
   private static final Logger logger = LoggerFactory.getLogger(BigQueryWriter.class);
 
@@ -119,7 +117,7 @@ public abstract class BigQueryWriter {
     int retryCount = 0;
     do {
       if (retryCount > 0) {
-        Thread.sleep(retryWaitMs);
+        waitRandomTime();
       }
       try {
         performWriteRequest(
@@ -139,8 +137,7 @@ public abstract class BigQueryWriter {
                    && err.error() != null
                    && QUOTA_EXCEEDED_REASON.equals(err.error().reason())) {
           // quota exceeded error
-          // wait, retry; don't count against retryCount
-          waitRandomTime();
+          retryCount++;
         } else {
           throw new BigQueryConnectException("Failed to write to BigQuery table " + table, err);
         }
@@ -149,10 +146,11 @@ public abstract class BigQueryWriter {
   }
 
   /**
-   * Wait a random amount of time between 1000ms and 2000ms.
+   * Wait at least {@link #retryWaitMs}, with up to an additional 1 second of random jitter.
    * @throws InterruptedException if interrupted.
    */
   public void waitRandomTime() throws InterruptedException {
-    Thread.sleep(QUOTA_EXCEEDED_MIN_WAIT + random.nextInt(QUOTA_EXCEEDED_MAX_EXTRA));
+    // wait
+    Thread.sleep(retryWaitMs + random.nextInt(WAIT_MAX_JITTER));
   }
 }
