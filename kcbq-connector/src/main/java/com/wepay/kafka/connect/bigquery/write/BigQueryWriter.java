@@ -38,6 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 
 /**
@@ -51,13 +52,25 @@ public abstract class BigQueryWriter {
   private static final int INTERNAL_SERVICE_ERROR = 500;
   private static final int SERVICE_UNAVAILABLE = 503;
 
+  public static final long QUOTA_EXCEEDED_MIN_WAIT = 1000L;
+  public static final int QUOTA_EXCEEDED_MAX_EXTRA = 1000;
+
   private static final Logger logger = LoggerFactory.getLogger(BigQueryWriter.class);
+
+  private static final Random random = new Random();
 
   public final Sensor rowsWritten;
 
   private int retries;
   private long retryWaitMs;
 
+  /**
+   * @param retries the number of times to retry a request if BQ returns an internal service error
+   *                or a service unavailable error.
+   * @param retryWaitMs the amount of time to wait in between reattempting a request if BQ returns
+   *                    an internal service error or a service unavailable error.
+   * @param metrics kafka {@link Metrics}.
+   */
   public BigQueryWriter(int retries, long retryWaitMs, Metrics metrics) {
     this.retries = retries;
     this.retryWaitMs = retryWaitMs;
@@ -95,12 +108,13 @@ public abstract class BigQueryWriter {
    * @param rows The rows to write.
    * @param topic The Kafka topic that the row data came from.
    * @param schemas The unique Schemas for the row data.
+   * @throws InterruptedException if interrupted.
    */
   public void writeRows(
       TableId table,
       List<InsertAllRequest.RowToInsert> rows,
       String topic,
-      Set<Schema> schemas) {
+      Set<Schema> schemas) throws InterruptedException {
     logger.debug("writing {} row{} to table {}", rows.size(), rows.size() != 1 ? "s" : "", table);
 
     int retryCount = 0;
@@ -126,12 +140,21 @@ public abstract class BigQueryWriter {
         if (err.code() == INTERNAL_SERVICE_ERROR || err.code() == SERVICE_UNAVAILABLE) {
           // backend error: https://cloud.google.com/bigquery/troubleshooting-errors
           retryCount++;
-        } else if (err.code() == QUOTA_EXCEEDED){
-          // wait and retry
+        } else if (err.code() == QUOTA_EXCEEDED) {
+          // wait, retry; don't count against retryCount
+          waitRandomTime();
         } else {
           throw new BigQueryConnectException("Failed to write to BigQuery table " + table, err);
         }
       }
     } while (retryCount <= retries);
+  }
+
+  /**
+   * Wait a random amount of time between 1000ms and 2000ms.
+   * @throws InterruptedException if interrupted.
+   */
+  public void waitRandomTime() throws InterruptedException {
+    Thread.sleep(QUOTA_EXCEEDED_MIN_WAIT + random.nextInt(QUOTA_EXCEEDED_MAX_EXTRA));
   }
 }

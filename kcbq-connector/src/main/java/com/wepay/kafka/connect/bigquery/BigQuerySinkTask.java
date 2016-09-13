@@ -88,8 +88,6 @@ import java.util.concurrent.Future;
 public class BigQuerySinkTask extends SinkTask {
   private static final Logger logger = LoggerFactory.getLogger(BigQuerySinkTask.class);
 
-  public static final long TABLE_WRITE_INTERVAL = 1000L;
-
   private final ExecutorService executorService = Executors.newCachedThreadPool();
 
   private final Object contextLock = new Object();
@@ -156,7 +154,6 @@ public class BigQuerySinkTask extends SinkTask {
       List<List<RowToInsert>> partitions = rowPartitioner.partition(rows);
       bigQueryWriter.writeRows(table, partitions.get(0), topic, schemas);
       for (List<RowToInsert> partition : partitions.subList(1, partitions.size())) {
-        Thread.sleep(TABLE_WRITE_INTERVAL);
         bigQueryWriter.writeRows(table, partition, topic, schemas);
       }
       updateAllPartitions(tablesToTopics.get(table), offsets);
@@ -325,7 +322,8 @@ public class BigQuerySinkTask extends SinkTask {
 
   private SchemaManager getSchemaManager(BigQuery bigQuery) {
     SchemaRetriever schemaRetriever = config.getSchemaRetriever();
-    SchemaConverter<com.google.cloud.bigquery.Schema> schemaConverter = config.getSchemaConverter();
+    SchemaConverter<com.google.cloud.bigquery.Schema> schemaConverter =
+        config.getSchemaConverter();
     return new SchemaManager(schemaRetriever, schemaConverter, bigQuery);
   }
 
@@ -335,7 +333,11 @@ public class BigQuerySinkTask extends SinkTask {
     long retryWait = config.getLong(config.BIGQUERY_RETRY_WAIT_CONFIG);
     BigQuery bigQuery = getBigQuery();
     if (updateSchemas) {
-      return new AdaptiveBigQueryWriter(bigQuery, getSchemaManager(bigQuery), retry, retryWait,  metrics);
+      return new AdaptiveBigQueryWriter(bigQuery,
+                                        getSchemaManager(bigQuery),
+                                        retry,
+                                        retryWait,
+                                        metrics);
     } else {
       return new SimpleBigQueryWriter(bigQuery, retry, retryWait, metrics);
     }
