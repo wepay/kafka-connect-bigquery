@@ -119,11 +119,7 @@ public abstract class BigQueryWriter {
     int retryCount = 0;
     do {
       if (retryCount > 0) {
-        try {
-          Thread.sleep(retryWaitMs);
-        } catch (InterruptedException err) {
-          throw new ConnectException("Interrupted while waiting for BigQuery retry", err);
-        }
+        Thread.sleep(retryWaitMs);
       }
       try {
         performWriteRequest(
@@ -142,6 +138,7 @@ public abstract class BigQueryWriter {
         } else if (err.code() == FORBIDDEN
                    && err.error() != null
                    && QUOTA_EXCEEDED_REASON.equals(err.error().reason())) {
+          // quota exceeded error
           // wait, retry; don't count against retryCount
           waitRandomTime();
         } else {
