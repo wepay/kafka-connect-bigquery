@@ -46,11 +46,10 @@ import java.util.Set;
  */
 public abstract class BigQueryWriter {
 
-  private static final int QUOTA_EXCEEDED = 403;
-  // note: 403 covers more than just quota exceeded:
-  // https://cloud.google.com/bigquery/troubleshooting-errors
+  private static final int FORBIDDEN = 403;
   private static final int INTERNAL_SERVICE_ERROR = 500;
   private static final int SERVICE_UNAVAILABLE = 503;
+  private static final String QUOTA_EXCEEDED_REASON = "quotaExceeded";
 
   public static final long QUOTA_EXCEEDED_MIN_WAIT = 1000L;
   public static final int QUOTA_EXCEEDED_MAX_EXTRA = 1000;
@@ -140,7 +139,9 @@ public abstract class BigQueryWriter {
         if (err.code() == INTERNAL_SERVICE_ERROR || err.code() == SERVICE_UNAVAILABLE) {
           // backend error: https://cloud.google.com/bigquery/troubleshooting-errors
           retryCount++;
-        } else if (err.code() == QUOTA_EXCEEDED) {
+        } else if (err.code() == FORBIDDEN
+                   && err.error() != null
+                   && QUOTA_EXCEEDED_REASON.equals(err.error().reason())) {
           // wait, retry; don't count against retryCount
           waitRandomTime();
         } else {
