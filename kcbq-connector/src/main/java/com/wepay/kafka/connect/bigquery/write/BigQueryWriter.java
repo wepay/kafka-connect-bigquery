@@ -98,7 +98,7 @@ public abstract class BigQueryWriter {
                                           "The maximum number of retry attempts made for a single "
                                           + "request"),
                        new Max());
-    requestRetries.add(metrics.metricName("request-retires-count",
+    requestRetries.add(metrics.metricName("request-retries-count",
                                           MetricsConstants.groupName,
                                           "The total number of retry attempts made"),
                        new Count());
