@@ -28,6 +28,7 @@ import com.wepay.kafka.connect.bigquery.utils.MetricsConstants;
 import org.apache.kafka.common.metrics.Metrics;
 import org.apache.kafka.common.metrics.Sensor;
 import org.apache.kafka.common.metrics.stats.Avg;
+import org.apache.kafka.common.metrics.stats.Count;
 import org.apache.kafka.common.metrics.stats.Max;
 import org.apache.kafka.common.metrics.stats.Rate;
 
@@ -57,6 +58,7 @@ public abstract class BigQueryWriter {
   private static final Random random = new Random();
 
   public final Sensor rowsWritten;
+  public final Sensor requestRetries;
 
   private int retries;
   private long retryWaitMs;
@@ -85,6 +87,21 @@ public abstract class BigQueryWriter {
                                        MetricsConstants.groupName,
                                        "The average number of rows written per second"),
                     new Rate());
+
+    requestRetries = metrics.sensor("request-retries");
+    requestRetries.add(metrics.metricName("request-retries-avg",
+                                          MetricsConstants.groupName,
+                                          "The average number of retries per request"),
+                       new Avg());
+    requestRetries.add(metrics.metricName("request-retries-max",
+                                          MetricsConstants.groupName,
+                                          "The maximum number of retry attempts made for a single "
+                                          + "request"),
+                       new Max());
+    requestRetries.add(metrics.metricName("request-retires-count",
+                                          MetricsConstants.groupName,
+                                          "The total number of retry attempts made"),
+                       new Count());
   }
 
   /**
@@ -113,6 +130,7 @@ public abstract class BigQueryWriter {
       String topic,
       Set<Schema> schemas) throws InterruptedException {
     logger.debug("writing {} row{} to table {}", rows.size(), rows.size() != 1 ? "s" : "", table);
+    rowsWritten.record(rows.size());
 
     int retryCount = 0;
     do {
@@ -137,12 +155,14 @@ public abstract class BigQueryWriter {
                    && err.error() != null
                    && QUOTA_EXCEEDED_REASON.equals(err.error().reason())) {
           // quota exceeded error
+          logger.warn("Quota exceeded for table {}", table);
           retryCount++;
         } else {
           throw new BigQueryConnectException("Failed to write to BigQuery table " + table, err);
         }
       }
     } while (retryCount <= retries);
+    requestRetries.record(retryCount);
   }
 
   /**
