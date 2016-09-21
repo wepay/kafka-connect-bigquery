@@ -18,16 +18,22 @@ package com.wepay.kafka.connect.bigquery.partition;
  */
 
 
+import com.google.cloud.bigquery.TableId;
+
+import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
+import org.apache.kafka.connect.data.Schema;
+
 import java.util.List;
+import java.util.Set;
 
 /**
- * Interface for partitioning lists of elements.
+ * Interface for partitioning lists of elements and writing those partitions to bigQuery.
  * @param <E> The type of element in the list that will be partitioned.
  */
 public interface Partitioner<E> {
   /**
-   * @param elements The list of elements to partition.
-   * @return A series of lists, which when combined in order is equal to the argument list.
+   * @param elements The list of elements to write to BigQuery.
    */
-  public List<List<E>> partition(List<E> elements);
+  void writeAll(TableId table, List<E> elements, String topic, Set<Schema> schemas)
+      throws BigQueryConnectException, InterruptedException;
 }

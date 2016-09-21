@@ -18,19 +18,43 @@ package com.wepay.kafka.connect.bigquery.partition;
  */
 
 
-import java.util.Collections;
+import com.google.cloud.bigquery.BigQueryException;
+import com.google.cloud.bigquery.InsertAllRequest;
+import com.google.cloud.bigquery.TableId;
+
+import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
+import com.wepay.kafka.connect.bigquery.write.BigQueryWriter;
+
+import org.apache.kafka.connect.data.Schema;
+
 import java.util.List;
+import java.util.Set;
 
 /**
  * A partitioner that doesn't divide its list at all.
  */
-public class SinglePartitioner<E> implements Partitioner<E> {
+public class SinglePartitioner implements Partitioner<InsertAllRequest.RowToInsert> {
+  private BigQueryWriter writer;
+
+  public SinglePartitioner(BigQueryWriter writer) {
+    this.writer = writer;
+  }
   /**
-   * @param elements The list of elements to partition.
-   * @return A list containing the argument list.
+   * @param elements The list of elements to write in a single batch.
    */
   @Override
-  public List<List<E>> partition(List<E> elements) {
-    return Collections.singletonList(elements);
+  public void writeAll(TableId table,
+                       List<InsertAllRequest.RowToInsert> elements,
+                       String topic,
+                       Set<Schema> schemas)
+      throws BigQueryConnectException, InterruptedException {
+    try {
+      writer.writeRows(table, elements, topic, schemas);
+    } catch (BigQueryException err) {
+      throw new BigQueryConnectException(
+          String.format("Failed to write to BigQuery table %s", table),
+          err);
+    }
+
   }
 }

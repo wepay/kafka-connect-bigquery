@@ -151,7 +151,7 @@ public class BigQuerySinkTask extends SinkTask {
 
     @Override
     public Void call() throws InterruptedException {
-      List<List<RowToInsert>> partitions = rowPartitioner.partition(rows);
+      List<List<RowToInsert>> partitions = rowPartitioner.writeAll(rows);
       for (List<RowToInsert> partition : partitions) {
         bigQueryWriter.writeRows(table, partition, topic, schemas);
       }
