@@ -92,12 +92,12 @@ public class BigQuerySinkConfig extends AbstractConfig {
 
   public static final String MAX_WRITE_CONFIG =                     "maxWriteSize";
   private static final ConfigDef.Type MAX_WRITE_TYPE =              ConfigDef.Type.INT;
-  public static final Integer MAX_WRITE_DEFAULT =                   100000;
+  public static final Integer MAX_WRITE_DEFAULT =                   0;
   private static final ConfigDef.Validator MAX_WRITE_VALIDATOR =    ConfigDef.Range.atLeast(-1);
   private static final ConfigDef.Importance MAX_WRITE_IMPORTANCE =  ConfigDef.Importance.MEDIUM;
   private static final String MAX_WRITE_DOC =
-      "The maxiumum number of records to write at once to BigQuery, or -1 for no limit "
-          + "(cannot be zero)";
+      "The maxiumum number of records to write at once to BigQuery, or -1 for no limit, "
+          + " or 0 to  dynamically determine the number of records to send.";
 
   public static final String SANITIZE_TOPICS_CONFIG =                     "sanitizeTopics";
   private static final ConfigDef.Type SANITIZE_TOPICS_TYPE =              ConfigDef.Type.BOOLEAN;

@@ -223,7 +223,7 @@ public class BigQuerySinkTaskTest {
   }
 
   @Test
-  public void testBigQuery5XXRetry() { // a test
+  public void testBigQuery5XXRetry() {
     final String topic = "test_topic";
     final String dataset = "scratch";
 

@@ -37,6 +37,7 @@ import com.wepay.kafka.connect.bigquery.convert.SchemaConverter;
 import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
 import com.wepay.kafka.connect.bigquery.exception.SinkConfigConnectException;
 
+import com.wepay.kafka.connect.bigquery.partition.DynamicPartitioner;
 import com.wepay.kafka.connect.bigquery.partition.EqualPartitioner;
 import com.wepay.kafka.connect.bigquery.partition.Partitioner;
 import com.wepay.kafka.connect.bigquery.partition.SinglePartitioner;
@@ -100,7 +101,6 @@ public class BigQuerySinkTask extends SinkTask {
   private Partitioner<RowToInsert> rowPartitioner;
   private Map<String, String> topicsToDatasets;
   private Map<TableId, String> tablesToTopics;
-  //private BigQueryWriter bigQueryWriter;
   private Metrics metrics;
   private Sensor rowsRead;
 
@@ -303,6 +303,8 @@ public class BigQuerySinkTask extends SinkTask {
     BigQueryWriter writer = getWriter();
     if (maxWriteSize == -1) {
       return new SinglePartitioner(writer);
+    } else if (maxWriteSize == 0) {
+      return new DynamicPartitioner(writer);
     } else {
       return new EqualPartitioner(writer, maxWriteSize);
     }
@@ -378,7 +380,6 @@ public class BigQuerySinkTask extends SinkTask {
     tableBuffers = new HashMap<>();
     tableSchemas = new HashMap<>();
     rowPartitioner = getPartitioner();
-    //bigQueryWriter = getWriter();
   }
 
   @Override
