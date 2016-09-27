@@ -39,6 +39,7 @@ public class SinglePartitioner implements Partitioner<InsertAllRequest.RowToInse
   public SinglePartitioner(BigQueryWriter writer) {
     this.writer = writer;
   }
+
   /**
    * @param elements The list of elements to write in a single batch.
    */

@@ -31,8 +31,14 @@ import java.util.Set;
  * @param <E> The type of element in the list that will be partitioned.
  */
 public interface Partitioner<E> {
+
   /**
+   * @param table The BigQuery table to write the rows to.
    * @param elements The list of elements to write to BigQuery.
+   * @param topic The Kafka topic that the row data came from.
+   * @param schemas The unique Schemas for the row data.
+   * @throws BigQueryConnectException if we are unable to write to BigQuery
+   * @throws InterruptedException if writing is interrupted
    */
   void writeAll(TableId table, List<E> elements, String topic, Set<Schema> schemas)
       throws BigQueryConnectException, InterruptedException;

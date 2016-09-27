@@ -100,7 +100,7 @@ public class BigQuerySinkTask extends SinkTask {
   private Partitioner<RowToInsert> rowPartitioner;
   private Map<String, String> topicsToDatasets;
   private Map<TableId, String> tablesToTopics;
-  private BigQueryWriter bigQueryWriter;
+  //private BigQueryWriter bigQueryWriter;
   private Metrics metrics;
   private Sensor rowsRead;
 
@@ -151,10 +151,7 @@ public class BigQuerySinkTask extends SinkTask {
 
     @Override
     public Void call() throws InterruptedException {
-      List<List<RowToInsert>> partitions = rowPartitioner.writeAll(rows);
-      for (List<RowToInsert> partition : partitions) {
-        bigQueryWriter.writeRows(table, partition, topic, schemas);
-      }
+      rowPartitioner.writeAll(table, rows, topic, schemas);
       updateAllPartitions(tablesToTopics.get(table), offsets);
       return null;
     }
@@ -303,10 +300,11 @@ public class BigQuerySinkTask extends SinkTask {
 
   private Partitioner<RowToInsert> getPartitioner() {
     int maxWriteSize = config.getInt(config.MAX_WRITE_CONFIG);
+    BigQueryWriter writer = getWriter();
     if (maxWriteSize == -1) {
-      return new SinglePartitioner<>();
+      return new SinglePartitioner(writer);
     } else {
-      return new EqualPartitioner<>(maxWriteSize);
+      return new EqualPartitioner(writer, maxWriteSize);
     }
   }
 
@@ -380,7 +378,7 @@ public class BigQuerySinkTask extends SinkTask {
     tableBuffers = new HashMap<>();
     tableSchemas = new HashMap<>();
     rowPartitioner = getPartitioner();
-    bigQueryWriter = getWriter();
+    //bigQueryWriter = getWriter();
   }
 
   @Override

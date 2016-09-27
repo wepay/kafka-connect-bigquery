@@ -18,6 +18,7 @@ package com.wepay.kafka.connect.bigquery.partition;
  */
 
 
+import com.google.cloud.bigquery.BigQueryException;
 import com.google.cloud.bigquery.InsertAllRequest;
 import com.google.cloud.bigquery.TableId;
 
@@ -34,11 +35,12 @@ import java.util.Set;
  * one row, and secondly, no writeAll shall be larger in size than an amount specified during
  * instantiation.
  */
-public class EqualPartitioner<E> implements Partitioner<InsertAllRequest.RowToInsert> {
+public class EqualPartitioner implements Partitioner<InsertAllRequest.RowToInsert> {
   private final int maxPartitionSize;
   private BigQueryWriter writer;
 
   /**
+   * @param writer the {@link BigQueryWriter}
    * @param maxPartitionSize The maximum size of a writeAll returned by a call to writeAll().
    */
   public EqualPartitioner(BigQueryWriter writer, int maxPartitionSize) {
@@ -62,7 +64,14 @@ public class EqualPartitioner<E> implements Partitioner<InsertAllRequest.RowToIn
                        Set<Schema> schemas) throws BigQueryConnectException, InterruptedException {
     // Handle the case where no partitioning is necessary
     if (elements.size() <= maxPartitionSize) {
-      writer.writeRows(table, elements, topic, schemas);
+      try {
+        writer.writeRows(table, elements, topic, schemas);
+      } catch (BigQueryException err) {
+        throw new BigQueryConnectException(
+          String.format("Failed to write to BigQuery table %s", table),
+          err);
+      }
+      return;
     }
 
     // Ceiling division
@@ -85,8 +94,13 @@ public class EqualPartitioner<E> implements Partitioner<InsertAllRequest.RowToIn
       int partitionEnd = Math.min(partitionStart + partitionSize, elements.size());
 
       // Add the next writeAll to the return value
-      writer.writeRows(table, elements.subList(partitionStart, partitionEnd), topic, schemas);
-
+      try {
+        writer.writeRows(table, elements.subList(partitionStart, partitionEnd), topic, schemas);
+      } catch (BigQueryException err) {
+        throw new BigQueryConnectException(
+            String.format("Failed to write to BigQuery table %s", table),
+            err);
+      }
       partitionStart += partitionSize;
     }
   }

@@ -164,7 +164,8 @@ public abstract class BigQueryWriter {
       }
     } while (retryCount <= retries);
     requestRetries.record(retryCount);
-    throw new BigQueryConnectException(String.format("Exceeded configured %d attempts for write request", retryCount));
+    throw new BigQueryConnectException(
+        String.format("Exceeded configured %d attempts for write request", retryCount));
   }
 
   /**
