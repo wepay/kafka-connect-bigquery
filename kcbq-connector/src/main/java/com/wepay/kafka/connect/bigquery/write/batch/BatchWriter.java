@@ -27,8 +27,8 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Interface for partitioning lists of elements and writing those partitions to bigQuery.
- * @param <E> The type of element in the list that will be partitioned.
+ * Interface for splitting lists of elements into batches and writing those batches to bigQuery.
+ * @param <E> The type of element in the list that will be split.
  */
 public interface BatchWriter<E> {
 

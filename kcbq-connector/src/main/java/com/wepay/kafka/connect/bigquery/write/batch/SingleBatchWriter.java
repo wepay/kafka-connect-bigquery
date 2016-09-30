@@ -31,7 +31,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * A partitioner that doesn't divide its list at all.
+ * A batch writer that writes all given elements in a single batch request.
  */
 public class SingleBatchWriter implements BatchWriter<InsertAllRequest.RowToInsert> {
   private BigQueryWriter writer;

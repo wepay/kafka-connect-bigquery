@@ -53,12 +53,12 @@ public class DynamicBatchWriterTest {
                    anyObject(),
                    anyObject());
 
-    DynamicBatchWriter partitioner = new DynamicBatchWriter(mockWriter);
+    DynamicBatchWriter dynamicBatchWriter = new DynamicBatchWriter(mockWriter);
 
-    writeAll(partitioner, actualMaxSize);
-    Assert.assertEquals(500, partitioner.getCurrentBatchSize());
+    writeAll(dynamicBatchWriter, actualMaxSize);
+    Assert.assertEquals(500, dynamicBatchWriter.getCurrentBatchSize());
 
-    writeAll(partitioner, 600);
+    writeAll(dynamicBatchWriter, 600);
     verify(mockWriter, times(2)).writeRows(anyObject(),
                                            argThat(new ListIsExactly(300)),
                                            anyObject(),
@@ -80,18 +80,18 @@ public class DynamicBatchWriterTest {
                    anyObject(),
                    anyObject());
 
-    DynamicBatchWriter partitioner = new DynamicBatchWriter(mockWriter);
+    DynamicBatchWriter dynamicBatchWriter = new DynamicBatchWriter(mockWriter);
 
-    writeAll(partitioner, 3500);
+    writeAll(dynamicBatchWriter, 3500);
     // expected calls are:
     // 500 (success)
     // 1000 (success)
     // 2000 (failure)
     // 1000 (success)
     // 1000 (success)
-    Assert.assertEquals(1000, partitioner.getCurrentBatchSize());
+    Assert.assertEquals(1000, dynamicBatchWriter.getCurrentBatchSize());
 
-    writeAll(partitioner, 1600);
+    writeAll(dynamicBatchWriter, 1600);
     verify(mockWriter, times(2)).writeRows(anyObject(),
                                            argThat(new ListIsExactly(800)),
                                            anyObject(),
@@ -113,18 +113,18 @@ public class DynamicBatchWriterTest {
                    anyObject(),
                    anyObject());
 
-    DynamicBatchWriter partitioner = new DynamicBatchWriter(mockWriter);
+    DynamicBatchWriter dynamicBatchWriter = new DynamicBatchWriter(mockWriter);
 
-    writeAll(partitioner, 750);
+    writeAll(dynamicBatchWriter, 750);
     // expected calls are:
     // 500 (failure)
     // 250 (success)
     // 500 (failure)
     // 250 (success)
     // 250 (success)
-    Assert.assertEquals(250, partitioner.getCurrentBatchSize());
+    Assert.assertEquals(250, dynamicBatchWriter.getCurrentBatchSize());
 
-    writeAll(partitioner, 400);
+    writeAll(dynamicBatchWriter, 400);
     verify(mockWriter, times(2)).writeRows(anyObject(),
                                            argThat(new ListIsExactly(200)),
                                            anyObject(),
@@ -137,7 +137,7 @@ public class DynamicBatchWriterTest {
     // test a failure during an establishedWriteAll
     BigQueryWriter mockWriter = mock(BigQueryWriter.class);
     // start by establishing at 500, no seeking.
-    DynamicBatchWriter partitioner = new DynamicBatchWriter(mockWriter, 500, false);
+    DynamicBatchWriter dynamicBatchWriter = new DynamicBatchWriter(mockWriter, 500, false);
 
     // but we error at anything above 300:
     doThrow(new BigQueryException(400, null)).when(mockWriter)
@@ -146,7 +146,7 @@ public class DynamicBatchWriterTest {
                    anyObject(),
                    anyObject());
 
-    writeAll(partitioner, 500);
+    writeAll(dynamicBatchWriter, 500);
     // expected calls are:
     // 500 (failure)
     // 250 (success)
@@ -159,7 +159,7 @@ public class DynamicBatchWriterTest {
                                            argThat(new ListIsExactly(250)),
                                            anyObject(),
                                            anyObject());
-    Assert.assertEquals(250, partitioner.getCurrentBatchSize());
+    Assert.assertEquals(250, dynamicBatchWriter.getCurrentBatchSize());
   }
 
   @Test
@@ -168,7 +168,7 @@ public class DynamicBatchWriterTest {
     // test a failure during an establishedWriteAll
     BigQueryWriter mockWriter = mock(BigQueryWriter.class);
     // start by establishing at 500, no seeking.
-    DynamicBatchWriter partitioner = new DynamicBatchWriter(mockWriter, 500, false);
+    DynamicBatchWriter dynamicBatchWriter = new DynamicBatchWriter(mockWriter, 500, false);
 
     // we only error at above 1100:
     doThrow(new BigQueryException(400, null)).when(mockWriter)
@@ -179,23 +179,23 @@ public class DynamicBatchWriterTest {
 
     // 10 calls before batchSize increase
     for (int i = 0; i < 10; i++) {
-      writeAll(partitioner, 1200);
+      writeAll(dynamicBatchWriter, 1200);
     }
     verify(mockWriter, times(30)).writeRows(anyObject(),
                                            argThat(new ListIsExactly(400)),
                                            anyObject(),
                                            anyObject());
     // verify we got up to 100 batch size
-    Assert.assertEquals(1000, partitioner.getCurrentBatchSize());
+    Assert.assertEquals(1000, dynamicBatchWriter.getCurrentBatchSize());
 
     // actually write at 1000 batch size
-    writeAll(partitioner, 1200);
+    writeAll(dynamicBatchWriter, 1200);
     verify(mockWriter, times(2)).writeRows(anyObject(),
                                            argThat(new ListIsExactly(600)),
                                            anyObject(),
                                            anyObject());
     // verify batch size hasn't changed
-    Assert.assertEquals(1000, partitioner.getCurrentBatchSize());
+    Assert.assertEquals(1000, dynamicBatchWriter.getCurrentBatchSize());
   }
 
   // todo tests:
@@ -204,16 +204,16 @@ public class DynamicBatchWriterTest {
 
   /**
    * Call writeAll with the given number of "elements".
-   * @param dynamicPartitioner the dynamic partitioner to use.
+   * @param dynamicBatchWriter the {@link DynamicBatchWriter}to use.
    * @param numElements the number of "elements" to "write"
    */
-  private void writeAll(DynamicBatchWriter dynamicPartitioner, int numElements)
+  private void writeAll(DynamicBatchWriter dynamicBatchWriter, int numElements)
       throws InterruptedException {
     List<InsertAllRequest.RowToInsert> elements = new ArrayList<>();
     for (int i = 0; i < numElements; i++) {
       elements.add(null);
     }
-    dynamicPartitioner.writeAll(null, elements, null, null);
+    dynamicBatchWriter.writeAll(null, elements, null, null);
   }
 
   private static class ListIsAtLeast extends ArgumentMatcher<List> {

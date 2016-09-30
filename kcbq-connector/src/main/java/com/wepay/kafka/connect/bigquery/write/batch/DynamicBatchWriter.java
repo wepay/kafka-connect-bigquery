@@ -34,7 +34,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * A partitioner that attempts to find the largest non-erroring batch size and then evenly divides
+ * A batch writer that attempts to find the largest non-erroring batch size and then evenly divides
  * all the given elements among the fewest possible batch requests, given the maximum allowable
  * batch size.
  */
@@ -117,10 +117,10 @@ public class DynamicBatchWriter implements BatchWriter<InsertAllRequest.RowToIns
     int successfulCallCount = 0;
     while (currentIndex < elements.size()) {
       int endIndex = Math.min(currentIndex + currentBatchSize, elements.size());
-      List<InsertAllRequest.RowToInsert> currentPartition =
+      List<InsertAllRequest.RowToInsert> currentBatchElements =
           elements.subList(currentIndex, endIndex);
       try {
-        writer.writeRows(table, currentPartition, topic, schemas);
+        writer.writeRows(table, currentBatchElements, topic, schemas);
         // success
         successfulCallCount++;
         currentIndex = endIndex;
@@ -135,12 +135,12 @@ public class DynamicBatchWriter implements BatchWriter<InsertAllRequest.RowToIns
           return;
         }
         // increase the batch size if: we actually did just test that batchSize
-        if (!(currentPartition.size() < currentBatchSize)) {
+        if (!(currentBatchElements.size() < currentBatchSize)) {
           increaseBatchSize();
         }
       } catch (BigQueryException exception) {
         // failure
-        if (isPartitioningError(exception)) {
+        if (isBatchSizeError(exception)) {
           decreaseBatchSize();
           // if we've had at least 1 successful call we'll assume this is a good batch size.
           if (successfulCallCount > 0) {
@@ -175,7 +175,7 @@ public class DynamicBatchWriter implements BatchWriter<InsertAllRequest.RowToIns
    * <p>Write all the given elements to BigQuery in the smallest possible number of batches, as
    * evenly as possible.
    *
-   * <p>If we encounter a partitioning-related error, we will immediately lower the batch size and
+   * <p>If we encounter a batch size related error, we will immediately lower the batch size and
    * try again.
    *
    * <p>Every {@link #CONT_SUCCESS_COUNT_BUMP} calls, if there have been no errors, we will bump up
@@ -189,8 +189,7 @@ public class DynamicBatchWriter implements BatchWriter<InsertAllRequest.RowToIns
     int currentIndex = 0;
     while (currentIndex < elements.size()) {
       try {
-        // very similar to equalPartitioner
-        // handle case where no partitioning is necessary:
+        // handle case where no splitting is necessary:
         if (elements.size() <= currentBatchSize) {
           writer.writeRows(table, elements, topic, schemas);
           currentIndex = elements.size();
@@ -198,21 +197,21 @@ public class DynamicBatchWriter implements BatchWriter<InsertAllRequest.RowToIns
         }
 
         int elementsLeft = elements.size() - currentIndex;
-        int numPartitions = (int)Math.ceil(elementsLeft / (currentBatchSize * 1.0));
-        int minBatchSize = elementsLeft / numPartitions;
-        int spareRows = elementsLeft % numPartitions;
+        int numBatches = (int)Math.ceil(elementsLeft / (currentBatchSize * 1.0));
+        int minBatchSize = elementsLeft / numBatches;
+        int spareRows = elementsLeft % numBatches;
 
-        for (int partition = 0; partition < numPartitions; partition++) {
-          // the first spareRows partitions have an extra row in them.
-          int batchSize = partition < spareRows ? minBatchSize + 1 : minBatchSize;
+        for (int batchCount = 0; batchCount < numBatches; batchCount++) {
+          // the first spareRows batches have an extra row in them.
+          int batchSize = batchCount < spareRows ? minBatchSize + 1 : minBatchSize;
           int endIndex = Math.min(currentIndex + batchSize, elements.size());
           writer.writeRows(table, elements.subList(currentIndex, endIndex), topic, schemas);
           currentIndex = endIndex;
         }
       } catch (BigQueryException exception) {
-        if (isPartitioningError(exception)) {
+        if (isBatchSizeError(exception)) {
           // immediately decrease batch size and try again with remaining elements.
-          logger.debug("Partition error during establishedWriteAll, reducing batch size.");
+          logger.debug("Batch size error during establishedWriteAll, reducing batch size.");
           decreaseBatchSize();
           contSuccessCount = 0;
         } else {
@@ -237,7 +236,7 @@ public class DynamicBatchWriter implements BatchWriter<InsertAllRequest.RowToIns
    * @return true if this error is an error that can be fixed by retrying with a smaller batch
    *         size, or false otherwise.
    */
-  private boolean isPartitioningError(BigQueryException exception) {
+  private boolean isBatchSizeError(BigQueryException exception) {
     if (exception.code() == BAD_REQUEST_CODE
         && exception.error() == null
         && exception.reason() == null) {
