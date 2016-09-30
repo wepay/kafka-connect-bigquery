@@ -1,4 +1,4 @@
-package com.wepay.kafka.connect.bigquery.partition;
+package com.wepay.kafka.connect.bigquery.write.batch;
 
 /*
  * Copyright 2016 WePay, Inc.
@@ -23,7 +23,7 @@ import com.google.cloud.bigquery.InsertAllRequest;
 import com.google.cloud.bigquery.TableId;
 
 import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
-import com.wepay.kafka.connect.bigquery.write.BigQueryWriter;
+import com.wepay.kafka.connect.bigquery.write.row.BigQueryWriter;
 
 import org.apache.kafka.connect.data.Schema;
 
@@ -37,19 +37,18 @@ import java.util.Set;
  * A partitioner that attempts to find the largest non-erroring batch size and then evenly divides
  * all the given elements among the fewest possible batch requests, given the maximum allowable
  * batch size.
- *
- * <p>Similar to {@link EqualPartitioner}, but will dynamically attempt to find the maximum batch
- * size and will resize as needed.
  */
-public class DynamicPartitioner implements Partitioner<InsertAllRequest.RowToInsert> {
-  private static final Logger logger = LoggerFactory.getLogger(DynamicPartitioner.class);
+public class DynamicBatchWriter implements BatchWriter<InsertAllRequest.RowToInsert> {
+  private static final Logger logger = LoggerFactory.getLogger(DynamicBatchWriter.class);
+
+  private static final int BAD_REQUEST_CODE = 400;
+
+  private static final String INVALID_REASON = "invalid";
 
   // google only allows request batch sizes of up to 100000, so this is a hard maximum.
   private static final int MAXIMUM_BATCH_SIZE = 100000;
   // google suggests a batch size of 500 so it's as good a place to start as any other.
   private static final int INITIAL_BATCH_SIZE = 500;
-
-  private static final int BAD_REQUEST_CODE = 400;
 
   // in non-seeking mode, the number of writeAlls that must complete successfully without error in
   // a row before we increase the batchSize.
@@ -64,7 +63,7 @@ public class DynamicPartitioner implements Partitioner<InsertAllRequest.RowToIns
   /**
    * @param writer the {@link BigQueryWriter} that will do the writing.
    */
-  public DynamicPartitioner(BigQueryWriter writer) {
+  public DynamicBatchWriter(BigQueryWriter writer) {
     this.writer = writer;
     this.currentBatchSize = INITIAL_BATCH_SIZE;
     this.seeking = true;
@@ -72,7 +71,7 @@ public class DynamicPartitioner implements Partitioner<InsertAllRequest.RowToIns
   }
 
   // package private; for testing only
-  DynamicPartitioner(BigQueryWriter writer, int initialBatchSize, boolean seeking) {
+  DynamicBatchWriter(BigQueryWriter writer, int initialBatchSize, boolean seeking) {
     this.writer = writer;
     this.currentBatchSize = initialBatchSize;
     this.seeking = seeking;
@@ -117,7 +116,7 @@ public class DynamicPartitioner implements Partitioner<InsertAllRequest.RowToIns
     int currentIndex = 0;
     int successfulCallCount = 0;
     while (currentIndex < elements.size()) {
-      int endIndex = currentIndex + currentBatchSize;
+      int endIndex = Math.min(currentIndex + currentBatchSize, elements.size());
       List<InsertAllRequest.RowToInsert> currentPartition =
           elements.subList(currentIndex, endIndex);
       try {
@@ -135,7 +134,7 @@ public class DynamicPartitioner implements Partitioner<InsertAllRequest.RowToIns
                               schemas);
           return;
         }
-        //  increase the batch size if: we actually did just test that batchSize
+        // increase the batch size if: we actually did just test that batchSize
         if (!(currentPartition.size() < currentBatchSize)) {
           increaseBatchSize();
         }
@@ -198,25 +197,24 @@ public class DynamicPartitioner implements Partitioner<InsertAllRequest.RowToIns
           return;
         }
 
-        int numPartitions = (int)Math.ceil(elements.size() / (currentBatchSize * 1.0));
-        int minBatchSize = elements.size() / numPartitions;
-        int spareRows = elements.size() % numPartitions;
+        int elementsLeft = elements.size() - currentIndex;
+        int numPartitions = (int)Math.ceil(elementsLeft / (currentBatchSize * 1.0));
+        int minBatchSize = elementsLeft / numPartitions;
+        int spareRows = elementsLeft % numPartitions;
 
         for (int partition = 0; partition < numPartitions; partition++) {
           // the first spareRows partitions have an extra row in them.
           int batchSize = partition < spareRows ? minBatchSize + 1 : minBatchSize;
-          int endIndex = currentIndex + batchSize;
+          int endIndex = Math.min(currentIndex + batchSize, elements.size());
           writer.writeRows(table, elements.subList(currentIndex, endIndex), topic, schemas);
           currentIndex = endIndex;
         }
       } catch (BigQueryException exception) {
         if (isPartitioningError(exception)) {
           // immediately decrease batch size and try again with remaining elements.
+          logger.debug("Partition error during establishedWriteAll, reducing batch size.");
           decreaseBatchSize();
           contSuccessCount = 0;
-          logger.debug("Partition error during establishedWriteAll, reducing batch size to {}",
-                       currentBatchSize);
-          continue;
         } else {
           throw new BigQueryConnectException(
               String.format("Failed to write to BigQuery table %s", table),
@@ -229,17 +227,30 @@ public class DynamicPartitioner implements Partitioner<InsertAllRequest.RowToIns
     if (contSuccessCount >= CONT_SUCCESS_COUNT_BUMP) {
       logger.debug("{} successful establishedWriteAlls in a row, increasing batchSize to {}",
                    contSuccessCount, currentBatchSize);
+      contSuccessCount = 0;
       increaseBatchSize();
     }
   }
 
+  /**
+   * @param exception the {@link BigQueryException} to check.
+   * @return true if this error is an error that can be fixed by retrying with a smaller batch
+   *         size, or false otherwise.
+   */
   private boolean isPartitioningError(BigQueryException exception) {
     if (exception.code() == BAD_REQUEST_CODE
         && exception.error() == null
         && exception.reason() == null) {
-      // more than 10MB/req
-      // todo google may add an error/reason at some point.
-      // They probably won't, but it would be nice.
+      // 400 with no error or reason represents a request that is more than 10MB. This is not
+      // documented but is referenced slightly under "Error codes" here:
+      // https://cloud.google.com/bigquery/quota-policy
+      // (by decreasing the batch size we can eventually expect to end up with a request under
+      // 10MB)
+      return true;
+    } else if (exception.code() == BAD_REQUEST_CODE && INVALID_REASON.equals(exception.reason())) {
+      // this is the error that the documentation claims google will return if a request exceeds
+      // 10MB. if this actually ever happens...
+      // todo distinguish this from other invalids (like invalid table schema).
       return true;
     }
     return false;
@@ -248,9 +259,15 @@ public class DynamicPartitioner implements Partitioner<InsertAllRequest.RowToIns
   // for some reason when I run tests it's asking for these to be public?? I'm not sure why...
   private void increaseBatchSize() {
     currentBatchSize = Math.min(currentBatchSize * 2, MAXIMUM_BATCH_SIZE);
+    logger.info("Increased batch size to {}", currentBatchSize);
   }
 
   private void decreaseBatchSize() {
-    currentBatchSize = currentBatchSize / 2;
+    if (currentBatchSize <= 1) {
+      // kafka source must have a huge row in it; we can't get past it, just error.
+      throw new BigQueryConnectException("Attempted to decrease batchSize below 1");
+    }
+    currentBatchSize = (int)Math.ceil(currentBatchSize / 2.0);
+    logger.info("Decreased batch size to {}", currentBatchSize);
   }
 }

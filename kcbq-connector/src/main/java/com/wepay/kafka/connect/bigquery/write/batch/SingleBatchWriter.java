@@ -1,4 +1,4 @@
-package com.wepay.kafka.connect.bigquery.partition;
+package com.wepay.kafka.connect.bigquery.write.batch;
 
 /*
  * Copyright 2016 WePay, Inc.
@@ -23,7 +23,7 @@ import com.google.cloud.bigquery.InsertAllRequest;
 import com.google.cloud.bigquery.TableId;
 
 import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
-import com.wepay.kafka.connect.bigquery.write.BigQueryWriter;
+import com.wepay.kafka.connect.bigquery.write.row.BigQueryWriter;
 
 import org.apache.kafka.connect.data.Schema;
 
@@ -33,10 +33,10 @@ import java.util.Set;
 /**
  * A partitioner that doesn't divide its list at all.
  */
-public class SinglePartitioner implements Partitioner<InsertAllRequest.RowToInsert> {
+public class SingleBatchWriter implements BatchWriter<InsertAllRequest.RowToInsert> {
   private BigQueryWriter writer;
 
-  public SinglePartitioner(BigQueryWriter writer) {
+  public SingleBatchWriter(BigQueryWriter writer) {
     this.writer = writer;
   }
 

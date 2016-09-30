@@ -1,4 +1,4 @@
-package com.wepay.kafka.connect.bigquery.partition;
+package com.wepay.kafka.connect.bigquery.write.batch;
 
 /*
  * Copyright 2016 WePay, Inc.
@@ -30,7 +30,7 @@ import java.util.Set;
  * Interface for partitioning lists of elements and writing those partitions to bigQuery.
  * @param <E> The type of element in the list that will be partitioned.
  */
-public interface Partitioner<E> {
+public interface BatchWriter<E> {
 
   /**
    * @param table The BigQuery table to write the rows to.

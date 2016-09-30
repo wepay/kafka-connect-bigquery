@@ -1,4 +1,4 @@
-package com.wepay.kafka.connect.bigquery.partition;
+package com.wepay.kafka.connect.bigquery.write.batch;
 
 /*
  * Copyright 2016 WePay, Inc.
@@ -23,7 +23,7 @@ import com.google.cloud.bigquery.InsertAllRequest;
 import com.google.cloud.bigquery.TableId;
 
 import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
-import com.wepay.kafka.connect.bigquery.write.BigQueryWriter;
+import com.wepay.kafka.connect.bigquery.write.row.BigQueryWriter;
 import org.apache.kafka.connect.data.Schema;
 
 import java.util.List;
@@ -35,7 +35,7 @@ import java.util.Set;
  * one row, and secondly, no writeAll shall be larger in size than an amount specified during
  * instantiation.
  */
-public class EqualPartitioner implements Partitioner<InsertAllRequest.RowToInsert> {
+public class EqualBatchWriter implements BatchWriter<InsertAllRequest.RowToInsert> {
   private final int maxPartitionSize;
   private BigQueryWriter writer;
 
@@ -43,7 +43,7 @@ public class EqualPartitioner implements Partitioner<InsertAllRequest.RowToInser
    * @param writer the {@link BigQueryWriter}
    * @param maxPartitionSize The maximum size of a writeAll returned by a call to writeAll().
    */
-  public EqualPartitioner(BigQueryWriter writer, int maxPartitionSize) {
+  public EqualBatchWriter(BigQueryWriter writer, int maxPartitionSize) {
     if (maxPartitionSize <= 0) {
       throw new IllegalArgumentException("Maximum size of writeAll must be a positive number");
     }

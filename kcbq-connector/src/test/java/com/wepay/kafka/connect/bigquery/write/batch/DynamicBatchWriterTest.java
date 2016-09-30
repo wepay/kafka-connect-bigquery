@@ -1,4 +1,4 @@
-package com.wepay.kafka.connect.bigquery.partition;
+package com.wepay.kafka.connect.bigquery.write.batch;
 
 /*
  * Copyright 2016 WePay, Inc.
@@ -28,7 +28,7 @@ import static org.mockito.Mockito.verify;
 import com.google.cloud.bigquery.BigQueryException;
 import com.google.cloud.bigquery.InsertAllRequest;
 
-import com.wepay.kafka.connect.bigquery.write.BigQueryWriter;
+import com.wepay.kafka.connect.bigquery.write.row.BigQueryWriter;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -38,7 +38,7 @@ import org.mockito.ArgumentMatcher;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DynamicPartitionerTest {
+public class DynamicBatchWriterTest {
 
   @Test
   @SuppressWarnings("unchecked")
@@ -53,7 +53,7 @@ public class DynamicPartitionerTest {
                    anyObject(),
                    anyObject());
 
-    DynamicPartitioner partitioner = new DynamicPartitioner(mockWriter);
+    DynamicBatchWriter partitioner = new DynamicBatchWriter(mockWriter);
 
     writeAll(partitioner, actualMaxSize);
     Assert.assertEquals(500, partitioner.getCurrentBatchSize());
@@ -80,7 +80,7 @@ public class DynamicPartitionerTest {
                    anyObject(),
                    anyObject());
 
-    DynamicPartitioner partitioner = new DynamicPartitioner(mockWriter);
+    DynamicBatchWriter partitioner = new DynamicBatchWriter(mockWriter);
 
     writeAll(partitioner, 3500);
     // expected calls are:
@@ -113,7 +113,7 @@ public class DynamicPartitionerTest {
                    anyObject(),
                    anyObject());
 
-    DynamicPartitioner partitioner = new DynamicPartitioner(mockWriter);
+    DynamicBatchWriter partitioner = new DynamicBatchWriter(mockWriter);
 
     writeAll(partitioner, 750);
     // expected calls are:
@@ -137,7 +137,7 @@ public class DynamicPartitionerTest {
     // test a failure during an establishedWriteAll
     BigQueryWriter mockWriter = mock(BigQueryWriter.class);
     // start by establishing at 500, no seeking.
-    DynamicPartitioner partitioner = new DynamicPartitioner(mockWriter, 500, false);
+    DynamicBatchWriter partitioner = new DynamicBatchWriter(mockWriter, 500, false);
 
     // but we error at anything above 300:
     doThrow(new BigQueryException(400, null)).when(mockWriter)
@@ -168,7 +168,7 @@ public class DynamicPartitionerTest {
     // test a failure during an establishedWriteAll
     BigQueryWriter mockWriter = mock(BigQueryWriter.class);
     // start by establishing at 500, no seeking.
-    DynamicPartitioner partitioner = new DynamicPartitioner(mockWriter, 500, false);
+    DynamicBatchWriter partitioner = new DynamicBatchWriter(mockWriter, 500, false);
 
     // we only error at above 1100:
     doThrow(new BigQueryException(400, null)).when(mockWriter)
@@ -194,14 +194,20 @@ public class DynamicPartitionerTest {
                                            argThat(new ListIsExactly(600)),
                                            anyObject(),
                                            anyObject());
+    // verify batch size hasn't changed
+    Assert.assertEquals(1000, partitioner.getCurrentBatchSize());
   }
+
+  // todo tests:
+  //    verify uneven established batch sizing.
+  //    max size batch sizing establishment
 
   /**
    * Call writeAll with the given number of "elements".
    * @param dynamicPartitioner the dynamic partitioner to use.
    * @param numElements the number of "elements" to "write"
    */
-  private void writeAll(DynamicPartitioner dynamicPartitioner, int numElements)
+  private void writeAll(DynamicBatchWriter dynamicPartitioner, int numElements)
       throws InterruptedException {
     List<InsertAllRequest.RowToInsert> elements = new ArrayList<>();
     for (int i = 0; i < numElements; i++) {
@@ -218,7 +224,7 @@ public class DynamicPartitionerTest {
     }
 
     @Override
-    public boolean matches(Object argument) { // todo
+    public boolean matches(Object argument) {
       if (argument instanceof List) {
         List list = (List) argument;
         return list.size() >= this.size;
