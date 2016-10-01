@@ -83,6 +83,11 @@ public class DynamicBatchWriter implements BatchWriter<InsertAllRequest.RowToIns
     return currentBatchSize;
   }
 
+  // package private; for testing only
+  boolean isSeeking() {
+    return seeking;
+  }
+
   @Override
   public void writeAll(TableId table,
                        List<InsertAllRequest.RowToInsert> elements,
@@ -134,8 +139,8 @@ public class DynamicBatchWriter implements BatchWriter<InsertAllRequest.RowToIns
                               schemas);
           return;
         }
-        // increase the batch size if: we actually did just test that batchSize
-        if (!(currentBatchElements.size() < currentBatchSize)) {
+        // increase the batch size if there is more to test.
+        if (currentIndex < elements.size()) {
           increaseBatchSize();
         }
       } catch (BigQueryException exception) {
@@ -163,8 +168,6 @@ public class DynamicBatchWriter implements BatchWriter<InsertAllRequest.RowToIns
     if (successfulCallCount ==  1) {
       // then we are done finding a batch size.
       seeking = false; // case 2
-      // decrease batch size back to the size that we actually checked.
-      decreaseBatchSize();
       logger.debug("Best batch size found (all elements): {}", currentBatchSize);
     }
   }
