@@ -102,6 +102,33 @@ public class BigQuerySinkConfigTest {
   }
 
   @Test
+  public void testTopicsToTables() {
+    Map<String, String> configProperties = propertiesFactory.getProperties();
+    configProperties.put(BigQuerySinkConfig.SANITIZE_TOPICS_CONFIG, "true");
+    configProperties.put(
+        BigQuerySinkConfig.DATASETS_CONFIG,
+        ".*=scratch"
+    );
+    configProperties.put(
+        BigQuerySinkConfig.TOPICS_CONFIG,
+        "sanitize-me,leave_me_alone"
+    );
+    configProperties.put(
+        BigQuerySinkConfig.TOPICS_TO_TABLES_CONFIG,
+        "leave_me_alone=leaveMeAlone"
+    );
+    Map<TableId, String> expectedTablesToSchemas = new HashMap<>();
+    expectedTablesToSchemas.put(TableId.of("scratch", "sanitize_me"), "sanitize-me");
+    expectedTablesToSchemas.put(TableId.of("scratch", "leaveMeAlone"), "leave_me_alone");
+
+    BigQuerySinkConfig testConfig = new BigQuerySinkConfig(configProperties);
+    Map<String, String> topicsToDatasets = testConfig.getTopicsToDatasets();
+    Map<TableId, String> testTablesToSchemas = testConfig.getTablesToTopics(topicsToDatasets);
+
+    assertEquals(expectedTablesToSchemas, testTablesToSchemas);
+  }
+
+  @Test
   public void testGetSchemaConverter() {
     Map<String, String> configProperties = propertiesFactory.getProperties();
     configProperties.put(BigQuerySinkConfig.INCLUDE_KAFKA_DATA_CONFIG, "true");

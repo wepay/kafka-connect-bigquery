@@ -60,6 +60,13 @@ public class BigQuerySinkConfig extends AbstractConfig {
   private static final String TOPICS_DOC =
       "A list of Kafka topics to read from";
 
+  public static final String TOPICS_TO_TABLES_CONFIG =                     "topicsToTables";
+  private static final ConfigDef.Type TOPICS_TO_TABLES_TYPE =              ConfigDef.Type.LIST;
+  private static final ConfigDef.Importance TOPICS_TO_TABLES_IMPORTANCE =  ConfigDef.Importance.MEDIUM;
+  private static final String TOPICS_TO_TABLES_DOC =
+      "A list of mappings from Kafka topic to BigQuery table names "
+      + "(form of <topic name>=<table name>)";
+
   public static final String PROJECT_CONFIG =                     "project";
   private static final ConfigDef.Type PROJECT_TYPE =              ConfigDef.Type.STRING;
   private static final ConfigDef.Importance PROJECT_IMPORTANCE =  ConfigDef.Importance.HIGH;
@@ -135,6 +142,11 @@ public class BigQuerySinkConfig extends AbstractConfig {
             TOPICS_IMPORTANCE,
             TOPICS_DOC
         ).define(
+            TOPICS_TO_TABLES_CONFIG,
+            TOPICS_TO_TABLES_TYPE,
+            TOPICS_TO_TABLES_IMPORTANCE,
+            TOPICS_TO_TABLES_DOC
+        ).define(
             PROJECT_CONFIG,
             PROJECT_TYPE,
             PROJECT_IMPORTANCE,
@@ -193,6 +205,9 @@ public class BigQuerySinkConfig extends AbstractConfig {
     public void ensureValid(String name, Object value) {
       switch (name) {
         case DATASETS_CONFIG:
+          ensureValidMap(name, (List<String>) value);
+          break;
+        case TOPICS_TO_TABLES_CONFIG:
           ensureValidMap(name, (List<String>) value);
           break;
         default:
@@ -346,7 +361,14 @@ public class BigQuerySinkConfig extends AbstractConfig {
    *         name if sanitization is enabled.
    */
   public String getTableFromTopic(String topic) {
-    return getBoolean(SANITIZE_TOPICS_CONFIG) ? sanitizeTableName(topic) : topic;
+    String tableName = null;
+    Map<String, String> map = getMap(TOPICS_TO_TABLES_CONFIG);
+    tableName = map.get(topic);
+    if (tableName == null) {
+      tableName = getBoolean(SANITIZE_TOPICS_CONFIG) ? sanitizeTableName(topic) : topic;
+    }
+    return tableName;
+
   }
 
   /**

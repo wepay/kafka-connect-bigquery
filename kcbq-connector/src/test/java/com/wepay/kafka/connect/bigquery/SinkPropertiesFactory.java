@@ -36,6 +36,7 @@ public class SinkPropertiesFactory {
     properties.put(BigQuerySinkConfig.TOPICS_CONFIG, "kcbq-test");
     properties.put(BigQuerySinkConfig.PROJECT_CONFIG, "test-project");
     properties.put(BigQuerySinkConfig.DATASETS_CONFIG, ".*=test");
+    properties.put(BigQuerySinkConfig.DATASETS_CONFIG, "kcbq-test=kcbq-test-table");
 
     properties.put(BigQuerySinkConfig.KEYFILE_CONFIG, "key.json");
 
@@ -56,8 +57,10 @@ public class SinkPropertiesFactory {
     config.getTopicsToDatasets();
 
     config.getMap(config.DATASETS_CONFIG);
+    config.getMap(config.TOPICS_TO_TABLES_CONFIG);
 
     config.getList(config.TOPICS_CONFIG);
+    config.getList(config.TOPICS_TO_TABLES_CONFIG);
     config.getList(config.DATASETS_CONFIG);
 
     config.getString(config.KEYFILE_CONFIG);
