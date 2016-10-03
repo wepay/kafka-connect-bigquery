@@ -98,7 +98,7 @@ public class BigQuerySinkTask extends SinkTask {
   private RecordConverter<Map<String, Object>> recordConverter;
   private Map<TableId, Buffer<RowToInsert>> tableBuffers;
   private Map<TableId, Set<Schema>> tableSchemas;
-  private BatchWriter<RowToInsert> rowBatchWriter;
+  private BatchWriterManager batchWriterManager;
   private Map<String, String> topicsToDatasets;
   private Map<TableId, String> tablesToTopics;
   private Metrics metrics;
@@ -135,25 +135,72 @@ public class BigQuerySinkTask extends SinkTask {
     private final Map<TopicPartition, OffsetAndMetadata> offsets;
     private final String topic;
     private final Set<Schema> schemas;
+    private final BatchWriter<RowToInsert> batchWriter;
 
-    public TableWriter(
-        TableId table,
-        List<RowToInsert> rows,
-        Map<TopicPartition, OffsetAndMetadata> offsets,
-        String topic,
-        Set<Schema> schemas) {
+    public TableWriter(TableId table,
+                       List<RowToInsert> rows,
+                       Map<TopicPartition, OffsetAndMetadata> offsets,
+                       String topic,
+                       Set<Schema> schemas) {
       this.table = table;
       this.rows = rows;
       this.offsets = offsets;
       this.topic = topic;
       this.schemas = schemas;
+      this.batchWriter = batchWriterManager.getBatchWriter(table);
     }
 
     @Override
     public Void call() throws InterruptedException {
-      rowBatchWriter.writeAll(table, rows, topic, schemas);
+      batchWriter.writeAll(table, rows, topic, schemas);
       updateAllPartitions(tablesToTopics.get(table), offsets);
       return null;
+    }
+  }
+
+  private static class BatchWriterManager {
+    private BigQueryWriter bigQueryWriter;
+    private Constructor<BatchWriter<RowToInsert>> batchWriterConstructor;
+    Map<TableId, BatchWriter<RowToInsert>> batchWriterMap;
+
+    public BatchWriterManager(BigQueryWriter bigQueryWriter,
+                              Class<BatchWriter<InsertAllRequest.RowToInsert>> batchWriterClass) {
+      this.bigQueryWriter = bigQueryWriter;
+      this.batchWriterConstructor = getBatchWriterConstructor(batchWriterClass);
+      batchWriterMap = new HashMap<>();
+    }
+
+    private static Constructor<BatchWriter<RowToInsert>>
+        getBatchWriterConstructor(Class<BatchWriter<RowToInsert>> batchWriterClass) {
+      try {
+        return batchWriterClass.getConstructor(BigQueryWriter.class);
+      } catch (NoSuchMethodException exception) {
+        throw new ConfigException(
+          "Class specified for batchWriter must have a BigQueryWriter constructor",
+          exception
+        );
+      }
+    }
+
+    public BatchWriter<RowToInsert> getBatchWriter(TableId tableId) {
+      if (!batchWriterMap.containsKey(tableId)) {
+        addNewBatchWriter(tableId);
+      }
+      return batchWriterMap.get(tableId);
+    }
+
+    private void addNewBatchWriter(TableId tableId) {
+      BatchWriter<RowToInsert> batchWriter;
+      try {
+        batchWriter = batchWriterConstructor.newInstance(bigQueryWriter);
+      } catch (InstantiationException
+        | IllegalAccessException
+        | InvocationTargetException
+        exception) {
+        throw new ConfigException("Failed to instantiate class specified for BatchWriter",
+          exception);
+      }
+      batchWriterMap.put(tableId, batchWriter);
     }
   }
 
@@ -298,33 +345,12 @@ public class BigQuerySinkTask extends SinkTask {
     return config.getRecordConverter();
   }
 
-  private BatchWriter<RowToInsert> getBatchWriter() {
+  private BatchWriterManager getBatchWriterManager() {
     @SuppressWarnings("unchecked")
     Class<BatchWriter<InsertAllRequest.RowToInsert>> batchWriterClass =
         (Class<BatchWriter<RowToInsert>>) config.getClass(config.BATCH_WRITER_CONFIG);
 
-    BigQueryWriter writer = getWriter();
-    Constructor<BatchWriter<RowToInsert>> constructor = null;
-    try {
-      constructor = batchWriterClass.getConstructor(BigQueryWriter.class);
-    } catch (NoSuchMethodException exception) {
-      throw new ConfigException(
-          "Class specified for batchWriter must have a BigQueryWriter constructor",
-          exception
-        );
-    }
-
-    BatchWriter<RowToInsert> batchWriter;
-    try {
-      batchWriter = constructor.newInstance(writer);
-    } catch (InstantiationException
-      | IllegalAccessException
-      | InvocationTargetException
-      exception) {
-      throw new ConfigException("Failed to instantiate class specified for BatchWriter",
-                                exception);
-    }
-    return batchWriter;
+    return new BatchWriterManager(getBigQueryWriter(), batchWriterClass);
   }
 
   private BigQuery getBigQuery() {
@@ -343,7 +369,7 @@ public class BigQuerySinkTask extends SinkTask {
     return new SchemaManager(schemaRetriever, schemaConverter, bigQuery);
   }
 
-  private BigQueryWriter getWriter() {
+  private BigQueryWriter getBigQueryWriter() {
     boolean updateSchemas = config.getBoolean(config.SCHEMA_UPDATE_CONFIG);
     int retry = config.getInt(config.BIGQUERY_RETRY_CONFIG);
     long retryWait = config.getLong(config.BIGQUERY_RETRY_WAIT_CONFIG);
@@ -396,7 +422,8 @@ public class BigQuerySinkTask extends SinkTask {
     recordConverter = getConverter();
     tableBuffers = new HashMap<>();
     tableSchemas = new HashMap<>();
-    rowBatchWriter = getBatchWriter();
+
+    batchWriterManager = getBatchWriterManager();
   }
 
   @Override
