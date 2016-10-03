@@ -44,22 +44,24 @@ public class DynamicBatchWriterTest {
   @SuppressWarnings("unchecked")
   public void simpleTest() throws InterruptedException {
     // the starting size is exactly right.
-    final int actualMaxSize = 500;
+    final int actualMaxSize = 1000;
 
     BigQueryWriter mockWriter = getMockWithMaxSize(actualMaxSize);
 
     DynamicBatchWriter dynamicBatchWriter = new DynamicBatchWriter(mockWriter);
 
     writeAll(dynamicBatchWriter, actualMaxSize);
-    Assert.assertEquals(500, dynamicBatchWriter.getCurrentBatchSize());
+    Assert.assertEquals(1000, dynamicBatchWriter.getCurrentBatchSize());
     Assert.assertFalse(dynamicBatchWriter.isSeeking());
 
-    writeAll(dynamicBatchWriter, 600);
+    writeAll(dynamicBatchWriter, 1200);
     verify(mockWriter, times(2)).writeRows(anyObject(),
-                                           argThat(new ListIsExactly(300)),
+                                           argThat(new ListIsExactly(600)),
                                            anyObject(),
                                            anyObject());
   }
+
+  private static final int TEST_DEFAULT_STARTING_SIZE = 500;
 
   @Test
   @SuppressWarnings("unchecked")
@@ -71,7 +73,9 @@ public class DynamicBatchWriterTest {
 
     BigQueryWriter mockWriter = getMockWithMaxSize(actualMaxSize);
 
-    DynamicBatchWriter dynamicBatchWriter = new DynamicBatchWriter(mockWriter);
+    DynamicBatchWriter dynamicBatchWriter = new DynamicBatchWriter(mockWriter,
+                                                                   TEST_DEFAULT_STARTING_SIZE,
+                                                                   true);
 
     writeAll(dynamicBatchWriter, 3500);
     // expected calls are:
@@ -100,7 +104,9 @@ public class DynamicBatchWriterTest {
 
     BigQueryWriter mockWriter = getMockWithMaxSize(actualMaxSize);
 
-    DynamicBatchWriter dynamicBatchWriter = new DynamicBatchWriter(mockWriter);
+    DynamicBatchWriter dynamicBatchWriter = new DynamicBatchWriter(mockWriter,
+                                                                   TEST_DEFAULT_STARTING_SIZE,
+                                                                   true);
 
     writeAll(dynamicBatchWriter, 750);
     // expected calls are:
@@ -124,7 +130,9 @@ public class DynamicBatchWriterTest {
     // size element list sent to writeAlls is smaller than batchSize
     BigQueryWriter mockWriter = getMockWithMaxSize(500);
 
-    DynamicBatchWriter dynamicBatchWriter = new DynamicBatchWriter(mockWriter);
+    DynamicBatchWriter dynamicBatchWriter = new DynamicBatchWriter(mockWriter,
+                                                                   TEST_DEFAULT_STARTING_SIZE,
+                                                                   true);
 
     writeAll(dynamicBatchWriter, 400);
 
@@ -154,7 +162,9 @@ public class DynamicBatchWriterTest {
     // we error at anything above 300...
     BigQueryWriter mockWriter = getMockWithMaxSize(300);
     // but our dynamic batch writer is established at 500.
-    DynamicBatchWriter dynamicBatchWriter = new DynamicBatchWriter(mockWriter, 500, false);
+    DynamicBatchWriter dynamicBatchWriter = new DynamicBatchWriter(mockWriter,
+                                                                   TEST_DEFAULT_STARTING_SIZE,
+                                                                   false);
 
     writeAll(dynamicBatchWriter, 500);
     // expected calls are:
@@ -179,7 +189,9 @@ public class DynamicBatchWriterTest {
     // we will only error at above 1100...
     BigQueryWriter mockWriter = getMockWithMaxSize(1100);
     // but we are established at 500.
-    DynamicBatchWriter dynamicBatchWriter = new DynamicBatchWriter(mockWriter, 500, false);
+    DynamicBatchWriter dynamicBatchWriter = new DynamicBatchWriter(mockWriter,
+                                                                   TEST_DEFAULT_STARTING_SIZE,
+                                                                   false);
 
     // 10 calls before batchSize increase
     for (int i = 0; i < 10; i++) {
@@ -209,7 +221,9 @@ public class DynamicBatchWriterTest {
     BigQueryWriter mockWriter = getMockWithMaxSize(500);
 
     // start by establishing at 500, no seeking.
-    DynamicBatchWriter dynamicBatchWriter = new DynamicBatchWriter(mockWriter, 500, false);
+    DynamicBatchWriter dynamicBatchWriter = new DynamicBatchWriter(mockWriter,
+                                                                   TEST_DEFAULT_STARTING_SIZE,
+                                                                   false);
 
     writeAll(dynamicBatchWriter, 601);
     // expect batch sizes of 300, 301

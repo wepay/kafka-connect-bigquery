@@ -47,8 +47,7 @@ public class DynamicBatchWriter implements BatchWriter<InsertAllRequest.RowToIns
 
   // google only allows request batch sizes of up to 100000, so this is a hard maximum.
   private static final int MAXIMUM_BATCH_SIZE = 100000;
-  // google suggests a batch size of 500 so it's as good a place to start as any other.
-  private static final int INITIAL_BATCH_SIZE = 500;
+  private static final int INITIAL_BATCH_SIZE = 1000;
 
   // in non-seeking mode, the number of writeAlls that must complete successfully without error in
   // a row before we increase the batchSize.
@@ -257,8 +256,7 @@ public class DynamicBatchWriter implements BatchWriter<InsertAllRequest.RowToIns
     }
     return false;
   }
-
-  // for some reason when I run tests it's asking for these to be public?? I'm not sure why...
+  
   private void increaseBatchSize() {
     currentBatchSize = Math.min(currentBatchSize * 2, MAXIMUM_BATCH_SIZE);
     logger.info("Increased batch size to {}", currentBatchSize);
