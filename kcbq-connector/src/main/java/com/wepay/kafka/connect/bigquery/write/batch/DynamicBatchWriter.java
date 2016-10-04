@@ -60,10 +60,9 @@ public class DynamicBatchWriter implements BatchWriter<InsertAllRequest.RowToIns
   private int contSuccessCount;
 
   /**
-   * @param writer the {@link BigQueryWriter} that will do the writing.
+   * create a new DynamicBatchWriter.
    */
-  public DynamicBatchWriter(BigQueryWriter writer) {
-    this.writer = writer;
+  public DynamicBatchWriter() {
     this.currentBatchSize = INITIAL_BATCH_SIZE;
     this.seeking = true;
     this.contSuccessCount = 0;
@@ -85,6 +84,11 @@ public class DynamicBatchWriter implements BatchWriter<InsertAllRequest.RowToIns
   // package private; for testing only
   boolean isSeeking() {
     return seeking;
+  }
+
+  @Override
+  public void init(BigQueryWriter writer) {
+    this.writer = writer;
   }
 
   @Override
@@ -261,7 +265,7 @@ public class DynamicBatchWriter implements BatchWriter<InsertAllRequest.RowToIns
 
   private void increaseBatchSize() {
     currentBatchSize = Math.min(currentBatchSize * 2, MAXIMUM_BATCH_SIZE);
-    logger.info("Thread {} increased batch size to {}", Thread.currentThread().getName(), currentBatchSize);
+    logger.info("Increased batch size to {}", currentBatchSize);
   }
 
   private void decreaseBatchSize() {
@@ -270,6 +274,6 @@ public class DynamicBatchWriter implements BatchWriter<InsertAllRequest.RowToIns
       throw new BigQueryConnectException("Attempted to decrease batchSize below 1");
     }
     currentBatchSize = (int)Math.ceil(currentBatchSize / 2.0);
-    logger.info("Thread {} decreased batch size to {}", Thread.currentThread().getName(), currentBatchSize);
+    logger.info("Decreased batch size to {}", currentBatchSize);
   }
 }

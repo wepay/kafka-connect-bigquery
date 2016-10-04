@@ -119,18 +119,6 @@ public class BigQuerySinkTaskConfig extends BigQuerySinkConfig {
     }
   }
 
-  private void checkMaxWrite() {
-    // noop (todo remove me)
-    /*
-    Integer maxWriteSize = getInt(MAX_WRITE_CONFIG);
-    if (maxWriteSize == 0) {
-      throw new ConfigException(
-          "Cannot specify a maximum write size of 0 (for unlimited write size, specify -1)"
-      );
-    }
-    */
-  }
-
   public static ConfigDef getConfig() {
     return config;
   }
@@ -140,7 +128,6 @@ public class BigQuerySinkTaskConfig extends BigQuerySinkConfig {
    */
   public BigQuerySinkTaskConfig(Map<String, String> properties) {
     super(config, properties);
-    checkMaxWrite();
     checkAutoUpdateSchemas();
   }
 }

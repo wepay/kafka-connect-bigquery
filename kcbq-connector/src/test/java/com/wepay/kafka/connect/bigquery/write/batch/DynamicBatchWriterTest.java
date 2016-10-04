@@ -48,7 +48,8 @@ public class DynamicBatchWriterTest {
 
     BigQueryWriter mockWriter = getMockWithMaxSize(actualMaxSize);
 
-    DynamicBatchWriter dynamicBatchWriter = new DynamicBatchWriter(mockWriter);
+    DynamicBatchWriter dynamicBatchWriter = new DynamicBatchWriter();
+    dynamicBatchWriter.init(mockWriter);
 
     writeAll(dynamicBatchWriter, actualMaxSize);
     Assert.assertEquals(1000, dynamicBatchWriter.getCurrentBatchSize());

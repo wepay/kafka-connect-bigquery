@@ -36,7 +36,8 @@ import java.util.Set;
 public class SingleBatchWriter implements BatchWriter<InsertAllRequest.RowToInsert> {
   private BigQueryWriter writer;
 
-  public SingleBatchWriter(BigQueryWriter writer) {
+  @Override
+  public void init(BigQueryWriter writer) {
     this.writer = writer;
   }
 

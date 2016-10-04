@@ -96,7 +96,11 @@ public class BigQuerySinkConfig extends AbstractConfig {
   private static final ConfigDef.Type BATCH_WRITER_TYPE = ConfigDef.Type.CLASS;
   public static final Class<? extends BatchWriter> BATCH_WRITER_DEFAULT = DynamicBatchWriter.class;
   private static final ConfigDef.Importance BATCH_WRITER_IMPORTANCE = ConfigDef.Importance.HIGH;
-  private static final String BATCH_WRITER_DOC = "The batch writer class to be used.";
+  private static final String BATCH_WRITER_DOC =
+      "The batch writer class to be used. At the moment there are only two options: "
+      + "com.wepay.kafka.connect.bigquery.write.batch.DynamicBatchWriter and "
+      + "com.wepay.kafka.connect.bigquery.write.batch.SingleBatchWriter. See these classes for "
+      + "documentation.";
 
   public static final String SANITIZE_TOPICS_CONFIG =                     "sanitizeTopics";
   private static final ConfigDef.Type SANITIZE_TOPICS_TYPE =              ConfigDef.Type.BOOLEAN;

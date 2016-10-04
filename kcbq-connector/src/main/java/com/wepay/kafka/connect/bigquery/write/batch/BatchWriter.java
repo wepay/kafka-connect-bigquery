@@ -21,16 +21,25 @@ package com.wepay.kafka.connect.bigquery.write.batch;
 import com.google.cloud.bigquery.TableId;
 
 import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
+import com.wepay.kafka.connect.bigquery.write.row.BigQueryWriter;
 import org.apache.kafka.connect.data.Schema;
 
 import java.util.List;
 import java.util.Set;
 
 /**
- * Interface for splitting lists of elements into batches and writing those batches to bigQuery.
+ * Interface for splitting lists of elements into batches and writing those batches to BigQuery.
  * @param <E> The type of element in the list that will be split.
  */
 public interface BatchWriter<E> {
+
+  /**
+   * Initialize this BatchWriter. Necessary before calling
+   * {@link #writeAll(TableId, List, String, Set)}
+   *
+   * @param writer the writer to use to write BigQuery requests.
+   */
+  void init(BigQueryWriter writer);
 
   /**
    * @param table The BigQuery table to write the rows to.

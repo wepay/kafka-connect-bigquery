@@ -77,6 +77,7 @@ import java.util.Map;
 import java.util.Set;
 
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -158,25 +159,34 @@ public class BigQuerySinkTask extends SinkTask {
     }
   }
 
+  /**
+   * A class for keeping track of the BatchWriters for each table.
+   */
   private static class BatchWriterManager {
-    private BigQueryWriter bigQueryWriter;
-    private Constructor<BatchWriter<RowToInsert>> batchWriterConstructor;
-    Map<TableId, BatchWriter<RowToInsert>> batchWriterMap;
+    private final BigQueryWriter bigQueryWriter;
+    private final Constructor<BatchWriter<RowToInsert>> batchWriterConstructor;
+    private Map<TableId, BatchWriter<RowToInsert>> batchWriterMap;
 
+    /**
+     * @param bigQueryWriter the {@link BigQueryWriter} to use to call BigQuery.
+     * @param batchWriterClass the class of the BatchWriter to use
+     * @param numTables the number of tables we are expecting to write to.
+     */
     public BatchWriterManager(BigQueryWriter bigQueryWriter,
-                              Class<BatchWriter<InsertAllRequest.RowToInsert>> batchWriterClass) {
+                              Class<BatchWriter<InsertAllRequest.RowToInsert>> batchWriterClass,
+                              int numTables) {
       this.bigQueryWriter = bigQueryWriter;
       this.batchWriterConstructor = getBatchWriterConstructor(batchWriterClass);
-      batchWriterMap = new HashMap<>();
+      batchWriterMap = new ConcurrentHashMap<>(numTables);
     }
 
     private static Constructor<BatchWriter<RowToInsert>>
         getBatchWriterConstructor(Class<BatchWriter<RowToInsert>> batchWriterClass) {
       try {
-        return batchWriterClass.getConstructor(BigQueryWriter.class);
+        return batchWriterClass.getConstructor();
       } catch (NoSuchMethodException exception) {
         throw new ConfigException(
-          "Class specified for batchWriter must have a BigQueryWriter constructor",
+          "Class specified for batchWriter must have a no-arg constructor",
           exception
         );
       }
@@ -192,7 +202,8 @@ public class BigQuerySinkTask extends SinkTask {
     private void addNewBatchWriter(TableId tableId) {
       BatchWriter<RowToInsert> batchWriter;
       try {
-        batchWriter = batchWriterConstructor.newInstance(bigQueryWriter);
+        batchWriter = batchWriterConstructor.newInstance();
+        batchWriter.init(bigQueryWriter);
       } catch (InstantiationException
         | IllegalAccessException
         | InvocationTargetException
@@ -350,7 +361,7 @@ public class BigQuerySinkTask extends SinkTask {
     Class<BatchWriter<InsertAllRequest.RowToInsert>> batchWriterClass =
         (Class<BatchWriter<RowToInsert>>) config.getClass(config.BATCH_WRITER_CONFIG);
 
-    return new BatchWriterManager(getBigQueryWriter(), batchWriterClass);
+    return new BatchWriterManager(getBigQueryWriter(), batchWriterClass, tableSchemas.size());
   }
 
   private BigQuery getBigQuery() {
