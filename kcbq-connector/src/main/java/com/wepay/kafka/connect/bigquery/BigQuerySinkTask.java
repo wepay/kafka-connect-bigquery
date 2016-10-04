@@ -177,7 +177,7 @@ public class BigQuerySinkTask extends SinkTask {
                               int numTables) {
       this.bigQueryWriter = bigQueryWriter;
       this.batchWriterConstructor = getBatchWriterConstructor(batchWriterClass);
-      batchWriterMap = new ConcurrentHashMap<>(numTables);
+      batchWriterMap = new HashMap<>(numTables);
     }
 
     private static Constructor<BatchWriter<RowToInsert>>
@@ -192,7 +192,7 @@ public class BigQuerySinkTask extends SinkTask {
       }
     }
 
-    public BatchWriter<RowToInsert> getBatchWriter(TableId tableId) {
+    public synchronized BatchWriter<RowToInsert> getBatchWriter(TableId tableId) {
       if (!batchWriterMap.containsKey(tableId)) {
         addNewBatchWriter(tableId);
       }
