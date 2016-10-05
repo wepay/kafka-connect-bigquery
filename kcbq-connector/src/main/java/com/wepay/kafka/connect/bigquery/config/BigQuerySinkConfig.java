@@ -64,8 +64,9 @@ public class BigQuerySinkConfig extends AbstractConfig {
   private static final ConfigDef.Type TOPICS_TO_TABLES_TYPE =              ConfigDef.Type.LIST;
   private static final ConfigDef.Importance TOPICS_TO_TABLES_IMPORTANCE =  ConfigDef.Importance.MEDIUM;
   private static final String TOPICS_TO_TABLES_DOC =
-      "A list of mappings from Kafka topic to BigQuery table names "
-      + "(form of <topic name>=<table name>)";
+      "A list of mappings from topic regexes to table names. Note the regex must include "
+      + "capture groups that are referenced in the format string using placeholders (i.e. $1) "
+      + "(form of <topic regex>=<format string>)";
 
   public static final String PROJECT_CONFIG =                     "project";
   private static final ConfigDef.Type PROJECT_TYPE =              ConfigDef.Type.STRING;
@@ -334,10 +335,49 @@ public class BigQuerySinkConfig extends AbstractConfig {
     return matches;
   }
 
+  private Map<String, String> getMatchesForTableNames(
+      List<Map.Entry<Pattern, String>> patterns,
+      List<String> values,
+      String valueProperty,
+      String patternProperty) {
+    Map<String, String> matches = new HashMap<>();
+    for (String value : values) {
+      String match = null;
+      for (Map.Entry<Pattern, String> pattern : patterns) {
+        Matcher patternMatcher = pattern.getKey().matcher(value);
+        if (patternMatcher.matches()) {
+          if (match != null) {
+            String secondMatch = pattern.getValue();
+            throw new ConfigException(
+                "Value '" + value
+                + "' for property '" + valueProperty
+                + "' matches " + patternProperty
+                + " regexes for both '" + match
+                + "' and '" + secondMatch + "'"
+            );
+          }
+          String formatString = pattern.getValue();
+          try {
+            match = patternMatcher.replaceAll(formatString);
+          } catch (IndexOutOfBoundsException e) {
+            throw new ConfigException(
+                "Format string '" + formatString
+                + "' is invalid in property '" + patternProperty
+                + "'", e);
+          }
+        }
+      }
+      if (match != null) {
+        matches.put(value, match);
+      }
+    }
+    return matches;
+  }
+
   /**
-   * Return a Map detailing which BigQuery table each topic should write to.
+   * Return a Map detailing which BigQuery dataset each topic should write to.
    *
-   * @return A Map associating Kafka topic names to BigQuery table IDs.
+   * @return A Map associating Kafka topic names to BigQuery dataset.
    */
   public Map<String, String> getTopicsToDatasets() {
     return getSingleMatches(
@@ -345,6 +385,19 @@ public class BigQuerySinkConfig extends AbstractConfig {
         getList(TOPICS_CONFIG),
         TOPICS_CONFIG,
         DATASETS_CONFIG
+    );
+  }
+
+  /**
+   * Return a Map detailing which BigQuery table each topic should write to.
+   * @return A Map associating Kafka topic names to BigQuery table names.
+   */
+  public Map<String, String> getTopicsToTables() {
+    return getMatchesForTableNames(
+        getSinglePatterns(TOPICS_TO_TABLES_CONFIG),
+        getList(TOPICS_CONFIG),
+        TOPICS_CONFIG,
+        TOPICS_TO_TABLES_CONFIG
     );
   }
 
@@ -362,7 +415,7 @@ public class BigQuerySinkConfig extends AbstractConfig {
    */
   public String getTableFromTopic(String topic) {
     String tableName = null;
-    Map<String, String> map = getMap(TOPICS_TO_TABLES_CONFIG);
+    Map<String, String> map = getTopicsToTables();
     tableName = map.get(topic);
     if (tableName == null) {
       tableName = getBoolean(SANITIZE_TOPICS_CONFIG) ? sanitizeTableName(topic) : topic;
