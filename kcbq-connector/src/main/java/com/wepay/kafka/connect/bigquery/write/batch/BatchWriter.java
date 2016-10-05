@@ -29,6 +29,7 @@ import java.util.Set;
 
 /**
  * Interface for splitting lists of elements into batches and writing those batches to BigQuery.
+ * All classes that derive this class should be thread-safe.
  * @param <E> The type of element in the list that will be split.
  */
 public interface BatchWriter<E> {

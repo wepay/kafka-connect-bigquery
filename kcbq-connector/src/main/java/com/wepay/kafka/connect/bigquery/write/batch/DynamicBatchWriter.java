@@ -92,11 +92,11 @@ public class DynamicBatchWriter implements BatchWriter<InsertAllRequest.RowToIns
   }
 
   @Override
-  public void writeAll(TableId table,
-                       List<InsertAllRequest.RowToInsert> elements,
-                       String topic,
-                       Set<Schema> schemas) throws BigQueryConnectException,
-                                                   InterruptedException {
+  public synchronized void writeAll(TableId table,
+                                    List<InsertAllRequest.RowToInsert> elements,
+                                    String topic,
+                                    Set<Schema> schemas) throws BigQueryConnectException,
+                                                                InterruptedException {
     if (seeking) {
       seekingWriteAll(table, elements, topic, schemas);
     } else {
