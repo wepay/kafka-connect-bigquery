@@ -19,7 +19,6 @@ package com.wepay.kafka.connect.bigquery.config;
 
 
 import com.google.cloud.bigquery.Schema;
-import com.google.cloud.bigquery.TableId;
 
 import com.wepay.kafka.connect.bigquery.api.SchemaRetriever;
 
@@ -63,6 +62,7 @@ public class BigQuerySinkConfig extends AbstractConfig {
   public static final String TOPICS_TO_TABLES_CONFIG =                     "topicsToTables";
   private static final ConfigDef.Type TOPICS_TO_TABLES_TYPE =              ConfigDef.Type.LIST;
   private static final ConfigDef.Importance TOPICS_TO_TABLES_IMPORTANCE =  ConfigDef.Importance.MEDIUM;
+  public static final Object TOPICS_TO_TABLES_DEFAULT =                    null;
   private static final String TOPICS_TO_TABLES_DOC =
       "A list of mappings from topic regexes to table names. Note the regex must include "
       + "capture groups that are referenced in the format string using placeholders (i.e. $1) "
@@ -145,6 +145,7 @@ public class BigQuerySinkConfig extends AbstractConfig {
         ).define(
             TOPICS_TO_TABLES_CONFIG,
             TOPICS_TO_TABLES_TYPE,
+            TOPICS_TO_TABLES_DEFAULT,
             TOPICS_TO_TABLES_IMPORTANCE,
             TOPICS_TO_TABLES_DOC
         ).define(
@@ -283,7 +284,7 @@ public class BigQuerySinkConfig extends AbstractConfig {
     return configMap;
   }
 
-  private List<Map.Entry<Pattern, String>> getSinglePatterns(String property) {
+  public List<Map.Entry<Pattern, String>> getSinglePatterns(String property) {
     List<String> propList = getList(property);
     List<Map.Entry<Pattern, String>> patternList = new ArrayList<>();
     if (propList != null) {
@@ -335,44 +336,6 @@ public class BigQuerySinkConfig extends AbstractConfig {
     return matches;
   }
 
-  private Map<String, String> getMatchesForTableNames(
-      List<Map.Entry<Pattern, String>> patterns,
-      List<String> values,
-      String valueProperty,
-      String patternProperty) {
-    Map<String, String> matches = new HashMap<>();
-    for (String value : values) {
-      String match = null;
-      for (Map.Entry<Pattern, String> pattern : patterns) {
-        Matcher patternMatcher = pattern.getKey().matcher(value);
-        if (patternMatcher.matches()) {
-          if (match != null) {
-            String secondMatch = pattern.getValue();
-            throw new ConfigException(
-                "Value '" + value
-                + "' for property '" + valueProperty
-                + "' matches " + patternProperty
-                + " regexes for both '" + match
-                + "' and '" + secondMatch + "'"
-            );
-          }
-          String formatString = pattern.getValue();
-          try {
-            match = patternMatcher.replaceAll(formatString);
-          } catch (IndexOutOfBoundsException e) {
-            throw new ConfigException(
-                "Format string '" + formatString
-                + "' is invalid in property '" + patternProperty
-                + "'", e);
-          }
-        }
-      }
-      if (match != null) {
-        matches.put(value, match);
-      }
-    }
-    return matches;
-  }
 
   /**
    * Return a Map detailing which BigQuery dataset each topic should write to.
@@ -386,62 +349,6 @@ public class BigQuerySinkConfig extends AbstractConfig {
         TOPICS_CONFIG,
         DATASETS_CONFIG
     );
-  }
-
-  /**
-   * Return a Map detailing which BigQuery table each topic should write to.
-   * @return A Map associating Kafka topic names to BigQuery table names.
-   */
-  public Map<String, String> getTopicsToTables() {
-    return getMatchesForTableNames(
-        getSinglePatterns(TOPICS_TO_TABLES_CONFIG),
-        getList(TOPICS_CONFIG),
-        TOPICS_CONFIG,
-        TOPICS_TO_TABLES_CONFIG
-    );
-  }
-
-  private String sanitizeTableName(String tableName) {
-    // Take anything that isn't valid in a table name and turn it into an underscore.
-    return tableName.replaceAll("[^a-zA-Z0-9_]", "_");
-  }
-
-  /**
-   * Convert a topic name to a table name, depending on whether sanitization has been specified.
-   *
-   * @param topic The topic name to convert
-   * @return The resulting table name. Note that different topic names can lead to the same table
-   *         name if sanitization is enabled.
-   */
-  public String getTableFromTopic(String topic) {
-    String tableName = null;
-    Map<String, String> map = getTopicsToTables();
-    tableName = map.get(topic);
-    if (tableName == null) {
-      tableName = getBoolean(SANITIZE_TOPICS_CONFIG) ? sanitizeTableName(topic) : topic;
-    }
-    return tableName;
-
-  }
-
-  /**
-   * Return a Map detailing which topic each table corresponds to. If sanitization has been enabled,
-   * there is a possibility that there are multiple possible schemas a table could correspond to. In
-   * that case, each table must only be written to by one topic, or an exception is thrown.
-   *
-   * @param topicsToDatasets A Map detailing which topics belong to which datasets.
-   * @return The resulting Map from TableId to topic name.
-   */
-  public Map<TableId, String> getTablesToTopics(Map<String, String> topicsToDatasets) {
-    Map<TableId, String> tablesToTopics = new HashMap<>();
-    for (Map.Entry<String, String> topicDataset : topicsToDatasets.entrySet()) {
-      String topic = topicDataset.getKey();
-      TableId tableId = TableId.of(topicDataset.getValue(), getTableFromTopic(topic));
-      if (tablesToTopics.put(tableId, topic) != null) {
-        throw new ConfigException("Cannot have multiple topics writing to the same table");
-      }
-    }
-    return tablesToTopics;
   }
 
   /**

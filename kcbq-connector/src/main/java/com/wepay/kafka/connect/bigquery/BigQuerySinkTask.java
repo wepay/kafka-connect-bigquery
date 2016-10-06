@@ -42,6 +42,7 @@ import com.wepay.kafka.connect.bigquery.partition.Partitioner;
 import com.wepay.kafka.connect.bigquery.partition.SinglePartitioner;
 
 import com.wepay.kafka.connect.bigquery.utils.MetricsConstants;
+import com.wepay.kafka.connect.bigquery.utils.TopicToTableResolver;
 import com.wepay.kafka.connect.bigquery.utils.Version;
 
 import com.wepay.kafka.connect.bigquery.write.AdaptiveBigQueryWriter;
@@ -100,6 +101,7 @@ public class BigQuerySinkTask extends SinkTask {
   private Partitioner<RowToInsert> rowPartitioner;
   private Map<String, String> topicsToDatasets;
   private Map<TableId, String> tablesToTopics;
+  private Map<String, String> topicsToTables;
   private BigQueryWriter bigQueryWriter;
   private Metrics metrics;
   private Sensor rowsRead;
@@ -204,7 +206,7 @@ public class BigQuerySinkTask extends SinkTask {
   private TableId getRecordTable(SinkRecord record) {
     String topic = record.topic();
     String dataset = topicsToDatasets.get(topic);
-    String tableFromTopic = config.getTableFromTopic(topic);
+    String tableFromTopic = topicsToTables.get(topic);
     return TableId.of(dataset, tableFromTopic);
   }
 
@@ -359,6 +361,27 @@ public class BigQuerySinkTask extends SinkTask {
                  new Rate());
   }
 
+  /**
+   * Return a Map detailing which topic each table corresponds to. If sanitization has been enabled,
+   * there is a possibility that there are multiple possible schemas a table could correspond to. In
+   * that case, each table must only be written to by one topic, or an exception is thrown.
+   *
+   * @param topicsToDatasets A Map detailing which topics belong to which datasets.
+   * @return The resulting Map from TableId to topic name.
+   */
+  public Map<TableId, String> getTablesToTopics(Map<String, String> topicsToDatasets) {
+    Map<TableId, String> tablesToTopics = new HashMap<>();
+    for (Map.Entry<String, String> topicDataset : topicsToDatasets.entrySet()) {
+      String topic = topicDataset.getKey();
+      String tableName = topicsToTables.get(topic);
+      TableId tableId = TableId.of(topicDataset.getValue(), tableName);
+      if (tablesToTopics.put(tableId, topic) != null) {
+        throw new ConfigException("Cannot have multiple topics writing to the same table");
+      }
+    }
+    return tablesToTopics;
+  }
+
   @Override
   public void start(Map<String, String> properties) {
     logger.trace("task.start()");
@@ -374,7 +397,8 @@ public class BigQuerySinkTask extends SinkTask {
     configureMetrics();
 
     topicsToDatasets = config.getTopicsToDatasets();
-    tablesToTopics = config.getTablesToTopics(topicsToDatasets);
+    topicsToTables = TopicToTableResolver.getTopicsToTablesMap(config);
+    tablesToTopics = getTablesToTopics(topicsToDatasets);
 
     recordConverter = getConverter();
     tableBuffers = new HashMap<>();
