@@ -32,7 +32,12 @@ import java.util.regex.Pattern;
  */
 public class TopicToTableResolver {
 
-  public static Map<String, String> getTopicsToTablesMap(BigQuerySinkConfig config) {
+  /**
+   * Return a Map detailing which BigQuery table each topic should write to.
+   * @param config Config that contains properties used to generate the map
+   * @return A Map associating Kafka topic names to BigQuery table names.
+   */
+  public static Map<String, String> getTopicsToTables(BigQuerySinkConfig config) {
       return getMatchesForTableNames(
           config.getSinglePatterns(config.TOPICS_TO_TABLES_CONFIG),
           config.getList(config.TOPICS_CONFIG),

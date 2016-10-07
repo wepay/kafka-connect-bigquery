@@ -59,7 +59,7 @@ public class TopicToTableResolverTest {
     expectedTopicsToTables.put("db.core.cluster-0.users", "core_users");
 
     BigQuerySinkConfig testConfig = new BigQuerySinkConfig(configProperties);
-    Map<String, String> topicsToTables = TopicToTableResolver.getTopicsToTablesMap(testConfig);
+    Map<String, String> topicsToTables = TopicToTableResolver.getTopicsToTables(testConfig);
 
     assertEquals(expectedTopicsToTables, topicsToTables);
   }
@@ -81,7 +81,7 @@ public class TopicToTableResolverTest {
         ".*=$1"
     );
     BigQuerySinkConfig testConfig = new BigQuerySinkConfig(configProperties);
-    TopicToTableResolver.getTopicsToTablesMap(testConfig);
+    TopicToTableResolver.getTopicsToTables(testConfig);
   }
 
   @Test(expected=ConfigException.class)
@@ -101,6 +101,6 @@ public class TopicToTableResolverTest {
         "(.*)=$1,db_debezium_identity_profiles_(.*)=$1"
     );
     BigQuerySinkConfig testConfig = new BigQuerySinkConfig(configProperties);
-    TopicToTableResolver.getTopicsToTablesMap(testConfig);
+    TopicToTableResolver.getTopicsToTables(testConfig);
   }
 }

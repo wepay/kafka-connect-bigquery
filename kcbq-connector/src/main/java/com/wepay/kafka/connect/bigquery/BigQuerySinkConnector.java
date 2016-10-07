@@ -141,7 +141,7 @@ public class BigQuerySinkConnector extends SinkConnector {
   private void ensureExistingTables() {
     BigQuery bigQuery = getBigQuery();
     Map<String, String> topicsToDatasets = config.getTopicsToDatasets();
-    Map<String, String> topicsToTables = TopicToTableResolver.getTopicsToTablesMap(config);
+    Map<String, String> topicsToTables = TopicToTableResolver.getTopicsToTables(config);
     if (config.getBoolean(config.TABLE_CREATE_CONFIG)) {
       SchemaManager schemaManager = getSchemaManager(bigQuery);
       ensureExistingTables(bigQuery, schemaManager, topicsToDatasets, topicsToTables);

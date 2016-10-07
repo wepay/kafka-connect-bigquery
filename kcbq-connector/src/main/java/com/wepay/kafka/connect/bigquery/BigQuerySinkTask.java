@@ -435,7 +435,7 @@ public class BigQuerySinkTask extends SinkTask {
     configureMetrics();
 
     topicsToDatasets = config.getTopicsToDatasets();
-    topicsToTables = TopicToTableResolver.getTopicsToTablesMap(config);
+    topicsToTables = TopicToTableResolver.getTopicsToTables(config);
     tablesToTopics = getTablesToTopics(topicsToDatasets);
 
     recordConverter = getConverter();
