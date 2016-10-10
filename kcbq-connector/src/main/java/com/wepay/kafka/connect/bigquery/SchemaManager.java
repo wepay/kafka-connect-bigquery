@@ -5,6 +5,7 @@ import com.google.cloud.bigquery.StandardTableDefinition;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableInfo;
 
+import com.google.cloud.bigquery.TimePartitioning;
 import com.wepay.kafka.connect.bigquery.api.SchemaRetriever;
 import com.wepay.kafka.connect.bigquery.convert.SchemaConverter;
 
@@ -40,7 +41,7 @@ public class SchemaManager {
    * @param table The BigQuery table to create.
    * @param topic The Kafka topic used to determine the schema.
    */
-  public void createTable(TableId table, String topic) {
+  public void createTable(TableId table, String topic) { // here
     Schema kafkaConnectSchema = schemaRetriever.retrieveSchema(table, topic);
     bigQuery.create(constructTableInfo(table, kafkaConnectSchema));
   }
@@ -60,8 +61,12 @@ public class SchemaManager {
   TableInfo constructTableInfo(TableId table, Schema kafkaConnectSchema) {
     com.google.cloud.bigquery.Schema bigQuerySchema =
         schemaConverter.convertSchema(kafkaConnectSchema);
+    StandardTableDefinition tableDefinition = StandardTableDefinition.builder()
+      .schema(bigQuerySchema)
+      .timePartitioning(TimePartitioning.of(TimePartitioning.Type.DAY)) // probably this should be configurable?
+      .build();
     TableInfo.Builder tableInfoBuilder =
-        TableInfo.builder(table, StandardTableDefinition.of(bigQuerySchema));
+        TableInfo.builder(table, tableDefinition);
     if (kafkaConnectSchema.doc() != null) {
       tableInfoBuilder.description(kafkaConnectSchema.doc());
     }

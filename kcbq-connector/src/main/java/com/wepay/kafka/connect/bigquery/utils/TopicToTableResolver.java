@@ -23,6 +23,9 @@ import com.google.cloud.bigquery.TableId;
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig;
 import org.apache.kafka.common.config.ConfigException;
 
+import java.util.Calendar;
+import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -81,6 +84,21 @@ public class TopicToTableResolver {
       matches.put(value, TableId.of(dataset, match));
     }
     return matches;
+  }
+
+  public static String getPartitionedTableName(String baseTableName, Date date) {
+    StringBuilder sb = new StringBuilder();
+    sb.append(baseTableName);
+    sb.append("$");
+    Calendar cal = Calendar.getInstance();
+    cal.setTime(date);
+    int year = cal.get(Calendar.YEAR);
+    int month = cal.get(Calendar.MONTH);
+    int day = cal.get(Calendar.DAY_OF_MONTH);
+    sb.append(year);
+    sb.append(month + 1); // java 0 indexes months; google 1 indexes months.
+    sb.append(day);
+    return sb.toString();
   }
 
   /**
