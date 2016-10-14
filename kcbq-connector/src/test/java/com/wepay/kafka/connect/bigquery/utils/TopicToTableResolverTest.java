@@ -29,6 +29,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.time.LocalDate;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -114,11 +115,10 @@ public class TopicToTableResolverTest {
   public void testGetPartitionedTableNames() {
     TableId baseTableId = TableId.of("dataset", "table");
 
-    Calendar cal = Calendar.getInstance();
-    cal.set(2016, Calendar.OCTOBER, 14);
-    Date date = cal.getTime();
+    LocalDate localDate = LocalDate.of(2016, Calendar.OCTOBER, 14);
 
-    TableId partitionedTableId = TopicToTableResolver.getPartitionedTableName(baseTableId, date);
+    TableId partitionedTableId = TopicToTableResolver.getPartitionedTableName(baseTableId,
+                                                                              localDate);
 
     String expectedTableName = "table" + "$" + "2016" + "10" + "14";
     Assert.assertEquals(baseTableId.project(), partitionedTableId.project());

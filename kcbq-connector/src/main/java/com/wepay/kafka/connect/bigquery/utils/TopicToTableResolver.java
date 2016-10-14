@@ -22,11 +22,9 @@ import com.google.cloud.bigquery.TableId;
 
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig;
 import org.apache.kafka.common.config.ConfigException;
-import org.apache.kafka.connect.sink.SinkRecord;
 
-import java.util.Calendar;
-import java.util.Date;
-import java.util.GregorianCalendar;
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -88,16 +86,15 @@ public class TopicToTableResolver {
   }
 
   // package private for testing
-  static TableId getPartitionedTableName(TableId baseTableId, Date date) {
+  static TableId getPartitionedTableName(TableId baseTableId, LocalDate localDate) {
     StringBuilder sb = new StringBuilder();
     String baseTableName = baseTableId.table();
     sb.append(baseTableName);
     sb.append("$");
-    Calendar cal = Calendar.getInstance();
-    cal.setTime(date);
-    int year = cal.get(Calendar.YEAR);
-    int month = cal.get(Calendar.MONTH);
-    int day = cal.get(Calendar.DAY_OF_MONTH);
+
+    int year = localDate.getYear();
+    int month = localDate.getMonthValue();
+    int day = localDate.getDayOfMonth();
     sb.append(year);
     sb.append(month + 1); // java 0 indexes months; google 1 indexes months.
     sb.append(day);
@@ -109,14 +106,16 @@ public class TopicToTableResolver {
     }
   }
 
+  private static final Clock UTC_CLOCK = Clock.systemUTC();
+
   /**
-   * Create and return a TableId containing partition data for right now.
+   * Create and return a TableId containing partition data for the current UTC date.
    * 
    * @param baseTableId The tableId with no partition info.
-   * @return the tableId with the partition data for the current day.
+   * @return the tableId with the partition data for the current UTC date.
    */
   public static TableId getPartitionedTableName(TableId baseTableId) {
-    return getPartitionedTableName(baseTableId, new Date());
+    return getPartitionedTableName(baseTableId, LocalDate.now(UTC_CLOCK));
   }
 
   /**
