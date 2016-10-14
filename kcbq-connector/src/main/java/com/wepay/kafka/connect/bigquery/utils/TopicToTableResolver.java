@@ -109,6 +109,12 @@ public class TopicToTableResolver {
     }
   }
 
+  /**
+   * Create and return a TableId containing partition data for right now.
+   * 
+   * @param baseTableId The tableId with no partition info.
+   * @return the tableId with the partition data for the current day.
+   */
   public static TableId getPartitionedTableName(TableId baseTableId) {
     return getPartitionedTableName(baseTableId, new Date());
   }

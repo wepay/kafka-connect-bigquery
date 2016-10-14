@@ -41,7 +41,7 @@ public class SchemaManager {
    * @param table The BigQuery table to create.
    * @param topic The Kafka topic used to determine the schema.
    */
-  public void createTable(TableId table, String topic) { // here
+  public void createTable(TableId table, String topic) {
     Schema kafkaConnectSchema = schemaRetriever.retrieveSchema(table, topic);
     bigQuery.create(constructTableInfo(table, kafkaConnectSchema));
   }
