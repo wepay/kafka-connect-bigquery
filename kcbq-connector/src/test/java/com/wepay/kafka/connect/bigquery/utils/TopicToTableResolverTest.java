@@ -115,7 +115,7 @@ public class TopicToTableResolverTest {
   public void testGetPartitionedTableNames() {
     TableId baseTableId = TableId.of("dataset", "table");
 
-    LocalDate localDate = LocalDate.of(2016, Calendar.OCTOBER, 14);
+    LocalDate localDate = LocalDate.of(2016, 10, 14);
 
     TableId partitionedTableId = TopicToTableResolver.getPartitionedTableName(baseTableId,
                                                                               localDate);

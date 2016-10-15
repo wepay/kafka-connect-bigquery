@@ -96,7 +96,7 @@ public class TopicToTableResolver {
     int month = localDate.getMonthValue();
     int day = localDate.getDayOfMonth();
     sb.append(year);
-    sb.append(month + 1); // java 0 indexes months; google 1 indexes months.
+    sb.append(month);
     sb.append(day);
     String partitionedTableName = sb.toString();
     if (baseTableId.project() == null) {
