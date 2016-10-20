@@ -292,10 +292,9 @@ public class BigQuerySinkTask extends SinkTask {
 
   // Called synchronously in put(); no synchronization on context needed
   private void pauseAllPartitions(String topic) {
-    logger.debug("Pausing all partitions for topic: {}", topic);
+    logger.info("Pausing all partitions for topic: {}", topic);
     for (TopicPartition topicPartition : context.assignment()) {
       if (topicPartition.topic().equals(topic)) {
-        logger.debug("Pausing partition : {}", topicPartition.toString());
         context.pause(topicPartition);
       }
     }
