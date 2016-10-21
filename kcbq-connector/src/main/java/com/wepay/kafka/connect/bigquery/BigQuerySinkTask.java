@@ -95,7 +95,7 @@ public class BigQuerySinkTask extends SinkTask {
   private Map<TableId, Set<Schema>> tableSchemas;
   private BatchWriterManager batchWriterManager;
   private Map<TableId, String> tableIdsToTopics;
-  private Map<String, TableId> topicsToTableIds;
+  private Map<String, TableId> topicsToBaseTableIds;
   private Metrics metrics;
   private Sensor rowsRead;
 
@@ -159,7 +159,8 @@ public class BigQuerySinkTask extends SinkTask {
   private static class BatchWriterManager {
     private final BigQueryWriter bigQueryWriter;
     private final Class<BatchWriter<InsertAllRequest.RowToInsert>> batchWriterClass;
-    private Map<TableId, BatchWriter<RowToInsert>> batchWriterMap;
+    // map from base table id to the batchWriter for that base table
+    private Map<TableId, BatchWriter<RowToInsert>> baseTableBatchWriterMap;
 
     /**
      * @param bigQueryWriter the {@link BigQueryWriter} to use to call BigQuery.
@@ -171,17 +172,18 @@ public class BigQuerySinkTask extends SinkTask {
                               int numTables) {
       this.bigQueryWriter = bigQueryWriter;
       this.batchWriterClass = batchWriterClass;
-      batchWriterMap = new HashMap<>(numTables);
+      baseTableBatchWriterMap = new HashMap<>(numTables);
     }
 
     public synchronized BatchWriter<RowToInsert> getBatchWriter(TableId tableId) {
-      if (!batchWriterMap.containsKey(tableId)) {
-        addNewBatchWriter(tableId);
+      TableId baseTableId = TopicToTableResolver.getBaseTableName(tableId);
+      if (!baseTableBatchWriterMap.containsKey(baseTableId)) {
+        addNewBatchWriter(baseTableId);
       }
-      return batchWriterMap.get(tableId);
+      return baseTableBatchWriterMap.get(baseTableId);
     }
 
-    private void addNewBatchWriter(TableId tableId) {
+    private void addNewBatchWriter(TableId baseTableId) {
       BatchWriter<RowToInsert> batchWriter;
       try {
         batchWriter = batchWriterClass.newInstance();
@@ -192,7 +194,7 @@ public class BigQuerySinkTask extends SinkTask {
         throw new ConfigException("Failed to instantiate class specified for BatchWriter",
           exception);
       }
-      batchWriterMap.put(tableId, batchWriter);
+      baseTableBatchWriterMap.put(baseTableId, batchWriter);
     }
   }
 
@@ -233,18 +235,22 @@ public class BigQuerySinkTask extends SinkTask {
       } catch (InterruptedException err) {
         throw new ConnectException("Interrupted while scheduling/executing write threads", err);
       } catch (ExecutionException err) {
-        throw new BigQueryConnectException("Exception occurred while executing write threads", err);
+        throw new BigQueryConnectException("Exception occurred while executing write threads",
+                                           err);
       }
     }
     resumeAllPartitions();
   }
 
   private TableId getRecordTable(SinkRecord record) {
-    return TopicToTableResolver.getPartitionedTableName(topicsToTableIds.get(record.topic()));
+    return TopicToTableResolver.getPartitionedTableName(topicsToBaseTableIds.get(record.topic()));
   }
 
   private String getRowId(SinkRecord record) {
-    return String.format("%s-%d-%d", record.topic(), record.kafkaPartition(), record.kafkaOffset());
+    return String.format("%s-%d-%d",
+                         record.topic(),
+                         record.kafkaPartition(),
+                         record.kafkaOffset());
   }
 
   private RowToInsert getRecordRow(SinkRecord record) {
@@ -417,7 +423,7 @@ public class BigQuerySinkTask extends SinkTask {
 
     configureMetrics();
 
-    topicsToTableIds = TopicToTableResolver.getTopicsToTables(config);
+    topicsToBaseTableIds = TopicToTableResolver.getTopicsToTables(config);
     tableIdsToTopics = TopicToTableResolver.getTablesToTopics(config);
     recordConverter = getConverter();
     tableBuffers = new HashMap<>();
