@@ -20,14 +20,16 @@ package com.wepay.kafka.connect.bigquery.utils;
 
 import com.google.cloud.bigquery.TableId;
 
+import java.time.Clock;
 import java.time.LocalDate;
 
 /**
  * A TableId with separate base table name and partition information.
  */
-public class PartitionedTableId {
+public class PartitionedTableId { // todo make tests for me
 
   private static final String PARTITION_DELIMITER = "$";
+  private static final Clock UTC_CLOCK = Clock.systemUTC();
 
   private final String project;
   private final String dataset;
@@ -36,7 +38,7 @@ public class PartitionedTableId {
 
   private final String fullTableName;
 
-  private final TableId partialTableId;
+  private final TableId baseTableId;
   private final TableId fullTableId;
 
   /**
@@ -55,15 +57,15 @@ public class PartitionedTableId {
 
     fullTableName = createFullTableName(table, partition);
 
-    partialTableId = createTableId(project, dataset, table);
+    baseTableId = createTableId(project, dataset, table);
     fullTableId = createTableId(project, dataset, fullTableName);
   }
 
   /**
-   * Create a full table name from a base table name and a partition.
+   * Create and return a full table name from a base table name and a partition.
    * @param table the base table name.
    * @param partition the partition, if any.
-   * @return
+   * @return full table name, including partition; Just the given table if no partition.
    */
   private static String createFullTableName(String table, String partition) {
     if (partition == null) {
@@ -75,8 +77,8 @@ public class PartitionedTableId {
 
   /**
    * Convenience method for creating new TableIds.
-   * <p>
-   * {@link TableId#of(String, String, String)} will error if you pass in a null project, so this
+   *
+   * <p>{@link TableId#of(String, String, String)} will error if you pass in a null project, so this
    * just checks if the project is null and calls the correct method.
    *
    * @param project the project name, or null
@@ -92,53 +94,64 @@ public class PartitionedTableId {
     }
   }
 
-  /**
-   * @return the project name, if any.
-   */
   public String getProject() {
     return project;
   }
 
-  /**
-   * @return the dataset name.
-   */
   public String getDataset() {
     return dataset;
   }
 
-  /**
-   * @return the base table name.
-   */
   public String getBaseTableName() {
     return table;
   }
 
-  /**
-   * @return the partition, if any.
-   */
   public String getPartition() {
     return partition;
   }
 
-  /**
-   * @return the full table name.
-   */
   public String getFullTableName() {
     return fullTableName;
   }
 
   /**
-   * @return the partial table id.
+   * Return the base table id, NOT containing any partition information in the table name.
+   * This is useful if you only need general information about a table, like if you need to store
+   * a table's schema information.
+   *
+   * @return the base table id.
    */
-  public TableId getPartialTableId() {
-    return partialTableId;
+  public TableId getBaseTableId() {
+    return baseTableId;
   }
 
   /**
+   * Return the full table id, containing any partitioning information in the table name.
+   * This is useful when you are attempting to actually write to this table.
+   *
    * @return the full table id.
    */
   public TableId getFullTableId() {
     return fullTableId;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (obj instanceof PartitionedTableId) {
+      PartitionedTableId that = (PartitionedTableId) obj;
+      return fullTableId.equals(that.fullTableId);
+    }
+    return false;
+  }
+
+  @Override
+  public int hashCode() {
+    return fullTableId.hashCode();
+  }
+
+  @Override
+  public String toString() {
+    return fullTableId.toString();
   }
 
   public static class Builder {
@@ -148,17 +161,30 @@ public class PartitionedTableId {
     private final String baseTable;
     private String partition;
 
+    /**
+     * Initialize a new {@link PartitionedTableId} Builder with a dataset and base table name.
+     *
+     * @param dataset the dataset name of the eventual PartitionedTableId.
+     * @param baseTable the base table name of the eventual PartitionedTableId.
+     */
     public Builder(String dataset, String baseTable) {
-      this.project = null;
-      this.dataset = dataset;
-      this.baseTable = baseTable;
-      this.partition = null;
+      this(null, dataset, baseTable, null);
     }
 
+    /**
+     * Initialize a new {@link PartitionedTableId} Builder with an existing base {@link TableId}.
+     *
+     * @param baseTableId existing TableId with a base table name (no partition information).
+     */
     public Builder(TableId baseTableId) {
-      this.project = baseTableId.project();
-      this.dataset = baseTableId.dataset();
-      this.baseTable = baseTableId.table();
+      this(baseTableId.project(), baseTableId.dataset(), baseTableId.table(), null);
+    }
+
+    private Builder(String project, String dataset, String baseTable, String partition) {
+      this.project = project;
+      this.dataset = dataset;
+      this.baseTable = baseTable;
+      this.partition = partition;
     }
 
     public Builder setProject(String project) {
@@ -173,6 +199,10 @@ public class PartitionedTableId {
 
     public Builder setDayPartition(LocalDate localDate) {
       return setPartition(dateToDayPartition(localDate));
+    }
+
+    public Builder setDayPartitionForNow() {
+      return setDayPartition(LocalDate.now(UTC_CLOCK));
     }
 
     /**
