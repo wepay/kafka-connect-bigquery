@@ -155,12 +155,12 @@ public class BigQuerySinkTask extends SinkTask {
   }
 
   /**
-   * A class for keeping track of the BatchWriters for each partitionedTableId.
+   * A class for keeping track of the BatchWriters for each base table.
    */
   private static class BatchWriterManager {
     private final BigQueryWriter bigQueryWriter;
     private final Class<BatchWriter<InsertAllRequest.RowToInsert>> batchWriterClass;
-    // map from base partitionedTableId id to the batchWriter for that base partitionedTableId
+    // map from base TableId to the batchWriter for that base table
     private Map<TableId, BatchWriter<RowToInsert>> baseTableBatchWriterMap;
 
     /**

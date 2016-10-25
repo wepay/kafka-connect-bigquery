@@ -26,7 +26,7 @@ import java.time.LocalDate;
 /**
  * A TableId with separate base table name and partition information.
  */
-public class PartitionedTableId { // todo make tests for me
+public class PartitionedTableId {
 
   private static final String PARTITION_DELIMITER = "$";
   private static final Clock UTC_CLOCK = Clock.systemUTC();
