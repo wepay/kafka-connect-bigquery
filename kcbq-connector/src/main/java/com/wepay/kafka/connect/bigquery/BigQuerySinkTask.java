@@ -442,14 +442,8 @@ public class BigQuerySinkTask extends SinkTask {
 
   private class TopicPartitionManager {
 
-    // keeping this roughly as is is almost certainly fine though.
-    private Map<String, State> topicStates;
-    private Map<String, Long> topicChangeNano;
-
-    // the topics may not change (??) but the partitions almost certainly waill change.
-    // ie: this isn't static, and can't be treated as such.
-    // do I even need this? I'm going to say I don't...
-    private Map<String, List<TopicPartition>> topicToTopicPartitionMap = new HashMap<>();
+    private Map<TopicPartition, State> topicStates;
+    private Map<TopicPartition, Long> topicChangeNano;
 
     public TopicPartitionManager() {
       topicStates = new HashMap<>();
@@ -457,49 +451,63 @@ public class BigQuerySinkTask extends SinkTask {
     }
 
     public void pause(String topic, int topicBufferSize) {
-      // if it's already paused we don't need to pause it
-      if (topicStates.get(topic) != State.PAUSED) {
-        Long now = System.nanoTime();
-        logger.info("Pausing all partitions for topic {} with buffer size {} after {}ms: [{}]",
-                    topic,
-                    topicBufferSize,
-                    now - topicChangeNano.get(topic) / 1000000,
-                    topicPartitionsString(topicToTopicPartitionMap.get(topic)));
-        topicStates.put(topic, State.PAUSED);
-        topicChangeNano.put(topic, now);
-        for (TopicPartition topicPartition : topicToTopicPartitionMap.get(topic)) {
-          context.pause(topicPartition);
+      Long now = System.nanoTime();
+      Collection<TopicPartition> topicPartitions = getPartitionsForTopic(topic);
+      long oldestChangeNano = now;
+      for (TopicPartition topicPartition : topicPartitions) {
+        if (topicChangeNano.containsKey(topicPartition)) {
+          oldestChangeNano = Math.min(oldestChangeNano, topicChangeNano.get(topicPartition));
         }
+        topicStates.put(topicPartition, State.PAUSED);
+        topicChangeNano.put(topicPartition, now);
+        context.pause(topicPartition);
       }
+
+      logger.info("Paused all partitions for topic {} with buffer size {} after {}ms: [{}]",
+                  topic,
+                  topicBufferSize,
+                  now - oldestChangeNano / 1000000,
+                  topicPartitionsString(topicPartitions));
     }
 
-    public void resume(String topic) {
-      // if it's already running we don't need to resume it.
-      if (topicStates.get(topic) != State.RUNNING) {
-        Long now = System.nanoTime();
-        logger.info("Restarting all partitions for topic {} after {}ms: [{}]",
-                    topic,
-                    now - topicChangeNano.get(topic) / 1000000,
-                    topicPartitionsString(topicToTopicPartitionMap.get(topic)));
-        topicStates.put(topic, State.RUNNING);
-        topicChangeNano.put(topic, System.nanoTime());
-        for (TopicPartition topicPartition : topicToTopicPartitionMap.get(topic)){
-          context.resume(topicPartition);
+    public void resume(TopicPartition topicPartition) {
+      Long now = System.nanoTime();
+      if (topicStates.containsKey(topicPartition)) {
+        if (topicStates.get(topicPartition) == State.PAUSED) {
+          logger.info("Restarting topicPartition {} from pause after {}ms",
+                      topicPartition,
+                      now - topicChangeNano.get(topicPartition) / 1000000);
+          topicChangeNano.put(topicPartition, now);
+        } else {
+          logger.debug("'Restarted' already running partition {}",
+                       topicPartition);
         }
+      } else {
+        logger.info("Restarting new topicPartition {}",
+                    topicPartition);
+        topicChangeNano.put(topicPartition, now);
       }
+      topicStates.put(topicPartition, State.RUNNING);
+      context.resume(topicPartition);
     }
 
     public void resumeAll() {
-      for (Map.Entry<String, State> topicState : topicStates.entrySet()) {
+      for (Map.Entry<TopicPartition, State> topicState : topicStates.entrySet()) {
         resume(topicState.getKey());
       }
     }
 
-    private String topicPartitionsString(List<TopicPartition> topicPartitions) {
-      List<String> topicPartitionStrings = new ArrayList<>(topicPartitions.size());
-      topicPartitionStrings.addAll(
-        topicPartitions.stream().map(TopicPartition::toString).collect(Collectors.toList())
-      );
+    private Collection<TopicPartition> getPartitionsForTopic(String topic) {
+      return context.assignment()
+                    .stream()
+                    .filter(topicPartition -> topicPartition.topic().equals(topic))
+                    .collect(Collectors.toList());
+    }
+
+    private String topicPartitionsString(Collection<TopicPartition> topicPartitions) {
+      List<String> topicPartitionStrings = topicPartitions.stream()
+                                                          .map(TopicPartition::toString)
+                                                          .collect(Collectors.toList());
       return String.join(", ", topicPartitionStrings);
     }
   }
