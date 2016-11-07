@@ -77,6 +77,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
 /**
  * A {@link SinkTask} used to translate Kafka Connect {@link SinkRecord SinkRecords} into BigQuery
@@ -97,6 +98,9 @@ public class BigQuerySinkTask extends SinkTask {
   private BatchWriterManager batchWriterManager;
   private Map<TableId, String> baseTableIdsToTopics;
   private Map<String, TableId> topicsToBaseTableIds;
+
+  private TopicPartitionManager topicPartitionManager;
+
   private Metrics metrics;
   private Sensor rowsRead;
 
@@ -198,14 +202,6 @@ public class BigQuerySinkTask extends SinkTask {
     }
   }
 
-  // Called synchronously from flush(); no synchronization required on context
-  private void resumeAllPartitions() {
-    logger.debug("Resuming all partitions");
-    for (TopicPartition topicPartition : context.assignment()) {
-      context.resume(topicPartition);
-    }
-  }
-
   @Override
   public void flush(Map<TopicPartition, OffsetAndMetadata> offsets) {
     List<TableWriter> tableWriters = new ArrayList<>();
@@ -239,7 +235,7 @@ public class BigQuerySinkTask extends SinkTask {
                                            err);
       }
     }
-    resumeAllPartitions();
+    topicPartitionManager.resumeAll();
   }
 
   private PartitionedTableId getRecordTable(SinkRecord record) {
@@ -298,16 +294,6 @@ public class BigQuerySinkTask extends SinkTask {
     return tableRecords;
   }
 
-  // Called synchronously in put(); no synchronization on context needed
-  private void pauseAllPartitions(String topic) {
-    logger.info("Pausing all partitions for topic: {}", topic);
-    for (TopicPartition topicPartition : context.assignment()) {
-      if (topicPartition.topic().equals(topic)) {
-        context.pause(topicPartition);
-      }
-    }
-  }
-
   @Override
   public void put(Collection<SinkRecord> records) {
     Map<PartitionedTableId, List<SinkRecord>> recordsMap = getRecordsByTable(records);
@@ -333,7 +319,10 @@ public class BigQuerySinkTask extends SinkTask {
 
       buffer.addAll(tableRows);
       if (bufferFull(buffer.size())) {
-        pauseAllPartitions(baseTableIdsToTopics.get(partitionedTableId.getBaseTableId()));
+        topicPartitionManager.pause(
+            baseTableIdsToTopics.get(partitionedTableId.getBaseTableId()),
+            buffer.size()
+        );
       }
     }
     rowsRead.record(recordsMap.size());
@@ -431,6 +420,7 @@ public class BigQuerySinkTask extends SinkTask {
     tableBuffers = new HashMap<>();
     tableSchemas = new HashMap<>();
     batchWriterManager = getBatchWriterManager();
+    topicPartitionManager = new TopicPartitionManager();
   }
 
   @Override
@@ -443,5 +433,74 @@ public class BigQuerySinkTask extends SinkTask {
     String version = Version.version();
     logger.trace("task.version() = {}", version);
     return version;
+  }
+
+  private enum State {
+    PAUSED,
+    RUNNING
+  }
+
+  private class TopicPartitionManager {
+
+    // keeping this roughly as is is almost certainly fine though.
+    private Map<String, State> topicStates;
+    private Map<String, Long> topicChangeNano;
+
+    // the topics may not change (??) but the partitions almost certainly waill change.
+    // ie: this isn't static, and can't be treated as such.
+    // do I even need this? I'm going to say I don't...
+    private Map<String, List<TopicPartition>> topicToTopicPartitionMap = new HashMap<>();
+
+    public TopicPartitionManager() {
+      topicStates = new HashMap<>();
+      topicChangeNano = new HashMap<>();
+    }
+
+    public void pause(String topic, int topicBufferSize) {
+      // if it's already paused we don't need to pause it
+      if (topicStates.get(topic) != State.PAUSED) {
+        Long now = System.nanoTime();
+        logger.info("Pausing all partitions for topic {} with buffer size {} after {}ms: [{}]",
+                    topic,
+                    topicBufferSize,
+                    now - topicChangeNano.get(topic) / 1000000,
+                    topicPartitionsString(topicToTopicPartitionMap.get(topic)));
+        topicStates.put(topic, State.PAUSED);
+        topicChangeNano.put(topic, now);
+        for (TopicPartition topicPartition : topicToTopicPartitionMap.get(topic)) {
+          context.pause(topicPartition);
+        }
+      }
+    }
+
+    public void resume(String topic) {
+      // if it's already running we don't need to resume it.
+      if (topicStates.get(topic) != State.RUNNING) {
+        Long now = System.nanoTime();
+        logger.info("Restarting all partitions for topic {} after {}ms: [{}]",
+                    topic,
+                    now - topicChangeNano.get(topic) / 1000000,
+                    topicPartitionsString(topicToTopicPartitionMap.get(topic)));
+        topicStates.put(topic, State.RUNNING);
+        topicChangeNano.put(topic, System.nanoTime());
+        for (TopicPartition topicPartition : topicToTopicPartitionMap.get(topic)){
+          context.resume(topicPartition);
+        }
+      }
+    }
+
+    public void resumeAll() {
+      for (Map.Entry<String, State> topicState : topicStates.entrySet()) {
+        resume(topicState.getKey());
+      }
+    }
+
+    private String topicPartitionsString(List<TopicPartition> topicPartitions) {
+      List<String> topicPartitionStrings = new ArrayList<>(topicPartitions.size());
+      topicPartitionStrings.addAll(
+        topicPartitions.stream().map(TopicPartition::toString).collect(Collectors.toList())
+      );
+      return String.join(", ", topicPartitionStrings);
+    }
   }
 }
