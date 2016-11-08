@@ -476,7 +476,7 @@ public class BigQuerySinkTask extends SinkTask {
         if (topicStates.get(topicPartition) == State.PAUSED) {
           logger.info("Restarting topicPartition {} from pause after {}ms",
                       topicPartition,
-                      now - topicChangeMs.get(topicPartition);
+                      now - topicChangeMs.get(topicPartition));
           topicChangeMs.put(topicPartition, now);
         } else {
           logger.debug("'Restarting' already running partition {}",
