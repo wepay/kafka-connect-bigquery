@@ -443,49 +443,49 @@ public class BigQuerySinkTask extends SinkTask {
   private class TopicPartitionManager {
 
     private Map<TopicPartition, State> topicStates;
-    private Map<TopicPartition, Long> topicChangeNano;
+    private Map<TopicPartition, Long> topicChangeMs;
 
     public TopicPartitionManager() {
       topicStates = new HashMap<>();
-      topicChangeNano = new HashMap<>();
+      topicChangeMs = new HashMap<>();
     }
 
     public void pause(String topic, int topicBufferSize) {
-      Long now = System.nanoTime();
+      Long now = System.currentTimeMillis();
       Collection<TopicPartition> topicPartitions = getPartitionsForTopic(topic);
-      long oldestChangeNano = now;
+      long oldestChangeMs = now;
       for (TopicPartition topicPartition : topicPartitions) {
-        if (topicChangeNano.containsKey(topicPartition)) {
-          oldestChangeNano = Math.min(oldestChangeNano, topicChangeNano.get(topicPartition));
+        if (topicChangeMs.containsKey(topicPartition)) {
+          oldestChangeMs = Math.min(oldestChangeMs, topicChangeMs.get(topicPartition));
         }
         topicStates.put(topicPartition, State.PAUSED);
-        topicChangeNano.put(topicPartition, now);
+        topicChangeMs.put(topicPartition, now);
         context.pause(topicPartition);
       }
 
       logger.info("Paused all partitions for topic {} with buffer size {} after {}ms: [{}]",
                   topic,
                   topicBufferSize,
-                  now - oldestChangeNano / 1000000,
+                  now - oldestChangeMs,
                   topicPartitionsString(topicPartitions));
     }
 
     public void resume(TopicPartition topicPartition) {
-      Long now = System.nanoTime();
+      Long now = System.currentTimeMillis();
       if (topicStates.containsKey(topicPartition)) {
         if (topicStates.get(topicPartition) == State.PAUSED) {
           logger.info("Restarting topicPartition {} from pause after {}ms",
                       topicPartition,
-                      now - topicChangeNano.get(topicPartition) / 1000000);
-          topicChangeNano.put(topicPartition, now);
+                      now - topicChangeMs.get(topicPartition);
+          topicChangeMs.put(topicPartition, now);
         } else {
-          logger.debug("'Restarted' already running partition {}",
+          logger.debug("'Restarting' already running partition {}",
                        topicPartition);
         }
       } else {
         logger.info("Restarting new topicPartition {}",
                     topicPartition);
-        topicChangeNano.put(topicPartition, now);
+        topicChangeMs.put(topicPartition, now);
       }
       topicStates.put(topicPartition, State.RUNNING);
       context.resume(topicPartition);
