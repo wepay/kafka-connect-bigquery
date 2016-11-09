@@ -83,7 +83,8 @@ public class KafkaDataBQRecordConvertTest {
 
   private static void checkRecord(Map<String, Object> partialExpectedRecord,
                                   Map<String, Object> actualRecord) {
-    // we can't reasonably check the value of insertTime, so we'll just check if it's there and the correct type.
+    // we can't reasonably check the value of insertTime,
+    // so we'll just check if it's there and is the correct type.
     @SuppressWarnings("unchecked")
     Map<String, Object> kafkaDataMap = (Map<String, Object>) actualRecord.get(kafkaDataFieldName);
     assertTrue(kafkaDataMap.containsKey(kafkaDataInsertTimeName));
