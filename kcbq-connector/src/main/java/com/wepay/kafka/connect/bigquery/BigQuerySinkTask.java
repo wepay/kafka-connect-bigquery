@@ -94,7 +94,6 @@ public class BigQuerySinkTask extends SinkTask {
   private BigQuerySinkTaskConfig config;
   private RecordConverter<Map<String, Object>> recordConverter;
   private Map<PartitionedTableId, List<RowToInsert>> tableBuffers;
-  private Map<TableId, Set<Schema>> tableSchemas;
   private BatchWriterManager batchWriterManager;
   private Map<TableId, String> baseTableIdsToTopics;
   private Map<String, TableId> topicsToBaseTableIds;
@@ -215,7 +214,6 @@ public class BigQuerySinkTask extends SinkTask {
             )
         );
       }
-      tableSchemas.put(table.getBaseTableId(), new HashSet<>());
     }
     // now that we are done, wipe all buffers.
     tableBuffers.clear();
@@ -300,16 +298,10 @@ public class BigQuerySinkTask extends SinkTask {
         tableBuffers.put(partitionedTableId, getNewBuffer());
       }
 
-      if (!tableSchemas.containsKey(partitionedTableId.getBaseTableId())) {
-        tableSchemas.put(partitionedTableId.getBaseTableId(), new HashSet<>());
-      }
-
       List<RowToInsert> buffer = tableBuffers.get(partitionedTableId);
-      Set<Schema> schemas = tableSchemas.get(partitionedTableId.getBaseTableId());
 
       List<RowToInsert> tableRows = new ArrayList<>();
       for (SinkRecord record : tableRecords.getValue()) {
-        schemas.add(record.valueSchema());
         RowToInsert recordRow = getRecordRow(record);
         tableRows.add(recordRow);
       }
@@ -343,7 +335,9 @@ public class BigQuerySinkTask extends SinkTask {
     Class<BatchWriter<InsertAllRequest.RowToInsert>> batchWriterClass =
         (Class<BatchWriter<RowToInsert>>) config.getClass(config.BATCH_WRITER_CONFIG);
 
-    return new BatchWriterManager(getBigQueryWriter(), batchWriterClass, tableSchemas.size());
+    return new BatchWriterManager(getBigQueryWriter(),
+                                  batchWriterClass,
+                                  baseTableIdsToTopics.size());
   }
 
   private BigQuery getBigQuery() {
@@ -415,7 +409,6 @@ public class BigQuerySinkTask extends SinkTask {
     baseTableIdsToTopics = TopicToTableResolver.getBaseTablesToTopics(config);
     recordConverter = getConverter();
     tableBuffers = new HashMap<>();
-    tableSchemas = new HashMap<>();
     batchWriterManager = getBatchWriterManager();
     topicPartitionManager = new TopicPartitionManager();
   }
