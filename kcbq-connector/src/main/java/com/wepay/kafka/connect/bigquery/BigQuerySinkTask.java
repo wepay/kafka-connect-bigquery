@@ -134,25 +134,22 @@ public class BigQuerySinkTask extends SinkTask {
     private final List<RowToInsert> rows;
     private final Map<TopicPartition, OffsetAndMetadata> offsets;
     private final String topic;
-    private final Set<Schema> schemas;
     private final BatchWriter<RowToInsert> batchWriter;
 
     public TableWriter(PartitionedTableId partitionedTableId,
                        List<RowToInsert> rows,
                        Map<TopicPartition, OffsetAndMetadata> offsets,
-                       String topic,
-                       Set<Schema> schemas) {
+                       String topic) {
       this.partitionedTableId = partitionedTableId;
       this.rows = rows;
       this.offsets = offsets;
       this.topic = topic;
-      this.schemas = schemas;
       this.batchWriter = batchWriterManager.getBatchWriter(partitionedTableId.getBaseTableId());
     }
 
     @Override
     public Void call() throws InterruptedException {
-      batchWriter.writeAll(partitionedTableId, rows, topic, schemas);
+      batchWriter.writeAll(partitionedTableId, rows, topic);
       updateAllPartitions(baseTableIdsToTopics.get(partitionedTableId.getBaseTableId()), offsets);
       return null;
     }
@@ -214,8 +211,7 @@ public class BigQuerySinkTask extends SinkTask {
                 table,
                 buffer,
                 offsets,
-                baseTableIdsToTopics.get(table.getBaseTableId()),
-                tableSchemas.get(table.getBaseTableId())
+                baseTableIdsToTopics.get(table.getBaseTableId())
             )
         );
       }
@@ -314,7 +310,8 @@ public class BigQuerySinkTask extends SinkTask {
       List<RowToInsert> tableRows = new ArrayList<>();
       for (SinkRecord record : tableRecords.getValue()) {
         schemas.add(record.valueSchema());
-        tableRows.add(getRecordRow(record));
+        RowToInsert recordRow = getRecordRow(record);
+        tableRows.add(recordRow);
       }
 
       buffer.addAll(tableRows);
