@@ -40,14 +40,27 @@ public class BigQuerySinkTaskConfig extends BigQuerySinkConfig {
   private static final String SCHEMA_UPDATE_DOC =
       "Whether or not to automatically update BigQuery schemas";
 
-  public static final String BUFFER_SIZE_CONFIG =                     "bufferSize";
-  private static final ConfigDef.Type BUFFER_SIZE_TYPE =              ConfigDef.Type.LONG;
-  public static final Long BUFFER_SIZE_DEFAULT =                      100000L;
-  private static final ConfigDef.Validator BUFFER_SIZE_VALIDATOR =    ConfigDef.Range.atLeast(-1);
-  private static final ConfigDef.Importance BUFFER_SIZE_IMPORTANCE =  ConfigDef.Importance.MEDIUM;
-  private static final String BUFFER_SIZE_DOC =
-      "The maxiumum number of records to buffer per table before temporarily halting the flow of "
-      + "new records, or -1 for unlimited buffering";
+  public static final String THREAD_POOL_SIZE_CONFIG =                  "threadPoolSize";
+  private static final ConfigDef.Type THREAD_POOL_SIZE_TYPE =           ConfigDef.Type.INT;
+  public static final Integer THREAD_POOL_SIZE_DEFAULT =                10;
+  private static final ConfigDef.Validator THREAD_POOL_SIZE_VALIDATOR = ConfigDef.Range.atLeast(1);
+  private static final ConfigDef.Importance THREAD_POOL_SIZE_IMPORTANCE =
+      ConfigDef.Importance.MEDIUM;
+  private static final String THREAD_POOL_SIZE_DOC =
+      "The size of the BigQuery write thread pool. This establishes the maximum number of "
+      + "concurrent writes to BigQuery.";
+
+  public static final String TOPIC_MAX_THREADS_CONFIG =               "tableMaxThreads";
+  private static final ConfigDef.Type TOPIC_MAX_THREADS_TYPE =        ConfigDef.Type.INT;
+  public static final Integer TOPIC_MAX_THREADS_DEFAULT =             7;
+  private static final ConfigDef.Validator TOPIC_MAX_THREADS_VALIDATOR =
+      ConfigDef.Range.atLeast(1); // also no more than THREAD_POOL_SIZE?
+  private static final ConfigDef.Importance TOPIC_MAX_THREADS_IMPORTANCE =
+      ConfigDef.Importance.MEDIUM;
+  private static final String TOPIC_MAX_THREADS_DOC =
+      "The maximum threads that can be writing rows for a single topic before that topic is "
+      + "temporarily paused. If there is only a single topic this should be the same as the "
+      + "thread pool size.";
 
   public static final String BIGQUERY_RETRY_CONFIG =                    "bigQueryRetry";
   private static final ConfigDef.Type BIGQUERY_RETRY_TYPE =             ConfigDef.Type.INT;
@@ -79,12 +92,19 @@ public class BigQuerySinkTaskConfig extends BigQuerySinkConfig {
             SCHEMA_UPDATE_IMPORTANCE,
             SCHEMA_UPDATE_DOC
         ).define(
-            BUFFER_SIZE_CONFIG,
-            BUFFER_SIZE_TYPE,
-            BUFFER_SIZE_DEFAULT,
-            BUFFER_SIZE_VALIDATOR,
-            BUFFER_SIZE_IMPORTANCE,
-            BUFFER_SIZE_DOC
+            THREAD_POOL_SIZE_CONFIG,
+            THREAD_POOL_SIZE_TYPE,
+            THREAD_POOL_SIZE_DEFAULT,
+            THREAD_POOL_SIZE_VALIDATOR,
+            THREAD_POOL_SIZE_IMPORTANCE,
+            THREAD_POOL_SIZE_DOC
+        ).define(
+            TOPIC_MAX_THREADS_CONFIG,
+            TOPIC_MAX_THREADS_TYPE,
+            TOPIC_MAX_THREADS_DEFAULT,
+            TOPIC_MAX_THREADS_VALIDATOR,
+            TOPIC_MAX_THREADS_IMPORTANCE,
+            TOPIC_MAX_THREADS_DOC
         ).define(
             BIGQUERY_RETRY_CONFIG,
             BIGQUERY_RETRY_TYPE,

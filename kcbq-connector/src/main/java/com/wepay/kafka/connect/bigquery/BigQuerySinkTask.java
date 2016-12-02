@@ -87,6 +87,7 @@ public class BigQuerySinkTask extends SinkTask {
   private static final Logger logger = LoggerFactory.getLogger(BigQuerySinkTask.class);
 
   private final BigQuery testBigQuery;
+  private BigQueryWriter bigQueryWriter;
   private BigQuerySinkTaskConfig config;
   private RecordConverter<Map<String, Object>> recordConverter;
   private Map<String, TableId> topicsToBaseTableIds;
@@ -149,12 +150,15 @@ public class BigQuerySinkTask extends SinkTask {
     Map<PartitionedTableId, TableWriter.Builder> tableWriterBuilders = new HashMap<>();
 
     for (SinkRecord record : records) {
-      PartitionedTableId table = getRecordTable(record);
-      if (!tableWriterBuilders.containsKey(table)) {
-        TableWriter.Builder tableWriterBuilder = new TableWriter.Builder(null, table, record.topic());
-        tableWriterBuilders.put(table, tableWriterBuilder);
+      if (record.value() != null) {
+        PartitionedTableId table = getRecordTable(record);
+        if (!tableWriterBuilders.containsKey(table)) {
+          TableWriter.Builder tableWriterBuilder =
+            new TableWriter.Builder(bigQueryWriter, table, record.topic());
+          tableWriterBuilders.put(table, tableWriterBuilder);
+        }
+        tableWriterBuilders.get(table).addRow(getRecordRow(record));
       }
-      tableWriterBuilders.get(table).addRow(getRecordRow(record));
     }
 
     for (TableWriter.Builder builder : tableWriterBuilders.values()) {
@@ -229,6 +233,7 @@ public class BigQuerySinkTask extends SinkTask {
 
     configureMetrics();
 
+    bigQueryWriter = getBigQueryWriter();
     topicsToBaseTableIds = TopicToTableResolver.getTopicsToTables(config);
     recordConverter = getConverter();
     executor = new KCBQThreadPoolExecutor(config, context, new LinkedBlockingQueue<>());

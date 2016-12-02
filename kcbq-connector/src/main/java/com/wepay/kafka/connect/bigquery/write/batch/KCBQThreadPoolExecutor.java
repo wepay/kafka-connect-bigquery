@@ -57,9 +57,12 @@ public class KCBQThreadPoolExecutor extends ThreadPoolExecutor {
   public KCBQThreadPoolExecutor(BigQuerySinkTaskConfig config,
                                 SinkTaskContext context,
                                 BlockingQueue<Runnable> workQueue) {
-    super(1, 2, 3, TimeUnit.SECONDS, workQueue); // todo
+    super(config.getInt(BigQuerySinkTaskConfig.THREAD_POOL_SIZE_CONFIG),
+          config.getInt(BigQuerySinkTaskConfig.THREAD_POOL_SIZE_CONFIG),
+          1, TimeUnit.SECONDS, // this line is irrelevant because the core and max thread counts are the same.
+          workQueue);
     topicPartitionManager = new TopicPartitionManager(context);
-    topicThreadLimit = 10; // todo fixme get from config
+    topicThreadLimit = config.getInt(BigQuerySinkTaskConfig.TOPIC_MAX_THREADS_CONFIG);
   }
 
   @Override
@@ -72,8 +75,7 @@ public class KCBQThreadPoolExecutor extends ThreadPoolExecutor {
       activeThreadTopicCount.putIfAbsent(topic, new AtomicInteger(0));
 
       int topicThreadCount = activeThreadTopicCount.get(topic).incrementAndGet();
-      // if there is only 1 topic, we don't need to worry about the thread limit.
-      if (activeThreadTopicCount.size() > 1 && topicThreadCount > topicThreadLimit) {
+      if (topicThreadCount > topicThreadLimit) {
         topicPartitionManager.pause(topic, topicThreadCount);
       }
     }
@@ -105,15 +107,17 @@ public class KCBQThreadPoolExecutor extends ThreadPoolExecutor {
    * @throws BigQueryConnectException if any of the tasks failed.
    */
   public void awaitCurrentTasks() throws InterruptedException, BigQueryConnectException {
-    CountDownLatch countDownLatch = new CountDownLatch(topicThreadLimit);
-    for (int i = 0; i < topicThreadLimit; i++) {
+    int maximumPoolSize = getMaximumPoolSize();
+    CountDownLatch countDownLatch = new CountDownLatch(maximumPoolSize);
+    for (int i = 0; i < maximumPoolSize; i++) {
       execute(new CountDownRunnable(countDownLatch));
     }
     countDownLatch.await();
     if (encounteredErrors.size() > 0) {
+      String errorString = createErrorString(encounteredErrors);
+      encounteredErrors.clear();
       throw new BigQueryConnectException("Some write threads encountered unrecoverable errors: "
-                                         + createErrorString(encounteredErrors)
-                                         + "; See logs for more detail");
+                                         + errorString + "; See logs for more detail");
     }
   }
 

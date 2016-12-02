@@ -24,15 +24,8 @@ import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 
 import static org.mockito.Matchers.anyObject;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
-import com.google.api.client.googleapis.json.GoogleJsonResponseException;
-import com.google.api.client.http.HttpHeaders;
-import com.google.api.client.http.HttpResponseException;
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.BigQueryError;
 import com.google.cloud.bigquery.BigQueryException;
@@ -46,7 +39,6 @@ import com.wepay.kafka.connect.bigquery.config.BigQuerySinkTaskConfig;
 import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
 import com.wepay.kafka.connect.bigquery.exception.SinkConfigConnectException;
 
-import com.wepay.kafka.connect.bigquery.write.batch.SingleBatchWriter;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -75,7 +67,6 @@ public class BigQuerySinkTaskTest {
     final String topic = "test-topic";
 
     Map<String, String> properties = propertiesFactory.getProperties();
-    properties.put(BigQuerySinkTaskConfig.BUFFER_SIZE_CONFIG, "-1");
     properties.put(BigQuerySinkConfig.TOPICS_CONFIG, topic);
     properties.put(BigQuerySinkConfig.DATASETS_CONFIG, ".*=scratch");
 
@@ -85,7 +76,8 @@ public class BigQuerySinkTaskTest {
     testTask.start(properties);
 
     testTask.put(Collections.singletonList(spoofSinkRecord(topic)));
-    verify(bigQuery, never()).insertAll(any(InsertAllRequest.class));
+    testTask.flush(Collections.emptyMap());
+    verify(bigQuery, times(1)).insertAll(any(InsertAllRequest.class));
   }
 
   @Test
@@ -99,6 +91,7 @@ public class BigQuerySinkTaskTest {
     testTask.put(Collections.emptyList());
   }
 
+  // needed because debezium sends null messages when deleting messages in kafka
   @Test
   public void testEmptyRecordPut() {
     final String topic = "test_topic";
@@ -127,9 +120,6 @@ public class BigQuerySinkTaskTest {
     final String topic = "test_topic";
 
     Map<String, String> properties = propertiesFactory.getProperties();
-    properties.put(BigQuerySinkTaskConfig.BUFFER_SIZE_CONFIG, "-1");
-    properties.put(BigQuerySinkTaskConfig.BATCH_WRITER_CONFIG,
-                   SingleBatchWriter.class.getCanonicalName());
     properties.put(BigQuerySinkConfig.TOPICS_CONFIG, topic);
     properties.put(BigQuerySinkConfig.DATASETS_CONFIG, String.format(".*=%s", dataset));
 
@@ -164,7 +154,7 @@ public class BigQuerySinkTaskTest {
     testTask.initialize(sinkTaskContext);
     testTask.start(properties);
 
-    testTask.flush(null);
+    testTask.flush(Collections.emptyMap());
   }
 
   @Test
@@ -270,9 +260,6 @@ public class BigQuerySinkTaskTest {
     final String topic = "test_topic";
 
     Map<String, String> properties = propertiesFactory.getProperties();
-    properties.put(BigQuerySinkTaskConfig.BUFFER_SIZE_CONFIG, "-1");
-    properties.put(BigQuerySinkTaskConfig.BATCH_WRITER_CONFIG,
-                   SingleBatchWriter.class.getCanonicalName());
     properties.put(BigQuerySinkConfig.TOPICS_CONFIG, topic);
     properties.put(BigQuerySinkConfig.DATASETS_CONFIG, String.format(".*=%s", dataset));
 
