@@ -29,8 +29,6 @@ import com.wepay.kafka.connect.bigquery.convert.SchemaConverter;
 import com.wepay.kafka.connect.bigquery.convert.kafkadata.KafkaDataBQRecordConverter;
 import com.wepay.kafka.connect.bigquery.convert.kafkadata.KafkaDataBQSchemaConverter;
 
-import com.wepay.kafka.connect.bigquery.write.batch.BatchWriter;
-import com.wepay.kafka.connect.bigquery.write.batch.DynamicBatchWriter;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
