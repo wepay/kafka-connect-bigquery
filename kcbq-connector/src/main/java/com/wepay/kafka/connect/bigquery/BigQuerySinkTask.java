@@ -19,7 +19,6 @@ package com.wepay.kafka.connect.bigquery;
 
 
 import com.google.cloud.bigquery.BigQuery;
-import com.google.cloud.bigquery.InsertAllRequest;
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 import com.google.cloud.bigquery.TableId;
 
@@ -30,15 +29,12 @@ import com.wepay.kafka.connect.bigquery.config.BigQuerySinkTaskConfig;
 import com.wepay.kafka.connect.bigquery.convert.RecordConverter;
 import com.wepay.kafka.connect.bigquery.convert.SchemaConverter;
 
-import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
 import com.wepay.kafka.connect.bigquery.exception.SinkConfigConnectException;
 
 import com.wepay.kafka.connect.bigquery.utils.MetricsConstants;
 import com.wepay.kafka.connect.bigquery.utils.PartitionedTableId;
 import com.wepay.kafka.connect.bigquery.utils.TopicToTableResolver;
 import com.wepay.kafka.connect.bigquery.utils.Version;
-
-import com.wepay.kafka.connect.bigquery.write.batch.BatchWriter;
 
 import com.wepay.kafka.connect.bigquery.write.batch.KCBQThreadPoolExecutor;
 import com.wepay.kafka.connect.bigquery.write.batch.TableWriter;
@@ -64,20 +60,11 @@ import org.apache.kafka.connect.sink.SinkTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.stream.Collectors;
 
 /**
  * A {@link SinkTask} used to translate Kafka Connect {@link SinkRecord SinkRecords} into BigQuery
@@ -110,8 +97,8 @@ public class BigQuerySinkTask extends SinkTask {
   public void flush(Map<TopicPartition, OffsetAndMetadata> offsets) {
     try {
       executor.awaitCurrentTasks();
-    } catch (InterruptedException e) {
-      throw new ConnectException("Interrupted while waiting for write tasks to complete.");
+    } catch (InterruptedException err) {
+      throw new ConnectException("Interrupted while waiting for write tasks to complete.", err);
     }
     updateOffsets(offsets);
   }
@@ -154,7 +141,7 @@ public class BigQuerySinkTask extends SinkTask {
         PartitionedTableId table = getRecordTable(record);
         if (!tableWriterBuilders.containsKey(table)) {
           TableWriter.Builder tableWriterBuilder =
-            new TableWriter.Builder(bigQueryWriter, table, record.topic());
+              new TableWriter.Builder(bigQueryWriter, table, record.topic());
           tableWriterBuilders.put(table, tableWriterBuilder);
         }
         tableWriterBuilders.get(table).addRow(getRecordRow(record));

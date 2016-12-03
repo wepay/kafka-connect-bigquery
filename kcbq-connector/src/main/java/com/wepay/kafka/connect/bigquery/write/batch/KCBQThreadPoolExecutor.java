@@ -42,35 +42,42 @@ import java.util.stream.Collectors;
 /**
  * ThreadPoolExecutor for writing Rows to BigQuery.
  *
- * Keeps track of the number of threads actively writing for each topic.
+ * <p>Keeps track of the number of threads actively writing for each topic.
  * Keeps track of the number of failed threads in each batch of requests.
  */
 public class KCBQThreadPoolExecutor extends ThreadPoolExecutor {
 
   private static final Logger logger = LoggerFactory.getLogger(KCBQThreadPoolExecutor.class);
 
-  private ConcurrentHashMap<String, AtomicInteger> activeThreadTopicCount = new ConcurrentHashMap<>();
+  private ConcurrentHashMap<String, AtomicInteger> activeThreadTopicCount =
+      new ConcurrentHashMap<>();
   private ConcurrentSet<Throwable> encounteredErrors = new ConcurrentSet<>();
   private TopicPartitionManager topicPartitionManager;
   private int topicThreadLimit;
 
+  /**
+   * @param config the {@link BigQuerySinkTaskConfig}
+   * @param context the {@link SinkTaskContext}
+   * @param workQueue the queue for storing tasks.
+   */
   public KCBQThreadPoolExecutor(BigQuerySinkTaskConfig config,
                                 SinkTaskContext context,
                                 BlockingQueue<Runnable> workQueue) {
     super(config.getInt(BigQuerySinkTaskConfig.THREAD_POOL_SIZE_CONFIG),
           config.getInt(BigQuerySinkTaskConfig.THREAD_POOL_SIZE_CONFIG),
-          1, TimeUnit.SECONDS, // this line is irrelevant because the core and max thread counts are the same.
+          // the following line is irrelevant because the core and max thread counts are the same.
+          1, TimeUnit.SECONDS,
           workQueue);
     topicPartitionManager = new TopicPartitionManager(context);
     topicThreadLimit = config.getInt(BigQuerySinkTaskConfig.TOPIC_MAX_THREADS_CONFIG);
   }
 
   @Override
-  protected void beforeExecute(Thread t, Runnable r) {
-    super.beforeExecute(t, r);
+  protected void beforeExecute(Thread thread, Runnable runnable) {
+    super.beforeExecute(thread, runnable);
 
-    if (r instanceof TableWriter) {
-      TableWriter tableWriter = (TableWriter) r;
+    if (runnable instanceof TableWriter) {
+      TableWriter tableWriter = (TableWriter) runnable;
       String topic = tableWriter.getTopic();
       activeThreadTopicCount.putIfAbsent(topic, new AtomicInteger(0));
 
@@ -82,11 +89,11 @@ public class KCBQThreadPoolExecutor extends ThreadPoolExecutor {
   }
 
   @Override
-  protected void afterExecute(Runnable r, Throwable t) {
-    super.afterExecute(r, t);
+  protected void afterExecute(Runnable runnable, Throwable throwable) {
+    super.afterExecute(runnable, throwable);
 
-    if (r instanceof TableWriter) {
-      TableWriter tableWriter = (TableWriter) r;
+    if (runnable instanceof TableWriter) {
+      TableWriter tableWriter = (TableWriter) runnable;
       String topic = tableWriter.getTopic();
 
       int topicThreadCount = activeThreadTopicCount.get(topic).decrementAndGet();
@@ -95,9 +102,11 @@ public class KCBQThreadPoolExecutor extends ThreadPoolExecutor {
       }
     }
 
-    if (t != null) {
-      logger.error("Task failed with {} error: {}", t.getClass().getName(), t.getMessage());
-      encounteredErrors.add(t);
+    if (throwable != null) {
+      logger.error("Task failed with {} error: {}",
+                   throwable.getClass().getName(),
+                   throwable.getMessage());
+      encounteredErrors.add(throwable);
     }
   }
 
@@ -105,6 +114,7 @@ public class KCBQThreadPoolExecutor extends ThreadPoolExecutor {
    * Wait for all the currently queued tasks to complete, and then return.
    *
    * @throws BigQueryConnectException if any of the tasks failed.
+   * @throws InterruptedException if interrupted while waiting.
    */
   public void awaitCurrentTasks() throws InterruptedException, BigQueryConnectException {
     int maximumPoolSize = getMaximumPoolSize();
@@ -160,30 +170,30 @@ public class KCBQThreadPoolExecutor extends ThreadPoolExecutor {
       }
 
       logger.info("Paused all partitions for topic {} with thread count {} after {}ms: [{}]",
-        topic,
-        threadCount,
-        now - oldestChangeMs,
-        topicPartitionsString(topicPartitions));
+                  topic,
+                  threadCount,
+                  now - oldestChangeMs,
+                  topicPartitionsString(topicPartitions));
     }
 
     public synchronized void resume(String topic) {
       Long now = System.currentTimeMillis();
       Collection<TopicPartition> topicPartitions = getPartitionsForTopic(topic);
-      for(TopicPartition topicPartition : topicPartitions) {
+      for (TopicPartition topicPartition : topicPartitions) {
         if (topicStates.containsKey(topicPartition)) {
           if (topicStates.get(topicPartition) == State.PAUSED) {
             // todo different logging info?
             logger.info("Restarting topicPartition {} from pause after {}ms",
-              topicPartition,
-              now - topicChangeMs.get(topicPartition));
+                        topicPartition,
+                        now - topicChangeMs.get(topicPartition));
             topicChangeMs.put(topicPartition, now);
           } else {
             logger.debug("'Restarting' already running partition {}",
-              topicPartition);
+                         topicPartition);
           }
         } else {
           logger.info("Restarting new topicPartition {}",
-            topicPartition);
+                      topicPartition);
           topicChangeMs.put(topicPartition, now);
         }
         topicStates.put(topicPartition, State.RUNNING);
@@ -193,15 +203,15 @@ public class KCBQThreadPoolExecutor extends ThreadPoolExecutor {
 
     private Collection<TopicPartition> getPartitionsForTopic(String topic) {
       return context.assignment()
-        .stream()
-        .filter(topicPartition -> topicPartition.topic().equals(topic))
-        .collect(Collectors.toList());
+                    .stream()
+                    .filter(topicPartition -> topicPartition.topic().equals(topic))
+                    .collect(Collectors.toList());
     }
 
     private String topicPartitionsString(Collection<TopicPartition> topicPartitions) {
       List<String> topicPartitionStrings = topicPartitions.stream()
-        .map(TopicPartition::toString)
-        .collect(Collectors.toList());
+                                                          .map(TopicPartition::toString)
+                                                          .collect(Collectors.toList());
       return String.join(", ", topicPartitionStrings);
     }
   }

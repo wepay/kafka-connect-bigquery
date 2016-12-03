@@ -19,8 +19,10 @@ package com.wepay.kafka.connect.bigquery.write.batch;
 
 
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
+
 import com.wepay.kafka.connect.bigquery.utils.PartitionedTableId;
 import com.wepay.kafka.connect.bigquery.write.row.BigQueryWriter;
+
 import org.apache.kafka.connect.errors.ConnectException;
 
 import java.util.ArrayList;
@@ -35,6 +37,12 @@ public class TableWriter implements Runnable {
   private final List<RowToInsert> rows;
   private final String topic;
 
+  /**
+   * @param writer the {@link BigQueryWriter} to use.
+   * @param table the BigQuery table to write to.
+   * @param rows the rows to write.
+   * @param topic the kafka source topic of this data.
+   */
   public TableWriter(BigQueryWriter writer,
                      PartitionedTableId table,
                      List<RowToInsert> rows,
@@ -54,9 +62,6 @@ public class TableWriter implements Runnable {
     }
   }
 
-  /**
-   * @return the kafka topic these rows are from.
-   */
   public String getTopic() {
     return topic;
   }
@@ -68,7 +73,12 @@ public class TableWriter implements Runnable {
 
     private List<RowToInsert> rows;
 
-    public Builder(BigQueryWriter writer, PartitionedTableId table, String topic){
+    /**
+     * @param writer the BigQueryWriter to use
+     * @param table the BigQuery table to write to.
+     * @param topic the kafka source topic associated with the given table.
+     */
+    public Builder(BigQueryWriter writer, PartitionedTableId table, String topic) {
       this.writer = writer;
       this.table = table;
       this.topic = topic;
@@ -76,10 +86,18 @@ public class TableWriter implements Runnable {
       this.rows = new ArrayList<>();
     }
 
+    /**
+     * Add a row to the builder.
+     * @param rowToInsert the rows to add.
+     */
     public void addRow(RowToInsert rowToInsert) {
       rows.add(rowToInsert);
     }
 
+    /**
+     * Create a {@link TableWriter} from this builder.
+     * @return a TableWriter containing the given writer, table, topic, and all added rows.
+     */
     public TableWriter build() {
       return new TableWriter(writer, table, rows, topic);
     }
