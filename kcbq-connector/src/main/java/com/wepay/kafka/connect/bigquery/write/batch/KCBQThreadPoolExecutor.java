@@ -146,7 +146,7 @@ public class KCBQThreadPoolExecutor extends ThreadPoolExecutor {
 
   private static class TopicPartitionManager {
 
-    private SinkTaskContext context;
+    private final SinkTaskContext context;
     private Map<TopicPartition, State> topicStates;
     private Map<TopicPartition, Long> topicChangeMs;
 
@@ -156,7 +156,7 @@ public class KCBQThreadPoolExecutor extends ThreadPoolExecutor {
       topicChangeMs = new HashMap<>();
     }
 
-    public synchronized void pause(String topic, int threadCount) {
+    public void pause(String topic, int threadCount) {
       Long now = System.currentTimeMillis();
       Collection<TopicPartition> topicPartitions = getPartitionsForTopic(topic);
       long oldestChangeMs = now;
@@ -166,7 +166,10 @@ public class KCBQThreadPoolExecutor extends ThreadPoolExecutor {
         }
         topicStates.put(topicPartition, State.PAUSED);
         topicChangeMs.put(topicPartition, now);
-        context.pause(topicPartition);
+        synchronized (context) {
+          context.pause(topicPartition);
+        }
+
       }
 
       logger.info("Paused all partitions for topic {} with thread count {} after {}ms: [{}]",
@@ -176,7 +179,7 @@ public class KCBQThreadPoolExecutor extends ThreadPoolExecutor {
                   topicPartitionsString(topicPartitions));
     }
 
-    public synchronized void resume(String topic) {
+    public void resume(String topic) {
       Long now = System.currentTimeMillis();
       Collection<TopicPartition> topicPartitions = getPartitionsForTopic(topic);
       for (TopicPartition topicPartition : topicPartitions) {
@@ -197,15 +200,19 @@ public class KCBQThreadPoolExecutor extends ThreadPoolExecutor {
           topicChangeMs.put(topicPartition, now);
         }
         topicStates.put(topicPartition, State.RUNNING);
-        context.resume(topicPartition);
+        synchronized (context) {
+          context.resume(topicPartition);
+        }
       }
     }
 
     private Collection<TopicPartition> getPartitionsForTopic(String topic) {
-      return context.assignment()
-                    .stream()
-                    .filter(topicPartition -> topicPartition.topic().equals(topic))
-                    .collect(Collectors.toList());
+      synchronized (context) {
+        return context.assignment()
+          .stream()
+          .filter(topicPartition -> topicPartition.topic().equals(topic))
+          .collect(Collectors.toList());
+      }
     }
 
     private String topicPartitionsString(Collection<TopicPartition> topicPartitions) {
