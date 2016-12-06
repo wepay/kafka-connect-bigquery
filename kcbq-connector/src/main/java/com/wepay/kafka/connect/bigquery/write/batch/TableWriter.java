@@ -57,6 +57,7 @@ public class TableWriter implements Runnable {
   public void run() {
     try {
       writer.writeRows(table, rows, topic);
+      // todo do something if the request was too big.
     } catch (InterruptedException err) {
       throw new ConnectException("Thread interrupted while writing to BigQuery.", err);
     }

@@ -57,6 +57,7 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
 
+import org.apache.kafka.connect.sink.SinkTaskContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,6 +65,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
+import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
 
 /**
@@ -78,6 +80,8 @@ public class BigQuerySinkTask extends SinkTask {
   private BigQuerySinkTaskConfig config;
   private RecordConverter<Map<String, Object>> recordConverter;
   private Map<String, TableId> topicsToBaseTableIds;
+
+  private TopicPartitionManager topicPartitionManager;
 
   private KCBQThreadPoolExecutor executor;
 
@@ -101,6 +105,8 @@ public class BigQuerySinkTask extends SinkTask {
       throw new ConnectException("Interrupted while waiting for write tasks to complete.", err);
     }
     updateOffsets(offsets);
+
+    topicPartitionManager.resumeAll();
   }
 
   /**
@@ -134,6 +140,8 @@ public class BigQuerySinkTask extends SinkTask {
 
   @Override
   public void put(Collection<SinkRecord> records) {
+
+    // create tableWriters
     Map<PartitionedTableId, TableWriter.Builder> tableWriterBuilders = new HashMap<>();
 
     for (SinkRecord record : records) {
@@ -148,8 +156,21 @@ public class BigQuerySinkTask extends SinkTask {
       }
     }
 
+    // add tableWriters to the executor work queue
     for (TableWriter.Builder builder : tableWriterBuilders.values()) {
       executor.execute(builder.build());
+    }
+
+    // check if we should pause topics
+    long queueSoftLimit = config.getLong(BigQuerySinkTaskConfig.QUEUE_SIZE_CONFIG);
+    if (queueSoftLimit != -1) {
+      int currentQueueSize = executor.getQueue().size();
+      if (currentQueueSize > queueSoftLimit) {
+        topicPartitionManager.pauseAll();
+      } else if (currentQueueSize <= queueSoftLimit / 2) {
+        // resume only if there is a reasonable chance we won't immediately have to pause again.
+        topicPartitionManager.resumeAll();
+      }
     }
   }
 
@@ -223,7 +244,8 @@ public class BigQuerySinkTask extends SinkTask {
     bigQueryWriter = getBigQueryWriter();
     topicsToBaseTableIds = TopicToTableResolver.getTopicsToTables(config);
     recordConverter = getConverter();
-    executor = new KCBQThreadPoolExecutor(config, context, new LinkedBlockingQueue<>());
+    executor = new KCBQThreadPoolExecutor(config, new LinkedBlockingQueue<>());
+    topicPartitionManager = new TopicPartitionManager();
   }
 
   @Override
@@ -236,5 +258,38 @@ public class BigQuerySinkTask extends SinkTask {
     String version = Version.version();
     logger.trace("task.version() = {}", version);
     return version;
+  }
+
+  private class TopicPartitionManager {
+
+    private Long lastChangeMs;
+    private boolean isPaused;
+
+    public TopicPartitionManager() {
+      this.lastChangeMs = System.currentTimeMillis();
+      this.isPaused = false;
+    }
+
+    public void pauseAll() {
+      if (!isPaused) {
+        long now = System.currentTimeMillis();
+        logger.warn("Paused all partitions after {}ms", now - lastChangeMs);
+        isPaused = true;
+        lastChangeMs = now;
+      }
+      Set<TopicPartition> assignment = context.assignment();
+      context.pause(assignment.toArray(new TopicPartition[assignment.size()]));
+    }
+
+    public void resumeAll() {
+      if (isPaused) {
+        long now = System.currentTimeMillis();
+        logger.info("Resumed all partitions after {}ms", now - lastChangeMs);
+        isPaused = false;
+        lastChangeMs = now;
+      }
+      Set<TopicPartition> assignment = context.assignment();
+      context.resume(assignment.toArray(new TopicPartition[assignment.size()]));
+    }
   }
 }

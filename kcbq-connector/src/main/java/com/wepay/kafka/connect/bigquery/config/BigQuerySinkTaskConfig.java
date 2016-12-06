@@ -50,17 +50,17 @@ public class BigQuerySinkTaskConfig extends BigQuerySinkConfig {
       "The size of the BigQuery write thread pool. This establishes the maximum number of "
       + "concurrent writes to BigQuery.";
 
-  public static final String TOPIC_MAX_THREADS_CONFIG =               "tableMaxThreads";
-  private static final ConfigDef.Type TOPIC_MAX_THREADS_TYPE =        ConfigDef.Type.INT;
-  public static final Integer TOPIC_MAX_THREADS_DEFAULT =             7;
-  private static final ConfigDef.Validator TOPIC_MAX_THREADS_VALIDATOR =
-      ConfigDef.Range.atLeast(1); // also no more than THREAD_POOL_SIZE?
-  private static final ConfigDef.Importance TOPIC_MAX_THREADS_IMPORTANCE =
-      ConfigDef.Importance.MEDIUM;
-  private static final String TOPIC_MAX_THREADS_DOC =
-      "The maximum threads that can be writing rows for a single topic before that topic is "
-      + "temporarily paused. If there is only a single topic this should be the same as the "
-      + "thread pool size.";
+  public static final String QUEUE_SIZE_CONFIG =                    "queueSize";
+  private static final ConfigDef.Type QUEUE_SIZE_TYPE =             ConfigDef.Type.LONG;
+  // should this even have a default?
+  public static final Long QUEUE_SIZE_DEFAULT =                     -1L;
+  private static final ConfigDef.Validator QUEUE_SIZE_VALIDATOR =   ConfigDef.Range.atLeast(-1);
+  private static final ConfigDef.Importance QUEUE_SIZE_IMPORTANCE = ConfigDef.Importance.HIGH;
+  private static final String QUEUE_SIZE_DOC =
+      "The maximum size (or -1 for no maximum size) of the worker queue for bigQuery write "
+      + "requests before all topics are paused. This is a soft limit; the size of the queue can "
+      + "go over this before topics are paused. All topics will be resumed once a flush is "
+      + "requested or the size of the queue drops under half of the maximum size.";
 
   public static final String BIGQUERY_RETRY_CONFIG =                    "bigQueryRetry";
   private static final ConfigDef.Type BIGQUERY_RETRY_TYPE =             ConfigDef.Type.INT;
@@ -99,12 +99,12 @@ public class BigQuerySinkTaskConfig extends BigQuerySinkConfig {
             THREAD_POOL_SIZE_IMPORTANCE,
             THREAD_POOL_SIZE_DOC
         ).define(
-            TOPIC_MAX_THREADS_CONFIG,
-            TOPIC_MAX_THREADS_TYPE,
-            TOPIC_MAX_THREADS_DEFAULT,
-            TOPIC_MAX_THREADS_VALIDATOR,
-            TOPIC_MAX_THREADS_IMPORTANCE,
-            TOPIC_MAX_THREADS_DOC
+            QUEUE_SIZE_CONFIG,
+            QUEUE_SIZE_TYPE,
+            QUEUE_SIZE_DEFAULT,
+            QUEUE_SIZE_VALIDATOR,
+            QUEUE_SIZE_IMPORTANCE,
+            QUEUE_SIZE_DOC
         ).define(
             BIGQUERY_RETRY_CONFIG,
             BIGQUERY_RETRY_TYPE,
