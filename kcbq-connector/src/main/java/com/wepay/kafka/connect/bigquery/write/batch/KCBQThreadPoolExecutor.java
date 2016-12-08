@@ -77,6 +77,9 @@ public class KCBQThreadPoolExecutor extends ThreadPoolExecutor {
    * @throws InterruptedException if interrupted while waiting.
    */
   public void awaitCurrentTasks() throws InterruptedException, BigQueryConnectException {
+    // create CountDownRunnables equal to the number of threads in the pool and add them to the queue.
+    // Then wait for all CountDownRunnables to complete.
+    // This way we can be sure that all tasks added before this method was called are complete.
     int maximumPoolSize = getMaximumPoolSize();
     CountDownLatch countDownLatch = new CountDownLatch(maximumPoolSize);
     for (int i = 0; i < maximumPoolSize; i++) {
