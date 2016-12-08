@@ -33,7 +33,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
-
 /**
  * A simple BigQueryWriter implementation. Sends the request to BigQuery, and throws an exception if
  * any errors occur as a result.
