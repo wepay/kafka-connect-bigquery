@@ -18,20 +18,32 @@ package com.wepay.kafka.connect.bigquery.write.batch;
  */
 
 
+import com.google.cloud.bigquery.BigQueryException;
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 
+import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
 import com.wepay.kafka.connect.bigquery.utils.PartitionedTableId;
 import com.wepay.kafka.connect.bigquery.write.row.BigQueryWriter;
 
 import org.apache.kafka.connect.errors.ConnectException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 
 /**
  * Simple Table Writer that attempts to write all the rows it is given at once.
  */
 public class TableWriter implements Runnable {
+
+  private static final Logger logger = LoggerFactory.getLogger(TableWriter.class);
+
+  private static final int BAD_REQUEST_CODE = 400;
+  private static final String INVALID_REASON = "invalid";
+
   private final BigQueryWriter writer;
   private final PartitionedTableId table;
   private final List<RowToInsert> rows;
@@ -55,12 +67,66 @@ public class TableWriter implements Runnable {
 
   @Override
   public void run() {
+    int currentIndex = 0;
+    int currentBatchSize = rows.size();
+    int successCount = 0;
+    int failureCount = 0;
+
     try {
-      writer.writeRows(table, rows, topic);
-      // todo do something if the request was too big.
+      while (currentIndex < rows.size()) {
+        List<RowToInsert> currentBatch =
+          rows.subList(currentIndex, Math.min(currentIndex + currentBatchSize, rows.size()));
+        try {
+          writer.writeRows(table, currentBatch, topic);
+          currentIndex += currentBatchSize;
+          successCount++;
+        } catch (BigQueryException err) {
+          if (isBatchSizeError(err)) {
+            failureCount++;
+            currentBatchSize = getNewBatchSize(currentBatchSize);
+          }
+        }
+      }
     } catch (InterruptedException err) {
       throw new ConnectException("Thread interrupted while writing to BigQuery.", err);
     }
+
+    logger.info("Wrote {} rows over {} successful calls and {} failed calls.",
+                rows.size(), successCount, failureCount);
+
+  }
+
+  private static int getNewBatchSize(int currentBatchSize) {
+    if (currentBatchSize == 1) {
+      // todo correct exception type?
+      throw new ConnectException("Attempted to reduce batch size below 1.");
+    }
+    // round batch size up so we don't end up with a dangling 1 row at the end.
+    return (int) Math.ceil(currentBatchSize / 2.0);
+  }
+
+  /**
+   * @param exception the {@link BigQueryException} to check.
+   * @return true if this error is an error that can be fixed by retrying with a smaller batch
+   *         size, or false otherwise.
+   */
+  private static boolean isBatchSizeError(BigQueryException exception) {
+    if (exception.code() == BAD_REQUEST_CODE
+      && exception.error() == null
+      && exception.reason() == null) {
+      // 400 with no error or reason represents a request that is more than 10MB. This is not
+      // documented but is referenced slightly under "Error codes" here:
+      // https://cloud.google.com/bigquery/quota-policy
+      // (by decreasing the batch size we can eventually expect to end up with a request under
+      // 10MB)
+      return true;
+    } else if (exception.code() == BAD_REQUEST_CODE && INVALID_REASON.equals(exception.reason())) {
+      // this is the error that the documentation claims google will return if a request exceeds
+      // 10MB. if this actually ever happens...
+      // todo distinguish this from other invalids (like invalid table schema).
+      return true;
+    }
+    return false;
   }
 
   public String getTopic() {
