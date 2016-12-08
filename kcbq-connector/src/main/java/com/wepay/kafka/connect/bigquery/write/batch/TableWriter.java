@@ -21,7 +21,6 @@ package com.wepay.kafka.connect.bigquery.write.batch;
 import com.google.cloud.bigquery.BigQueryException;
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 
-import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
 import com.wepay.kafka.connect.bigquery.utils.PartitionedTableId;
 import com.wepay.kafka.connect.bigquery.write.row.BigQueryWriter;
 
@@ -30,8 +29,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -75,7 +72,7 @@ public class TableWriter implements Runnable {
     try {
       while (currentIndex < rows.size()) {
         List<RowToInsert> currentBatch =
-          rows.subList(currentIndex, Math.min(currentIndex + currentBatchSize, rows.size()));
+            rows.subList(currentIndex, Math.min(currentIndex + currentBatchSize, rows.size()));
         try {
           writer.writeRows(table, currentBatch, topic);
           currentIndex += currentBatchSize;
@@ -112,18 +109,21 @@ public class TableWriter implements Runnable {
    */
   private static boolean isBatchSizeError(BigQueryException exception) {
     if (exception.code() == BAD_REQUEST_CODE
-      && exception.error() == null
-      && exception.reason() == null) {
-      // 400 with no error or reason represents a request that is more than 10MB. This is not
-      // documented but is referenced slightly under "Error codes" here:
-      // https://cloud.google.com/bigquery/quota-policy
-      // (by decreasing the batch size we can eventually expect to end up with a request under
-      // 10MB)
+        && exception.error() == null
+        && exception.reason() == null) {
+      /*
+       * 400 with no error or reason represents a request that is more than 10MB. This is not
+       * documented but is referenced slightly under "Error codes" here:
+       * https://cloud.google.com/bigquery/quota-policy
+       * (by decreasing the batch size we can eventually expect to end up with a request under 10MB)
+       */
       return true;
     } else if (exception.code() == BAD_REQUEST_CODE && INVALID_REASON.equals(exception.reason())) {
-      // this is the error that the documentation claims google will return if a request exceeds
-      // 10MB. if this actually ever happens...
-      // todo distinguish this from other invalids (like invalid table schema).
+      /*
+       * this is the error that the documentation claims google will return if a request exceeds
+       * 10MB. if this actually ever happens...
+       * todo distinguish this from other invalids (like invalid table schema).
+       */
       return true;
     }
     return false;
