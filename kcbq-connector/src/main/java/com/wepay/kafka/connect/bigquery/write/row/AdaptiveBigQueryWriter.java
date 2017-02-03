@@ -40,6 +40,9 @@ import java.util.Map;
 public class AdaptiveBigQueryWriter extends BigQueryWriter {
   private static final Logger logger = LoggerFactory.getLogger(AdaptiveBigQueryWriter.class);
 
+  // The maximum number of retries we will attempt to write rows after updating a BQ table schema.
+  private static final int AFTER_UPDATE_RETY_LIMIT = 5;
+
   private final BigQuery bigQuery;
   private final SchemaManager schemaManager;
 
@@ -80,6 +83,7 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
     }
 
     // Schema update might be delayed, so multiple insertion attempts may be necessary
+    int attempt_count = 0;
     while (writeResponse.hasErrors()) {
       logger.trace("insertion failed");
       if (onlyContainsInvalidSchemaErrors(writeResponse.insertErrors())) {
@@ -87,6 +91,11 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
         writeResponse = bigQuery.insertAll(request);
       } else {
         throw new BigQueryConnectException(writeResponse.insertErrors());
+      }
+      attempt_count++;
+      if (attempt_count > AFTER_UPDATE_RETY_LIMIT) {
+        throw new BigQueryConnectException("Failed to write rows after BQ schema update within "
+                                           + AFTER_UPDATE_RETY_LIMIT + " attempts.");
       }
     }
     logger.debug("table insertion completed successfully");
@@ -102,9 +111,18 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
    * This is why we can't have nice things, Google.
    */
   private boolean onlyContainsInvalidSchemaErrors(Map<Long, List<BigQueryError>> errors) {
+    boolean hasInvalidSchemaErrors = false;
     for (List<BigQueryError> errorList : errors.values()) {
       for (BigQueryError error : errorList) {
-        if (!(error.reason().equals("invalid") && error.message().contains("no such field"))) {
+        if (error.reason().equals("invalid") && error.message().contains("no such field")) {
+          hasInvalidSchemaErrors = true;
+        } else if (hasInvalidSchemaErrors && error.reason().equals("stopped")) {
+          /* if some rows are in the old schema format, and others aren't, all the old schema formatted
+           * rows will show up as error: stopped. We still want to continue if this is the case, because
+           * these errors don't represent a new error.
+           */
+          continue;
+        } else {
           return false;
         }
       }
