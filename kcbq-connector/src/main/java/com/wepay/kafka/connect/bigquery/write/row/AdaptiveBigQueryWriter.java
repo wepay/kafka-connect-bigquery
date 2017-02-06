@@ -111,22 +111,22 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
    * This is why we can't have nice things, Google.
    */
   private boolean onlyContainsInvalidSchemaErrors(Map<Long, List<BigQueryError>> errors) {
-    boolean hasInvalidSchemaErrors = false;
+    boolean invalidSchemaError = false;
     for (List<BigQueryError> errorList : errors.values()) {
       for (BigQueryError error : errorList) {
         if (error.reason().equals("invalid") && error.message().contains("no such field")) {
-          hasInvalidSchemaErrors = true;
-        } else if (hasInvalidSchemaErrors && error.reason().equals("stopped")) {
-          /* if some rows are in the old schema format, and others aren't, all the old schema formatted
-           * rows will show up as error: stopped. We still want to continue if this is the case, because
-           * these errors don't represent a new error.
+          invalidSchemaError = true;
+        } else if (!error.reason().equals("stopped")){
+          /* if some rows are in the old schema format, and others aren't, the old schema
+           * formatted rows will show up as error: stopped. We still want to continue if this is
+           * the case, because these errors don't represent a unique error if there are also
+           * invalidSchemaErrors.
            */
-          continue;
-        } else {
           return false;
         }
       }
     }
-    return true;
+    // if we only saw "stopped" errors, we want to return false. (otherwise, return true)
+    return invalidSchemaError;
   }
 }
