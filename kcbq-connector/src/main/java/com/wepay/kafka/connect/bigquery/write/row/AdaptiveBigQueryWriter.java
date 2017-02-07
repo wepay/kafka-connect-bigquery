@@ -20,6 +20,7 @@ package com.wepay.kafka.connect.bigquery.write.row;
 
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.BigQueryError;
+import com.google.cloud.bigquery.BigQueryException;
 import com.google.cloud.bigquery.InsertAllRequest;
 import com.google.cloud.bigquery.InsertAllResponse;
 
@@ -79,11 +80,15 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
     // BigQuery schema updates taking up to two minutes to take effect
     if (writeResponse.hasErrors()
         && onlyContainsInvalidSchemaErrors(writeResponse.insertErrors())) {
-      schemaManager.updateSchema(tableId.getBaseTableId(), topic);
+      try {
+        schemaManager.updateSchema(tableId.getBaseTableId(), topic);
+      } catch (BigQueryException exception) {
+        throw new BigQueryConnectException("Failed to update table schema", exception);
+      }
     }
 
     // Schema update might be delayed, so multiple insertion attempts may be necessary
-    int attempt_count = 0;
+    int attemptCount = 0;
     while (writeResponse.hasErrors()) {
       logger.trace("insertion failed");
       if (onlyContainsInvalidSchemaErrors(writeResponse.insertErrors())) {
@@ -92,8 +97,8 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
       } else {
         throw new BigQueryConnectException(writeResponse.insertErrors());
       }
-      attempt_count++;
-      if (attempt_count > AFTER_UPDATE_RETY_LIMIT) {
+      attemptCount++;
+      if (attemptCount > AFTER_UPDATE_RETY_LIMIT) {
         throw new BigQueryConnectException("Failed to write rows after BQ schema update within "
                                            + AFTER_UPDATE_RETY_LIMIT + " attempts.");
       }
@@ -116,7 +121,7 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
       for (BigQueryError error : errorList) {
         if (error.reason().equals("invalid") && error.message().contains("no such field")) {
           invalidSchemaError = true;
-        } else if (!error.reason().equals("stopped")){
+        } else if (!error.reason().equals("stopped")) {
           /* if some rows are in the old schema format, and others aren't, the old schema
            * formatted rows will show up as error: stopped. We still want to continue if this is
            * the case, because these errors don't represent a unique error if there are also
