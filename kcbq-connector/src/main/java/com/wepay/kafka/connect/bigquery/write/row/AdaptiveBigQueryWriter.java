@@ -98,7 +98,7 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
         throw new BigQueryConnectException(writeResponse.insertErrors());
       }
       attemptCount++;
-      if (attemptCount > AFTER_UPDATE_RETY_LIMIT) {
+      if (attemptCount >= AFTER_UPDATE_RETY_LIMIT) {
         throw new BigQueryConnectException("Failed to write rows after BQ schema update within "
                                            + AFTER_UPDATE_RETY_LIMIT + " attempts.");
       }
