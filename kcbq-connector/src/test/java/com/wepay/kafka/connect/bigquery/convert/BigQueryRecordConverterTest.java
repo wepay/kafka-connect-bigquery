@@ -336,6 +336,53 @@ public class BigQueryRecordConverterTest {
   }
 
   @Test
+  public void testStructArray() {
+    final String innerFieldStringName = "InnerString";
+    final String innerFieldIntegerName = "InnerInt";
+    final String innerStringValue = "42";
+    final Integer innerIntegerValue = 42;
+    Map<String, Object> bigQueryExpectedInnerRecord = new HashMap<>();
+    bigQueryExpectedInnerRecord.put(innerFieldStringName, innerStringValue);
+    bigQueryExpectedInnerRecord.put(innerFieldIntegerName, innerIntegerValue);
+
+    Schema kafkaConnectInnerSchema = SchemaBuilder
+        .struct()
+        .field(innerFieldStringName, Schema.STRING_SCHEMA)
+        .field(innerFieldIntegerName, Schema.INT32_SCHEMA)
+        .build();
+
+    Struct kafkaConnectInnerStruct = new Struct(kafkaConnectInnerSchema);
+    kafkaConnectInnerStruct.put(innerFieldStringName, innerStringValue);
+    kafkaConnectInnerStruct.put(innerFieldIntegerName, innerIntegerValue);
+
+    SinkRecord kafkaConnectInnerSinkRecord =
+        spoofSinkRecord(kafkaConnectInnerSchema, kafkaConnectInnerStruct);
+    Map<String, Object> bigQueryTestInnerRecord =
+        new BigQueryRecordConverter().convertRecord(kafkaConnectInnerSinkRecord);
+    assertEquals(bigQueryExpectedInnerRecord, bigQueryTestInnerRecord);
+
+    final String middleFieldArrayName = "MiddleArray";
+    final List<Map<String, Object>> fieldValue =
+        Arrays.asList(bigQueryTestInnerRecord);
+
+    Map<String, Object> bigQueryExpectedRecord = new HashMap<>();
+    bigQueryExpectedRecord.put(middleFieldArrayName, fieldValue);
+
+    Schema kafkaConnectSchema = SchemaBuilder
+        .struct()
+        .field(middleFieldArrayName, SchemaBuilder.array(kafkaConnectInnerSchema).build())
+        .build();
+
+    Struct kafkaConnectStruct = new Struct(kafkaConnectSchema);
+    kafkaConnectStruct.put(middleFieldArrayName, Arrays.asList(kafkaConnectInnerStruct));
+    SinkRecord kafkaConnectRecord = spoofSinkRecord(kafkaConnectSchema, kafkaConnectStruct);
+
+    Map<String, Object> bigQueryTestRecord =
+        new BigQueryRecordConverter().convertRecord(kafkaConnectRecord);
+    assertEquals(bigQueryExpectedRecord, bigQueryTestRecord);
+  }
+
+  @Test
   public void testStringArray() {
     final String fieldName = "StringArray";
     final List<String> fieldValue =
