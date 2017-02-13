@@ -208,7 +208,7 @@ public class BigQueryRecordConverterTest {
     final String innerFieldStructName = "InnerStruct";
     final String innerFieldStringName = "InnerString";
     final String innerFieldIntegerName = "InnerInt";
-    final String innerStringValue = "42";
+    final String innerStringValue = "forty two";
     final Integer innerIntegerValue = 42;
     final List<Float> middleArrayValue = Arrays.asList(42.0f, 42.4f, 42.42f, 42.424f, 42.4242f);
 

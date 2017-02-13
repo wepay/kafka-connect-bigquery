@@ -88,16 +88,16 @@ public class BigQueryRecordConverter implements RecordConverter<Map<String, Obje
     }
     Schema.Type kafkaConnectSchemaType = kafkaConnectSchema.type();
     switch (kafkaConnectSchemaType) {
-      case STRUCT:
-        return convertStruct(kafkaConnectObject, kafkaConnectSchema);
+      case ARRAY:
+        return convertArray(kafkaConnectObject, kafkaConnectSchema);
       case MAP:
         return convertMap(kafkaConnectObject, kafkaConnectSchema);
+      case STRUCT:
+        return convertStruct(kafkaConnectObject, kafkaConnectSchema);
       case BYTES:
         ByteBuffer byteBuffer = (ByteBuffer) kafkaConnectObject;
         byte[] bytes = byteBuffer.array();
         return Base64.getEncoder().encodeToString(bytes);
-      case ARRAY:
-        return convertArray(kafkaConnectObject, kafkaConnectSchema);
       case BOOLEAN:
         return (Boolean) kafkaConnectObject;
       case FLOAT32:
