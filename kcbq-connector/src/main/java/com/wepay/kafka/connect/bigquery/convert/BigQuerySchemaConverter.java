@@ -20,6 +20,11 @@ package com.wepay.kafka.connect.bigquery.convert;
 
 import com.wepay.kafka.connect.bigquery.exception.ConversionConnectException;
 
+import io.debezium.time.MicroTime;
+import io.debezium.time.MicroTimestamp;
+import io.debezium.time.Time;
+import io.debezium.time.ZonedTimestamp;
+
 import org.apache.kafka.connect.data.Date;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
@@ -28,10 +33,8 @@ import org.apache.kafka.connect.data.Timestamp;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Class for converting from {@link Schema Kafka Connect Schemas} to
@@ -50,14 +53,39 @@ public class BigQuerySchemaConverter implements SchemaConverter<com.google.cloud
   public static final String MAP_VALUE_FIELD_NAME = "value";
 
   // May end up containing more logical types, such as Date and Time
-  private static final Set<String> LOGICAL_SCHEMA_NAMES;
+  //private static final Set<String> LOGICAL_SCHEMA_NAMES;
   private static final Map<Schema.Type, com.google.cloud.bigquery.Field.Type> PRIMITIVE_TYPE_MAP;
 
+  // todo names??
+  private static final Map<String, Schema.Type> LOGICAL_ENCODING_TYPES;
+  private static final Map<String, com.google.cloud.bigquery.Field.Type> LOGICAL_TO_BQ_TYPE;
+
   static {
-    LOGICAL_SCHEMA_NAMES = new HashSet<>();
-    LOGICAL_SCHEMA_NAMES.add(Timestamp.LOGICAL_NAME);
-    LOGICAL_SCHEMA_NAMES.add(Date.LOGICAL_NAME);
-    LOGICAL_SCHEMA_NAMES.add(Decimal.LOGICAL_NAME);
+    LOGICAL_ENCODING_TYPES = new HashMap<>();
+
+    LOGICAL_ENCODING_TYPES.put(Timestamp.LOGICAL_NAME, Schema.Type.INT64);
+    LOGICAL_ENCODING_TYPES.put(Date.LOGICAL_NAME, Schema.Type.INT32);
+    LOGICAL_ENCODING_TYPES.put(Decimal.LOGICAL_NAME, Schema.Type.BYTES);
+
+    LOGICAL_ENCODING_TYPES.put(io.debezium.time.Date.SCHEMA_NAME, Schema.Type.INT32);
+    LOGICAL_ENCODING_TYPES.put(MicroTime.SCHEMA_NAME, Schema.Type.INT64);
+    LOGICAL_ENCODING_TYPES.put(MicroTimestamp.SCHEMA_NAME, Schema.Type.INT64);
+    LOGICAL_ENCODING_TYPES.put(Time.SCHEMA_NAME, Schema.Type.INT32);
+    LOGICAL_ENCODING_TYPES.put(io.debezium.time.Timestamp.SCHEMA_NAME, Schema.Type.INT64);
+    LOGICAL_ENCODING_TYPES.put(ZonedTimestamp.SCHEMA_NAME, Schema.Type.STRING);
+
+    LOGICAL_TO_BQ_TYPE = new HashMap<>();
+
+    LOGICAL_TO_BQ_TYPE.put(Timestamp.LOGICAL_NAME, DateTime);
+    LOGICAL_TO_BQ_TYPE.put(Date.LOGICAL_NAME, Schema.Type.INT32);
+    LOGICAL_TO_BQ_TYPE.put(Decimal.LOGICAL_NAME, Schema.Type.BYTES);
+
+    LOGICAL_TO_BQ_TYPE.put(io.debezium.time.Date.SCHEMA_NAME, Schema.Type.INT32);
+    LOGICAL_TO_BQ_TYPE.put(MicroTime.SCHEMA_NAME, Schema.Type.INT64);
+    LOGICAL_TO_BQ_TYPE.put(MicroTimestamp.SCHEMA_NAME, Schema.Type.INT64);
+    LOGICAL_TO_BQ_TYPE.put(Time.SCHEMA_NAME, Schema.Type.INT32);
+    LOGICAL_TO_BQ_TYPE.put(io.debezium.time.Timestamp.SCHEMA_NAME, Schema.Type.INT64);
+    LOGICAL_TO_BQ_TYPE.put(ZonedTimestamp.SCHEMA_NAME, Schema.Type.STRING);
 
     PRIMITIVE_TYPE_MAP = new HashMap<>();
     PRIMITIVE_TYPE_MAP.put(
@@ -224,6 +252,17 @@ public class BigQuerySchemaConverter implements SchemaConverter<com.google.cloud
                                                                  String fieldName) {
     com.google.cloud.bigquery.Field.Type bigQueryType;
     switch (kafkaConnectSchema.name()) {
+      /**
+       * this mess needs to be generalized:
+       * You have
+       * 1. a name
+       * 2. the schema type it has to be
+       * 3. the BQ type.
+       *
+       * Lets have two maps:
+       * logicalName -> encodingType
+       * logicalName -> BQType
+       */
       case Timestamp.LOGICAL_NAME:
         if (kafkaConnectSchema.type() != Schema.Type.INT64) {
           throw new ConversionConnectException(
