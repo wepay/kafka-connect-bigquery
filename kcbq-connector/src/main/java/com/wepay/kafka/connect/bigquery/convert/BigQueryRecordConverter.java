@@ -178,6 +178,9 @@ public class BigQueryRecordConverter implements RecordConverter<Map<String, Obje
     switch (kafkaConnectSchema.name()) {
       case Timestamp.LOGICAL_NAME:
       case Date.LOGICAL_NAME:
+        // how do we actually end up with this as a Date in the first place?
+        // I suspect this is special because these are kafka logical types.  I don't think dbz logical types will
+        // work so nicely.
         java.util.Date kafkaConnectDate = (java.util.Date) kafkaConnectObject;
         // BigQuery timestamps are represented as floating points of seconds since the Unix epoch,
         // with up to six digits of precision after the decimal. The logical representation for the
