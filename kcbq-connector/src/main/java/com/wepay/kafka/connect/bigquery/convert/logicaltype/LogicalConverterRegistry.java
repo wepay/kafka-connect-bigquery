@@ -22,7 +22,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Created by moirat on 3/1/17.
+ * Registry for finding and accessing {@link LogicalTypeConverter}s.
  */
 public class LogicalConverterRegistry {
 
@@ -34,5 +34,9 @@ public class LogicalConverterRegistry {
 
   public static LogicalTypeConverter getConverter(String logicalTypeName) {
     return converterMap.get(logicalTypeName);
+  }
+
+  public static boolean isRegisteredLogicalType(String typeName) {
+    return converterMap.containsKey(typeName);
   }
 }

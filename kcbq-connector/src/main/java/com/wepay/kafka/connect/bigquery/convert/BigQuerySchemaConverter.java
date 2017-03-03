@@ -18,6 +18,8 @@ package com.wepay.kafka.connect.bigquery.convert;
  */
 
 
+import com.wepay.kafka.connect.bigquery.convert.logicaltype.LogicalConverterRegistry;
+import com.wepay.kafka.connect.bigquery.convert.logicaltype.LogicalTypeConverter;
 import com.wepay.kafka.connect.bigquery.exception.ConversionConnectException;
 
 import io.debezium.time.MicroTime;
@@ -52,51 +54,9 @@ public class BigQuerySchemaConverter implements SchemaConverter<com.google.cloud
    */
   public static final String MAP_VALUE_FIELD_NAME = "value";
 
-  // May end up containing more logical types, such as Date and Time
-  //private static final Set<String> LOGICAL_SCHEMA_NAMES;
   private static final Map<Schema.Type, com.google.cloud.bigquery.Field.Type> PRIMITIVE_TYPE_MAP;
 
-  // todo names??
-  private static final Map<String, Schema.Type> LOGICAL_ENCODING_TYPES;
-  private static final Map<String, com.google.cloud.bigquery.Field.Type> LOGICAL_TO_BQ_TYPE;
-
   static {
-    // todo fixme and remove uses and stuff
-    LOGICAL_ENCODING_TYPES = new HashMap<>();
-
-    LOGICAL_ENCODING_TYPES.put(Timestamp.LOGICAL_NAME, Schema.Type.INT64);
-    LOGICAL_ENCODING_TYPES.put(Date.LOGICAL_NAME, Schema.Type.INT32);
-    LOGICAL_ENCODING_TYPES.put(Decimal.LOGICAL_NAME, Schema.Type.BYTES);
-
-    LOGICAL_ENCODING_TYPES.put(io.debezium.time.Date.SCHEMA_NAME, Schema.Type.INT32);
-    LOGICAL_ENCODING_TYPES.put(MicroTime.SCHEMA_NAME, Schema.Type.INT64);
-    LOGICAL_ENCODING_TYPES.put(MicroTimestamp.SCHEMA_NAME, Schema.Type.INT64);
-    LOGICAL_ENCODING_TYPES.put(Time.SCHEMA_NAME, Schema.Type.INT32);
-    LOGICAL_ENCODING_TYPES.put(io.debezium.time.Timestamp.SCHEMA_NAME, Schema.Type.INT64);
-    LOGICAL_ENCODING_TYPES.put(ZonedTimestamp.SCHEMA_NAME, Schema.Type.STRING);
-
-    LOGICAL_TO_BQ_TYPE = new HashMap<>();
-
-    LOGICAL_TO_BQ_TYPE.put(Timestamp.LOGICAL_NAME,
-                           com.google.cloud.bigquery.Field.Type.timestamp());
-    LOGICAL_TO_BQ_TYPE.put(Date.LOGICAL_NAME,
-                           com.google.cloud.bigquery.Field.Type.timestamp());
-    LOGICAL_TO_BQ_TYPE.put(Decimal.LOGICAL_NAME,
-                           com.google.cloud.bigquery.Field.Type.floatingPoint());
-
-    LOGICAL_TO_BQ_TYPE.put(io.debezium.time.Date.SCHEMA_NAME,
-                           com.google.cloud.bigquery.Field.Type.date());
-    LOGICAL_TO_BQ_TYPE.put(MicroTime.SCHEMA_NAME,
-                           com.google.cloud.bigquery.Field.Type.time());
-    LOGICAL_TO_BQ_TYPE.put(MicroTimestamp.SCHEMA_NAME,
-                           com.google.cloud.bigquery.Field.Type.datetime());
-    LOGICAL_TO_BQ_TYPE.put(Time.SCHEMA_NAME,
-                           com.google.cloud.bigquery.Field.Type.time());
-    LOGICAL_TO_BQ_TYPE.put(io.debezium.time.Timestamp.SCHEMA_NAME,
-                           com.google.cloud.bigquery.Field.Type.datetime());
-    LOGICAL_TO_BQ_TYPE.put(ZonedTimestamp.SCHEMA_NAME,
-                           com.google.cloud.bigquery.Field.Type.timestamp());
-
     PRIMITIVE_TYPE_MAP = new HashMap<>();
     PRIMITIVE_TYPE_MAP.put(Schema.Type.BOOLEAN,
                            com.google.cloud.bigquery.Field.Type.bool());
@@ -134,7 +94,7 @@ public class BigQuerySchemaConverter implements SchemaConverter<com.google.cloud
           ConversionConnectException("Top-level Kafka Connect schema must be of type 'struct'");
     }
     com.google.cloud.bigquery.Schema.Builder bigQuerySchemaBuilder =
-        com.google.cloud.bigquery.Schema.builder();
+        com.google.cloud.bigquery.Schema.newBuilder();
     for (Field kafkaConnectField : kafkaConnectSchema.fields()) {
       com.google.cloud.bigquery.Field.Builder bigQuerySchemaFieldBuilder =
           convertField(kafkaConnectField.schema(), kafkaConnectField.name());
@@ -147,7 +107,7 @@ public class BigQuerySchemaConverter implements SchemaConverter<com.google.cloud
                                                                String fieldName) {
     com.google.cloud.bigquery.Field.Builder result;
     Schema.Type kafkaConnectSchemaType = kafkaConnectSchema.type();
-    if (LOGICAL_ENCODING_TYPES.containsKey(kafkaConnectSchema.name())) {
+    if (LogicalConverterRegistry.isRegisteredLogicalType(kafkaConnectSchema.name())) {
       result = convertLogical(kafkaConnectSchema, fieldName);
     } else if (PRIMITIVE_TYPE_MAP.containsKey(kafkaConnectSchemaType)) {
       result = convertPrimitive(kafkaConnectSchema, fieldName);
@@ -200,7 +160,7 @@ public class BigQuerySchemaConverter implements SchemaConverter<com.google.cloud
     }
     com.google.cloud.bigquery.Field.Type bigQueryRecordType =
         com.google.cloud.bigquery.Field.Type.record(bigQueryRecordFields);
-    return com.google.cloud.bigquery.Field.builder(fieldName, bigQueryRecordType);
+    return com.google.cloud.bigquery.Field.newBuilder(fieldName, bigQueryRecordType);
   }
 
   private com.google.cloud.bigquery.Field.Builder convertArray(Schema kafkaConnectSchema,
@@ -242,24 +202,8 @@ public class BigQuerySchemaConverter implements SchemaConverter<com.google.cloud
 
   private com.google.cloud.bigquery.Field.Builder convertLogical(Schema kafkaConnectSchema,
                                                                  String fieldName) {
-    String logicalType = kafkaConnectSchema.name();
-    Schema.Type actualEncodingType = kafkaConnectSchema.type();
-    Schema.Type expectedEncodingType = LOGICAL_ENCODING_TYPES.get(logicalType);
-    if (actualEncodingType != expectedEncodingType) {
-      throw new ConversionConnectException(
-        "Logical Type " + logicalType + " must be encoded as " + expectedEncodingType + "; "
-            + "instead, found " + kafkaConnectSchema.type()
-      );
-    }
-
-    com.google.cloud.bigquery.Field.Type bigQueryType = LOGICAL_TO_BQ_TYPE.get(logicalType);
-
-    if (bigQueryType == null) {
-      throw new ConversionConnectException(
-        "Logical Type " +  logicalType + " has no associated BigQueryType"
-      );
-    }
-
-    return com.google.cloud.bigquery.Field.newBuilder(fieldName, bigQueryType);
+    LogicalTypeConverter converter = LogicalConverterRegistry.getConverter(kafkaConnectSchema.name());
+    converter.checkEncodingType(kafkaConnectSchema.type());
+    return com.google.cloud.bigquery.Field.newBuilder(fieldName, converter.getBQSchemaType());
   }
 }
