@@ -91,11 +91,11 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
     int attemptCount = 0;
     while (writeResponse.hasErrors()) {
       logger.trace("insertion failed");
-      if (onlyContainsInvalidSchemaErrors(writeResponse.insertErrors())) {
+      if (onlyContainsInvalidSchemaErrors(writeResponse.getInsertErrors())) {
         logger.debug("re-attempting insertion");
         writeResponse = bigQuery.insertAll(request);
       } else {
-        throw new BigQueryConnectException(writeResponse.insertErrors());
+        throw new BigQueryConnectException(writeResponse.getInsertErrors());
       }
       attemptCount++;
       if (attemptCount >= AFTER_UPDATE_RETY_LIMIT) {
@@ -119,9 +119,9 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
     boolean invalidSchemaError = false;
     for (List<BigQueryError> errorList : errors.values()) {
       for (BigQueryError error : errorList) {
-        if (error.reason().equals("invalid") && error.message().contains("no such field")) {
+        if (error.getReason().equals("invalid") && error.getMessage().contains("no such field")) {
           invalidSchemaError = true;
-        } else if (!error.reason().equals("stopped")) {
+        } else if (!error.getReason().equals("stopped")) {
           /* if some rows are in the old schema format, and others aren't, the old schema
            * formatted rows will show up as error: stopped. We still want to continue if this is
            * the case, because these errors don't represent a unique error if there are also

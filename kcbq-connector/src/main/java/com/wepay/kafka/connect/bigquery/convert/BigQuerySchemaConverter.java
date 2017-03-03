@@ -61,7 +61,7 @@ public class BigQuerySchemaConverter implements SchemaConverter<com.google.cloud
   private static final Map<String, com.google.cloud.bigquery.Field.Type> LOGICAL_TO_BQ_TYPE;
 
   static {
-    // todo remove me and stuff
+    // todo fixme and remove uses and stuff
     LOGICAL_ENCODING_TYPES = new HashMap<>();
 
     LOGICAL_ENCODING_TYPES.put(Timestamp.LOGICAL_NAME, Schema.Type.INT64);
@@ -84,7 +84,6 @@ public class BigQuerySchemaConverter implements SchemaConverter<com.google.cloud
     LOGICAL_TO_BQ_TYPE.put(Decimal.LOGICAL_NAME,
                            com.google.cloud.bigquery.Field.Type.floatingPoint());
 
-    /*
     LOGICAL_TO_BQ_TYPE.put(io.debezium.time.Date.SCHEMA_NAME,
                            com.google.cloud.bigquery.Field.Type.date());
     LOGICAL_TO_BQ_TYPE.put(MicroTime.SCHEMA_NAME,
@@ -97,7 +96,6 @@ public class BigQuerySchemaConverter implements SchemaConverter<com.google.cloud
                            com.google.cloud.bigquery.Field.Type.datetime());
     LOGICAL_TO_BQ_TYPE.put(ZonedTimestamp.SCHEMA_NAME,
                            com.google.cloud.bigquery.Field.Type.timestamp());
-                           */
 
     PRIMITIVE_TYPE_MAP = new HashMap<>();
     PRIMITIVE_TYPE_MAP.put(Schema.Type.BOOLEAN,

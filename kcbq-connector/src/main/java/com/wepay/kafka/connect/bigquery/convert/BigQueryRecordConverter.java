@@ -174,7 +174,7 @@ public class BigQueryRecordConverter implements RecordConverter<Map<String, Obje
   }
 
   private Object convertLogical(Object kafkaConnectObject,
-                                Schema kafkaConnectSchema) {
+                                Schema kafkaConnectSchema) { // todo fixme!
     switch (kafkaConnectSchema.name()) {
       case Timestamp.LOGICAL_NAME:
       case Date.LOGICAL_NAME:
