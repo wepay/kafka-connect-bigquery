@@ -30,6 +30,8 @@ import io.debezium.time.ZonedTimestamp;
 import org.apache.kafka.connect.data.Schema;
 
 import java.text.SimpleDateFormat;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.TemporalAccessor;
 
 /**
@@ -120,7 +122,7 @@ public class DebeziumLogicalConverters {
     @Override
     public String convert(Object kafkaConnectObject) {
       java.util.Date date = new java.util.Date((Long) kafkaConnectObject);
-      return getBQDatetimeFormat().format(date);
+      return getBQTimeFormat().format(date);
     }
   }
 
@@ -148,7 +150,13 @@ public class DebeziumLogicalConverters {
     @Override
     public String convert(Object kafkaConnectObject) {
       TemporalAccessor parsedTime = ZonedTimestamp.FORMATTER.parse((String) kafkaConnectObject);
-      return getBqTimestampFormat().format(parsedTime);
+      DateTimeFormatter bqZonedTimestampFormat =
+          new DateTimeFormatterBuilder()
+              .append(DateTimeFormatter.ISO_LOCAL_DATE)
+              .appendLiteral(' ')
+              .append(DateTimeFormatter.ISO_TIME)
+              .toFormatter();
+      return bqZonedTimestampFormat.format(parsedTime);
     }
   }
 }

@@ -129,7 +129,6 @@ public class DebeziumLogicalConvertersTest {
     }
 
     String formattedTimestamp = converter.convert("2017-03-01T14:20:38.808-08:00");
-    // todo I think this is what will happen...; I think the timestamp ends up in UTC?
-    Assert.assertEquals("2017-03-01 06:20:38.808", formattedTimestamp);
+    Assert.assertEquals("2017-03-01 14:20:38.808-08:00", formattedTimestamp);
   }
 }
