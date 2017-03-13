@@ -177,7 +177,8 @@ public class BigQueryRecordConverter implements RecordConverter<Map<String, Obje
 
   private Object convertLogical(Object kafkaConnectObject,
                                 Schema kafkaConnectSchema) {
-    LogicalTypeConverter converter = LogicalConverterRegistry.getConverter(kafkaConnectSchema.name());
+    LogicalTypeConverter converter =
+        LogicalConverterRegistry.getConverter(kafkaConnectSchema.name());
     return converter.convert(kafkaConnectObject);
   }
 }

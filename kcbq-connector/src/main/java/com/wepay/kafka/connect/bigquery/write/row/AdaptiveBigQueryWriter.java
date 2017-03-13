@@ -79,7 +79,7 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
     // Should only perform one schema update attempt; may have to continue insert attempts due to
     // BigQuery schema updates taking up to two minutes to take effect
     if (writeResponse.hasErrors()
-        && onlyContainsInvalidSchemaErrors(writeResponse.insertErrors())) {
+        && onlyContainsInvalidSchemaErrors(writeResponse.getInsertErrors())) {
       try {
         schemaManager.updateSchema(tableId.getBaseTableId(), topic);
       } catch (BigQueryException exception) {

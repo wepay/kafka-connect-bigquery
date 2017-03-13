@@ -125,7 +125,8 @@ public class TableWriter implements Runnable {
        * (by decreasing the batch size we can eventually expect to end up with a request under 10MB)
        */
       return true;
-    } else if (exception.getCode() == BAD_REQUEST_CODE && INVALID_REASON.equals(exception.getReason())) {
+    } else if (exception.getCode() == BAD_REQUEST_CODE
+               && INVALID_REASON.equals(exception.getReason())) {
       /*
        * this is the error that the documentation claims google will return if a request exceeds
        * 10MB. if this actually ever happens...

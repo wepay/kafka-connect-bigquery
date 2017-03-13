@@ -19,7 +19,9 @@ package com.wepay.kafka.connect.bigquery.convert.logicaltype;
 
 
 import com.google.cloud.bigquery.Field;
+
 import com.wepay.kafka.connect.bigquery.exception.ConversionConnectException;
+
 import org.apache.kafka.connect.data.Schema;
 
 import java.text.SimpleDateFormat;
@@ -50,11 +52,9 @@ public abstract class LogicalTypeConverter {
   }
 
   /**
-   * Checks if the given schema encoding type is the same as the expected encoding type.
-   * Throws an {@link ConversionConnectException} if not.
-   *
    * @param encodingType the encoding type to check.
-   * @throws ConversionConnectException
+   * @throws ConversionConnectException if the given schema encoding type is not the same as the
+   *                                    expected encoding type.
    */
   public void checkEncodingType(Schema.Type encodingType) throws ConversionConnectException {
     if (encodingType != this.encodingType) {

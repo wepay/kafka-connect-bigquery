@@ -36,8 +36,8 @@ public class KafkaDataBQSchemaConverterTest {
 
 
     Field kafkaDataField = getKafkaDataField();
-    Field baseField = Field.builder("base",
-                                    Field.Type.string()).mode(Field.Mode.REQUIRED).build();
+    Field baseField = Field.newBuilder("base",
+                                    Field.Type.string()).setMode(Field.Mode.REQUIRED).build();
     com.google.cloud.bigquery.Schema bigQueryExpectedSchema =
         com.google.cloud.bigquery.Schema.of(baseField, kafkaDataField);
 

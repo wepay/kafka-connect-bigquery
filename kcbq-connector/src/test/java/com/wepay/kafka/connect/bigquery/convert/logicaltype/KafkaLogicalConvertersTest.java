@@ -18,17 +18,21 @@ package com.wepay.kafka.connect.bigquery.convert.logicaltype;
  */
 
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
 import com.google.cloud.bigquery.Field;
+
+import com.wepay.kafka.connect.bigquery.convert.logicaltype.KafkaLogicalConverters.DateConverter;
+import com.wepay.kafka.connect.bigquery.convert.logicaltype.KafkaLogicalConverters.DecimalConverter;
+import com.wepay.kafka.connect.bigquery.convert.logicaltype.KafkaLogicalConverters.TimestampConverter;
+
 import org.apache.kafka.connect.data.Schema;
-import org.junit.Assert;
+
 import org.junit.Test;
 
 import java.math.BigDecimal;
 import java.util.Date;
-
-import com.wepay.kafka.connect.bigquery.convert.logicaltype.KafkaLogicalConverters.TimestampConverter;
-import com.wepay.kafka.connect.bigquery.convert.logicaltype.KafkaLogicalConverters.DateConverter;
-import com.wepay.kafka.connect.bigquery.convert.logicaltype.KafkaLogicalConverters.DecimalConverter;
 
 public class KafkaLogicalConvertersTest {
 
@@ -36,57 +40,32 @@ public class KafkaLogicalConvertersTest {
   private static final Long TIMESTAMP = 1488406838808L;
 
   @Test
-  public void testTimestampConversion() {
-    TimestampConverter converter = new TimestampConverter();
-
-    Assert.assertEquals(Field.Type.timestamp(), converter.getBQSchemaType());
-
-    try {
-      converter.checkEncodingType(Schema.Type.INT64);
-    } catch (Exception ex) {
-      Assert.fail("Expected encoding type check to succeed.");
-    }
-
-    try {
-      converter.checkEncodingType(Schema.Type.INT32);
-      Assert.fail("Expected encoding type check to fail");
-    } catch (Exception ex) {
-      // continue
-    }
-
-    Date date = new Date(TIMESTAMP);
-    String formattedTimestamp = converter.convert(date);
-
-    Assert.assertEquals("2017-03-01 14:20:38.808", formattedTimestamp);
-  }
-
-  @Test
   public void testDateConversion() {
     DateConverter converter = new DateConverter();
 
-    Assert.assertEquals(Field.Type.date(), converter.getBQSchemaType());
+    assertEquals(Field.Type.date(), converter.getBQSchemaType());
 
     try {
       converter.checkEncodingType(Schema.Type.INT32);
     } catch (Exception ex) {
-      Assert.fail("Expected encoding type check to succeed.");
+      fail("Expected encoding type check to succeed.");
     }
 
     Date date = new Date(TIMESTAMP);
     String formattedDate = converter.convert(date);
-    Assert.assertEquals("2017-03-01", formattedDate);
+    assertEquals("2017-03-01", formattedDate);
   }
 
   @Test
   public void testDecimalConversion() {
     DecimalConverter converter = new DecimalConverter();
 
-    Assert.assertEquals(Field.Type.floatingPoint(), converter.getBQSchemaType());
+    assertEquals(Field.Type.floatingPoint(), converter.getBQSchemaType());
 
     try {
       converter.checkEncodingType(Schema.Type.BYTES);
     } catch (Exception ex) {
-      Assert.fail("Expected encoding type check to succeed.");
+      fail("Expected encoding type check to succeed.");
     }
 
     BigDecimal bigDecimal = new BigDecimal("3.14159");
@@ -94,7 +73,31 @@ public class KafkaLogicalConvertersTest {
     BigDecimal convertedDecimal = converter.convert(bigDecimal);
 
     // expecting no-op
-    Assert.assertEquals(bigDecimal, convertedDecimal);
+    assertEquals(bigDecimal, convertedDecimal);
   }
 
+  @Test
+  public void testTimestampConversion() {
+    TimestampConverter converter = new TimestampConverter();
+
+    assertEquals(Field.Type.timestamp(), converter.getBQSchemaType());
+
+    try {
+      converter.checkEncodingType(Schema.Type.INT64);
+    } catch (Exception ex) {
+      fail("Expected encoding type check to succeed.");
+    }
+
+    try {
+      converter.checkEncodingType(Schema.Type.INT32);
+      fail("Expected encoding type check to fail");
+    } catch (Exception ex) {
+      // continue
+    }
+
+    Date date = new Date(TIMESTAMP);
+    String formattedTimestamp = converter.convert(date);
+
+    assertEquals("2017-03-01 14:20:38.808", formattedTimestamp);
+  }
 }

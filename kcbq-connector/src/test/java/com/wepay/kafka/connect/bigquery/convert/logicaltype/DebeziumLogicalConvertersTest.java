@@ -18,10 +18,10 @@ package com.wepay.kafka.connect.bigquery.convert.logicaltype;
  */
 
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
 import com.google.cloud.bigquery.Field;
-import org.apache.kafka.connect.data.Schema;
-import org.junit.Assert;
-import org.junit.Test;
 
 import com.wepay.kafka.connect.bigquery.convert.logicaltype.DebeziumLogicalConverters.DateConverter;
 import com.wepay.kafka.connect.bigquery.convert.logicaltype.DebeziumLogicalConverters.MicroTimeConverter;
@@ -29,6 +29,10 @@ import com.wepay.kafka.connect.bigquery.convert.logicaltype.DebeziumLogicalConve
 import com.wepay.kafka.connect.bigquery.convert.logicaltype.DebeziumLogicalConverters.TimeConverter;
 import com.wepay.kafka.connect.bigquery.convert.logicaltype.DebeziumLogicalConverters.TimestampConverter;
 import com.wepay.kafka.connect.bigquery.convert.logicaltype.DebeziumLogicalConverters.ZonedTimestampConverter;
+
+import org.apache.kafka.connect.data.Schema;
+
+import org.junit.Test;
 
 public class DebeziumLogicalConvertersTest {
 
@@ -40,95 +44,95 @@ public class DebeziumLogicalConvertersTest {
   public void testDateConversion() {
     DateConverter converter = new DateConverter();
 
-    Assert.assertEquals(Field.Type.date(), converter.getBQSchemaType());
+    assertEquals(Field.Type.date(), converter.getBQSchemaType());
 
     try {
       converter.checkEncodingType(Schema.Type.INT32);
     } catch (Exception ex) {
-      Assert.fail("Expected encoding type check to succeed.");
+      fail("Expected encoding type check to succeed.");
     }
 
     String formattedDate = converter.convert(MILLI_TIMESTAMP);
-    Assert.assertEquals("2017-03-01", formattedDate);
+    assertEquals("2017-03-01", formattedDate);
   }
 
   @Test
   public void testMicroTimeConversion() {
     MicroTimeConverter converter = new MicroTimeConverter();
 
-    Assert.assertEquals(Field.Type.time(), converter.getBQSchemaType());
+    assertEquals(Field.Type.time(), converter.getBQSchemaType());
 
     try {
       converter.checkEncodingType(Schema.Type.INT64);
     } catch (Exception ex) {
-      Assert.fail("Expected encoding type check to succeed.");
+      fail("Expected encoding type check to succeed.");
     }
 
     String formattedMicroTime = converter.convert(MICRO_TIMESTAMP);
-    Assert.assertEquals("14:20:38.808123", formattedMicroTime);
+    assertEquals("14:20:38.808123", formattedMicroTime);
   }
 
   @Test
   public void testMicroTimestampConversion() {
     MicroTimestampConverter converter = new MicroTimestampConverter();
 
-    Assert.assertEquals(Field.Type.datetime(), converter.getBQSchemaType());
+    assertEquals(Field.Type.datetime(), converter.getBQSchemaType());
 
     try {
       converter.checkEncodingType(Schema.Type.INT64);
     } catch (Exception ex) {
-      Assert.fail("Expected encoding type check to succeed.");
+      fail("Expected encoding type check to succeed.");
     }
 
     String formattedMicroTimestamp = converter.convert(MICRO_TIMESTAMP);
-    Assert.assertEquals("2017-03-01T14:20:38.808123", formattedMicroTimestamp);
+    assertEquals("2017-03-01T14:20:38.808123", formattedMicroTimestamp);
   }
 
   @Test
   public void testTimeConversion() {
     TimeConverter converter = new TimeConverter();
 
-    Assert.assertEquals(Field.Type.time(), converter.getBQSchemaType());
+    assertEquals(Field.Type.time(), converter.getBQSchemaType());
 
     try {
       converter.checkEncodingType(Schema.Type.INT32);
     } catch (Exception ex) {
-      Assert.fail("Expected encoding type check to succeed.");
+      fail("Expected encoding type check to succeed.");
     }
 
     String formattedTime = converter.convert(MILLI_TIMESTAMP);
-    Assert.assertEquals("14:20:38.808", formattedTime);
+    assertEquals("14:20:38.808", formattedTime);
   }
 
   @Test
   public void testTimestampConversion() {
     TimestampConverter converter = new TimestampConverter();
 
-    Assert.assertEquals(Field.Type.timestamp(), converter.getBQSchemaType());
+    assertEquals(Field.Type.timestamp(), converter.getBQSchemaType());
 
     try {
       converter.checkEncodingType(Schema.Type.INT64);
     } catch (Exception ex) {
-      Assert.fail("Expected encoding type check to succeed.");
+      fail("Expected encoding type check to succeed.");
     }
 
     String formattedTimestamp = converter.convert(MILLI_TIMESTAMP);
-    Assert.assertEquals("2017-03-01 14:20:38.808", formattedTimestamp);
+    assertEquals("2017-03-01 14:20:38.808", formattedTimestamp);
   }
 
   @Test
   public void testZonedTimestampConversion() {
     ZonedTimestampConverter converter = new ZonedTimestampConverter();
 
-    Assert.assertEquals(Field.Type.timestamp(), converter.getBQSchemaType());
+    assertEquals(Field.Type.timestamp(), converter.getBQSchemaType());
 
     try {
       converter.checkEncodingType(Schema.Type.STRING);
     } catch (Exception ex) {
-      Assert.fail("Expected encoding type check to succeed.");
+      fail("Expected encoding type check to succeed.");
     }
 
     String formattedTimestamp = converter.convert("2017-03-01T14:20:38.808-08:00");
-    Assert.assertEquals("2017-03-01 14:20:38.808-08:00", formattedTimestamp);
+    assertEquals("2017-03-01 14:20:38.808-08:00", formattedTimestamp);
   }
 }

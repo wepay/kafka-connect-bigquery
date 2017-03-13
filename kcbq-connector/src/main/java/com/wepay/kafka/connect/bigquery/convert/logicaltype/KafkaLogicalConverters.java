@@ -33,26 +33,18 @@ import java.math.BigDecimal;
 public class KafkaLogicalConverters {
 
   static {
-    LogicalConverterRegistry.register(Timestamp.LOGICAL_NAME, new TimestampConverter());
     LogicalConverterRegistry.register(Date.LOGICAL_NAME, new DateConverter());
     LogicalConverterRegistry.register(Decimal.LOGICAL_NAME, new DecimalConverter());
-
+    LogicalConverterRegistry.register(Timestamp.LOGICAL_NAME, new TimestampConverter());
   }
 
-  public static class TimestampConverter extends LogicalTypeConverter {
-    public TimestampConverter() {
-      super(Timestamp.LOGICAL_NAME,
-            Schema.Type.INT64,
-            Field.Type.timestamp());
-    }
-
-    @Override
-    public String convert(Object kafkaConnectObject) {
-      return getBqTimestampFormat().format((java.util.Date) kafkaConnectObject);
-    }
-  }
-
+  /**
+   * Class for converting Kafka date logical types to Bigquery dates.
+   */
   public static class DateConverter extends LogicalTypeConverter {
+    /**
+     * Create a new DateConverter.
+     */
     public DateConverter() {
       super(Date.LOGICAL_NAME,
             Schema.Type.INT32,
@@ -65,7 +57,13 @@ public class KafkaLogicalConverters {
     }
   }
 
+  /**
+   * Class for converting Kafka decimal logical types to Bigquery floating points.
+   */
   public static class DecimalConverter extends LogicalTypeConverter {
+    /**
+     * Create a new DecimalConverter.
+     */
     public DecimalConverter() {
       super(Decimal.LOGICAL_NAME,
             Schema.Type.BYTES,
@@ -76,6 +74,25 @@ public class KafkaLogicalConverters {
     public BigDecimal convert(Object kafkaConnectObject) {
       // cast to get ClassCastException
       return (BigDecimal) kafkaConnectObject;
+    }
+  }
+
+  /**
+   * Class for converting Kafka timestamp logical types to BigQuery timestamps.
+   */
+  public static class TimestampConverter extends LogicalTypeConverter {
+    /**
+     * Create a new TimestampConverter.
+     */
+    public TimestampConverter() {
+      super(Timestamp.LOGICAL_NAME,
+        Schema.Type.INT64,
+        Field.Type.timestamp());
+    }
+
+    @Override
+    public String convert(Object kafkaConnectObject) {
+      return getBqTimestampFormat().format((java.util.Date) kafkaConnectObject);
     }
   }
 }

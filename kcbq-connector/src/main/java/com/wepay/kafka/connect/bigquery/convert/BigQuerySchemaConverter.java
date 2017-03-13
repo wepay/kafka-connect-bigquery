@@ -202,7 +202,8 @@ public class BigQuerySchemaConverter implements SchemaConverter<com.google.cloud
 
   private com.google.cloud.bigquery.Field.Builder convertLogical(Schema kafkaConnectSchema,
                                                                  String fieldName) {
-    LogicalTypeConverter converter = LogicalConverterRegistry.getConverter(kafkaConnectSchema.name());
+    LogicalTypeConverter converter =
+        LogicalConverterRegistry.getConverter(kafkaConnectSchema.name());
     converter.checkEncodingType(kafkaConnectSchema.type());
     return com.google.cloud.bigquery.Field.newBuilder(fieldName, converter.getBQSchemaType());
   }

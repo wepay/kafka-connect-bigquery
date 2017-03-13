@@ -20,6 +20,8 @@ package com.wepay.kafka.connect.bigquery.convert;
 
 import static org.junit.Assert.assertEquals;
 
+import com.wepay.kafka.connect.bigquery.convert.logicaltype.DebeziumLogicalConverters;
+import com.wepay.kafka.connect.bigquery.convert.logicaltype.KafkaLogicalConverters;
 import com.wepay.kafka.connect.bigquery.exception.ConversionConnectException;
 
 import org.apache.kafka.connect.data.Date;
@@ -35,6 +37,7 @@ import org.junit.Test;
 
 import java.nio.ByteBuffer;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -43,6 +46,13 @@ import java.util.List;
 import java.util.Map;
 
 public class BigQueryRecordConverterTest {
+
+  static {
+    // force Converter Registry initialization
+    new DebeziumLogicalConverters();
+    new KafkaLogicalConverters();
+  }
+
   @Test(expected = ConversionConnectException.class)
   public void testTopLevelRecord() {
     SinkRecord kafkaConnectRecord = spoofSinkRecord(Schema.BOOLEAN_SCHEMA, false);
@@ -437,7 +447,9 @@ public class BigQueryRecordConverterTest {
         Timestamp.SCHEMA,
         fieldTime
     );
-    final double fieldValueBigQuery = fieldValueKafkaConnect.getTime() / 1000.0;
+    java.util.Date date = new java.util.Date(fieldValueKafkaConnect.getTime());
+    final String fieldValueBigQuery =
+        new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(date);
 
     Map<String, Object> bigQueryExpectedRecord = new HashMap<>();
     bigQueryExpectedRecord.put(fieldName, fieldValueBigQuery);
@@ -464,7 +476,8 @@ public class BigQueryRecordConverterTest {
         Date.SCHEMA,
         fieldDate
     );
-    final double fieldValueBigQuery = fieldValueKafkaConnect.getTime() / 1000.0;
+    java.util.Date date = new java.util.Date(fieldValueKafkaConnect.getTime());
+    final String fieldValueBigQuery = new SimpleDateFormat("yyyy-MM-dd").format(date);
 
     Map<String, Object> bigQueryExpectedRecord = new HashMap<>();
     bigQueryExpectedRecord.put(fieldName, fieldValueBigQuery);

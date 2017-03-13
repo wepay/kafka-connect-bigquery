@@ -132,7 +132,8 @@ public class BigQueryConnectorIntegrationTest {
           case TIMESTAMP:
             return field.getTimestampValue();
           default:
-            throw new RuntimeException("Cannot convert primitive field type " + fieldSchema.getType());
+            throw new RuntimeException("Cannot convert primitive field type "
+                                       + fieldSchema.getType());
         }
       case REPEATED:
         List<Object> result = new ArrayList<>();
