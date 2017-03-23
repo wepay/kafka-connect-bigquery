@@ -18,6 +18,8 @@ package com.wepay.kafka.connect.bigquery.convert;
  */
 
 
+import com.wepay.kafka.connect.bigquery.convert.logicaltype.DebeziumLogicalConverters;
+import com.wepay.kafka.connect.bigquery.convert.logicaltype.KafkaLogicalConverters;
 import com.wepay.kafka.connect.bigquery.convert.logicaltype.LogicalConverterRegistry;
 import com.wepay.kafka.connect.bigquery.convert.logicaltype.LogicalTypeConverter;
 import com.wepay.kafka.connect.bigquery.exception.ConversionConnectException;
@@ -57,6 +59,10 @@ public class BigQuerySchemaConverter implements SchemaConverter<com.google.cloud
   private static final Map<Schema.Type, com.google.cloud.bigquery.Field.Type> PRIMITIVE_TYPE_MAP;
 
   static {
+    // force registration
+    new DebeziumLogicalConverters();
+    new KafkaLogicalConverters();
+
     PRIMITIVE_TYPE_MAP = new HashMap<>();
     PRIMITIVE_TYPE_MAP.put(Schema.Type.BOOLEAN,
                            com.google.cloud.bigquery.Field.Type.bool());

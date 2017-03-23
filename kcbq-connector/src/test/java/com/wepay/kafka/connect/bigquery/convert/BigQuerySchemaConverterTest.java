@@ -20,8 +20,6 @@ package com.wepay.kafka.connect.bigquery.convert;
 
 import static org.junit.Assert.assertEquals;
 
-import com.wepay.kafka.connect.bigquery.convert.logicaltype.DebeziumLogicalConverters;
-import com.wepay.kafka.connect.bigquery.convert.logicaltype.KafkaLogicalConverters;
 import com.wepay.kafka.connect.bigquery.exception.ConversionConnectException;
 
 import org.apache.kafka.connect.data.Date;
@@ -33,12 +31,6 @@ import org.apache.kafka.connect.data.Timestamp;
 import org.junit.Test;
 
 public class BigQuerySchemaConverterTest {
-
-  static {
-    // force Converter Registry initialization
-    new DebeziumLogicalConverters();
-    new KafkaLogicalConverters();
-  }
 
   @Test(expected = ConversionConnectException.class)
   public void testTopLevelSchema() {

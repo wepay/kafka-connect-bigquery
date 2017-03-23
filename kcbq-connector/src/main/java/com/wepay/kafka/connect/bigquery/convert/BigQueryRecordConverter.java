@@ -20,6 +20,8 @@ package com.wepay.kafka.connect.bigquery.convert;
 
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 
+import com.wepay.kafka.connect.bigquery.convert.logicaltype.DebeziumLogicalConverters;
+import com.wepay.kafka.connect.bigquery.convert.logicaltype.KafkaLogicalConverters;
 import com.wepay.kafka.connect.bigquery.convert.logicaltype.LogicalConverterRegistry;
 import com.wepay.kafka.connect.bigquery.convert.logicaltype.LogicalTypeConverter;
 import com.wepay.kafka.connect.bigquery.exception.ConversionConnectException;
@@ -51,6 +53,10 @@ public class BigQueryRecordConverter implements RecordConverter<Map<String, Obje
   private static final Set<String> LOGICAL_SCHEMA_NAMES;
 
   static {
+    // force registration
+    new DebeziumLogicalConverters();
+    new KafkaLogicalConverters();
+
     LOGICAL_SCHEMA_NAMES = new HashSet<>();
     LOGICAL_SCHEMA_NAMES.add(Timestamp.LOGICAL_NAME);
     LOGICAL_SCHEMA_NAMES.add(Date.LOGICAL_NAME);
