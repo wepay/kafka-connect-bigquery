@@ -20,13 +20,14 @@ package com.wepay.kafka.connect.bigquery.convert.logicaltype;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Registry for finding and accessing {@link LogicalTypeConverter}s.
  */
 public class LogicalConverterRegistry {
 
-  private static Map<String, LogicalTypeConverter> converterMap = new HashMap<>();
+  private static Map<String, LogicalTypeConverter> converterMap = new ConcurrentHashMap<>();
 
   public static void register(String logicalTypeName, LogicalTypeConverter converter) {
     converterMap.put(logicalTypeName, converter);
@@ -37,6 +38,6 @@ public class LogicalConverterRegistry {
   }
 
   public static boolean isRegisteredLogicalType(String typeName) {
-    return converterMap.containsKey(typeName);
+    return typeName != null && converterMap.containsKey(typeName);
   }
 }
