@@ -36,7 +36,8 @@ import org.junit.Test;
 
 public class DebeziumLogicalConvertersTest {
 
-  //corresponds to March 1 2017, 14:20:38.808(123)
+  //corresponds to March 1 2017, 22:20:38.808(123) UTC
+  //              (March 1 2017, 14:20:38.808(123)-8:00)
   private static final Long MILLI_TIMESTAMP = 1488406838808L;
   private static final Long MICRO_TIMESTAMP = 1488406838808123L;
 
@@ -69,14 +70,14 @@ public class DebeziumLogicalConvertersTest {
     }
 
     String formattedMicroTime = converter.convert(MICRO_TIMESTAMP);
-    assertEquals("14:20:38.808123", formattedMicroTime);
+    assertEquals("22:20:38.808123", formattedMicroTime);
   }
 
   @Test
   public void testMicroTimestampConversion() {
     MicroTimestampConverter converter = new MicroTimestampConverter();
 
-    assertEquals(Field.Type.datetime(), converter.getBQSchemaType());
+    assertEquals(Field.Type.timestamp(), converter.getBQSchemaType());
 
     try {
       converter.checkEncodingType(Schema.Type.INT64);
@@ -85,7 +86,7 @@ public class DebeziumLogicalConvertersTest {
     }
 
     String formattedMicroTimestamp = converter.convert(MICRO_TIMESTAMP);
-    assertEquals("2017-03-01T14:20:38.808123", formattedMicroTimestamp);
+    assertEquals("2017-03-01 22:20:38.808123", formattedMicroTimestamp);
   }
 
   @Test
@@ -101,7 +102,7 @@ public class DebeziumLogicalConvertersTest {
     }
 
     String formattedTime = converter.convert(MILLI_TIMESTAMP);
-    assertEquals("14:20:38.808", formattedTime);
+    assertEquals("22:20:38.808", formattedTime);
   }
 
   @Test
@@ -117,7 +118,7 @@ public class DebeziumLogicalConvertersTest {
     }
 
     String formattedTimestamp = converter.convert(MILLI_TIMESTAMP);
-    assertEquals("2017-03-01 14:20:38.808", formattedTimestamp);
+    assertEquals("2017-03-01 22:20:38.808", formattedTimestamp);
   }
 
   @Test

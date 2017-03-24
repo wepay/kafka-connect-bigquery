@@ -25,12 +25,16 @@ import com.wepay.kafka.connect.bigquery.exception.ConversionConnectException;
 import org.apache.kafka.connect.data.Schema;
 
 import java.text.SimpleDateFormat;
+import java.util.TimeZone;
 
 /**
  * Abstract class for logical type converters.
  * Contains logic for both schema and record conversions.
  */
 public abstract class LogicalTypeConverter {
+
+  // BigQuery uses UTC timezone by default
+  protected final static TimeZone utcTimeZone = TimeZone.getTimeZone("UTC");
 
   private String logicalName;
   private Schema.Type encodingType;
@@ -78,19 +82,27 @@ public abstract class LogicalTypeConverter {
   public abstract Object convert(Object kafkaConnectObject);
 
   protected static SimpleDateFormat getBqTimestampFormat() {
-    return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+    SimpleDateFormat bqTimestampFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+    bqTimestampFormat.setTimeZone(utcTimeZone);
+    return bqTimestampFormat;
   }
 
   protected static SimpleDateFormat getBQDatetimeFormat() {
-    return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
+    SimpleDateFormat bqDateTimeFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
+    bqDateTimeFormat.setTimeZone(utcTimeZone);
+    return bqDateTimeFormat;
   }
 
   protected static SimpleDateFormat getBQDateFormat() {
-    return new SimpleDateFormat("yyyy-MM-dd");
+    SimpleDateFormat bqDateFormat = new SimpleDateFormat("yyyy-MM-dd");
+    bqDateFormat.setTimeZone(utcTimeZone);
+    return bqDateFormat;
   }
 
   protected static SimpleDateFormat getBQTimeFormat() {
-    return new SimpleDateFormat("HH:mm:ss.SSS");
+    SimpleDateFormat bqTimeFormat = new SimpleDateFormat("HH:mm:ss.SSS");
+    bqTimeFormat.setTimeZone(utcTimeZone);
+    return bqTimeFormat;
   }
 
 }

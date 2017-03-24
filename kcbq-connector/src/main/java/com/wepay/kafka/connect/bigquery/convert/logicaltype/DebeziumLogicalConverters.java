@@ -92,6 +92,7 @@ public class DebeziumLogicalConverters {
       java.util.Date date = new java.util.Date(milliTimestamp);
 
       SimpleDateFormat bqTimeSecondsFormat = new SimpleDateFormat("HH:mm:ss");
+      bqTimeSecondsFormat.setTimeZone(LogicalTypeConverter.utcTimeZone);
       String formattedSecondsTimestamp = bqTimeSecondsFormat.format(date);
 
       Long microRemainder = microTimestamp % MICROS_IN_SEC;
@@ -110,7 +111,7 @@ public class DebeziumLogicalConverters {
     public MicroTimestampConverter() {
       super(MicroTimestamp.SCHEMA_NAME,
             Schema.Type.INT64,
-            Field.Type.datetime());
+            Field.Type.timestamp());
     }
 
     @Override
@@ -121,7 +122,8 @@ public class DebeziumLogicalConverters {
       Long milliTimestamp = microTimestamp / MICROS_IN_MILLI;
       java.util.Date date = new java.util.Date(milliTimestamp);
 
-      SimpleDateFormat bqDatetimeSecondsFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+      SimpleDateFormat bqDatetimeSecondsFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+      bqDatetimeSecondsFormat.setTimeZone(LogicalTypeConverter.utcTimeZone);
       String formattedSecondsTimestamp = bqDatetimeSecondsFormat.format(date);
 
       Long microRemainder = microTimestamp % MICROS_IN_SEC;

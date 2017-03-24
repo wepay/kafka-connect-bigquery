@@ -36,7 +36,7 @@ import java.util.Date;
 
 public class KafkaLogicalConvertersTest {
 
-  //corresponds to March 1 2017, 14:20:38.808
+  //corresponds to March 1 2017, 22:20:38.808
   private static final Long TIMESTAMP = 1488406838808L;
 
   @Test
@@ -98,6 +98,6 @@ public class KafkaLogicalConvertersTest {
     Date date = new Date(TIMESTAMP);
     String formattedTimestamp = converter.convert(date);
 
-    assertEquals("2017-03-01 14:20:38.808", formattedTimestamp);
+    assertEquals("2017-03-01 22:20:38.808", formattedTimestamp);
   }
 }

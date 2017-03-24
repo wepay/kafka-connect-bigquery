@@ -42,6 +42,7 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 
 public class BigQueryRecordConverterTest {
 
@@ -440,8 +441,10 @@ public class BigQueryRecordConverterTest {
         fieldTime
     );
     java.util.Date date = new java.util.Date(fieldValueKafkaConnect.getTime());
+    SimpleDateFormat timestampFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+    timestampFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
     final String fieldValueBigQuery =
-        new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(date);
+        timestampFormat.format(date);
 
     Map<String, Object> bigQueryExpectedRecord = new HashMap<>();
     bigQueryExpectedRecord.put(fieldName, fieldValueBigQuery);
@@ -469,7 +472,9 @@ public class BigQueryRecordConverterTest {
         fieldDate
     );
     java.util.Date date = new java.util.Date(fieldValueKafkaConnect.getTime());
-    final String fieldValueBigQuery = new SimpleDateFormat("yyyy-MM-dd").format(date);
+    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+    dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+    final String fieldValueBigQuery = dateFormat.format(date);
 
     Map<String, Object> bigQueryExpectedRecord = new HashMap<>();
     bigQueryExpectedRecord.put(fieldName, fieldValueBigQuery);
