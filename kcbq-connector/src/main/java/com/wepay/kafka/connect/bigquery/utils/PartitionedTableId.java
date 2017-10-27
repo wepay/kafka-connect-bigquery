@@ -198,6 +198,10 @@ public class PartitionedTableId {
       return this;
     }
 
+    public Builder setDayPartition(long utcTime) {
+      return setDayPartition(LocalDate.ofEpochDay(utcTime / 86400000L));
+    }
+
     public Builder setDayPartition(LocalDate localDate) {
       return setPartition(dateToDayPartition(localDate));
     }
