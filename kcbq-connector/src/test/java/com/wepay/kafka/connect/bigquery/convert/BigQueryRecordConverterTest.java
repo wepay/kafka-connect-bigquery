@@ -22,11 +22,9 @@ import static org.junit.Assert.assertEquals;
 
 import com.wepay.kafka.connect.bigquery.exception.ConversionConnectException;
 
-import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.data.Timestamp;
 
 import org.apache.kafka.connect.sink.SinkRecord;
 
@@ -34,7 +32,6 @@ import org.junit.Test;
 
 import java.nio.ByteBuffer;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -42,7 +39,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TimeZone;
 
 public class BigQueryRecordConverterTest {
 
@@ -433,67 +429,6 @@ public class BigQueryRecordConverterTest {
   }
 
   @Test
-  public void testTimestamp() {
-    final String fieldName = "Timestamp";
-    final long fieldTime = System.currentTimeMillis();
-    final Date fieldValueKafkaConnect = Timestamp.toLogical(
-        Timestamp.SCHEMA,
-        fieldTime
-    );
-    Date date = new Date(fieldValueKafkaConnect.getTime());
-    SimpleDateFormat timestampFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
-    timestampFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
-    final String fieldValueBigQuery =
-        timestampFormat.format(date);
-
-    Map<String, Object> bigQueryExpectedRecord = new HashMap<>();
-    bigQueryExpectedRecord.put(fieldName, fieldValueBigQuery);
-
-    Schema kafkaConnectSchema = SchemaBuilder
-        .struct()
-        .field(fieldName, Timestamp.SCHEMA)
-        .build();
-
-    Struct kafkaConnectStruct = new Struct(kafkaConnectSchema);
-    kafkaConnectStruct.put(fieldName, fieldValueKafkaConnect);
-    SinkRecord kafkaConnectRecord = spoofSinkRecord(kafkaConnectSchema, kafkaConnectStruct);
-
-    Map<String, Object> bigQueryTestRecord =
-        new BigQueryRecordConverter().convertRecord(kafkaConnectRecord);
-    assertEquals(bigQueryExpectedRecord, bigQueryTestRecord);
-  }
-
-  @Test
-  public void testDate() {
-    final String fieldName = "Date";
-    final int fieldDate = 42;
-    final Date fieldValueKafkaConnect = org.apache.kafka.connect.data.Date.toLogical(
-        org.apache.kafka.connect.data.Date.SCHEMA,
-        fieldDate
-    );
-    Date date = new Date(fieldValueKafkaConnect.getTime());
-    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-    dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
-    final String fieldValueBigQuery = dateFormat.format(date);
-
-    Map<String, Object> bigQueryExpectedRecord = new HashMap<>();
-    bigQueryExpectedRecord.put(fieldName, fieldValueBigQuery);
-
-    Schema kafkaConnectSchema = SchemaBuilder
-        .struct()
-        .field(fieldName, org.apache.kafka.connect.data.Date.SCHEMA)
-        .build();
-
-    Struct kafkaConnectStruct = new Struct(kafkaConnectSchema);
-    kafkaConnectStruct.put(fieldName, fieldValueKafkaConnect);
-    SinkRecord kafkaConnectRecord = spoofSinkRecord(kafkaConnectSchema, kafkaConnectStruct);
-
-    Map<String, Object> bigQueryTestRecord =
-        new BigQueryRecordConverter().convertRecord(kafkaConnectRecord);
-    assertEquals(bigQueryExpectedRecord, bigQueryTestRecord);
-  }
-
-  @Test
   public void testDebeziumLogicalType() {
     final String fieldName = "DebeziumDate";
     final int fieldDate = 17226;
@@ -536,33 +471,6 @@ public class BigQueryRecordConverterTest {
         new BigQueryRecordConverter().convertRecord(kafkaConnectRecord);
     assertEquals(bigQueryExpectedRecord, bigQueryTestRecord);
 
-  }
-
-  @Test
-  public void testDecimal() {
-    final String fieldName = "Decimal";
-    final byte[] fieldDecimal = java.math.BigDecimal.ONE.toBigInteger().toByteArray();
-    final java.math.BigDecimal fieldValueKafkaConnect = Decimal.toLogical(
-        Decimal.schema(0),
-        fieldDecimal
-    );
-    final java.math.BigDecimal fieldValueBigQuery = fieldValueKafkaConnect;
-
-    Map<String, Object> bigQueryExpectedRecord = new HashMap<>();
-    bigQueryExpectedRecord.put(fieldName, fieldValueBigQuery);
-
-    Schema kafkaConnectSchema = SchemaBuilder
-        .struct()
-        .field(fieldName, Decimal.schema(0))
-        .build();
-
-    Struct kafkaConnectStruct = new Struct(kafkaConnectSchema);
-    kafkaConnectStruct.put(fieldName, fieldValueKafkaConnect);
-    SinkRecord kafkaConnectRecord = spoofSinkRecord(kafkaConnectSchema, kafkaConnectStruct);
-
-    Map<String, Object> bigQueryTestRecord =
-        new BigQueryRecordConverter().convertRecord(kafkaConnectRecord);
-    assertEquals(bigQueryExpectedRecord, bigQueryTestRecord);
   }
 
   @Test
