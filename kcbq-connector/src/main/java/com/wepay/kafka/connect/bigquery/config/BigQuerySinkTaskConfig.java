@@ -83,7 +83,7 @@ public class BigQuerySinkTaskConfig extends BigQuerySinkConfig {
       "The minimum amount of time, in milliseconds, to wait between BigQuery backend or quota "
       +  "exceeded error retry attempts.";
 
-  public static final String BIGQUERY_MESSAGE_TIME_PARTITIONING_CONFIG = "bigQueryMessageTimeDatePartitioning";
+  public static final String BIGQUERY_MESSAGE_TIME_PARTITIONING_CONFIG = "bigQueryMessageTimePartitioning";
   private static final ConfigDef.Type BIGQUERY_MESSAGE_TIME_PARTITIONING_CONFIG_TYPE = ConfigDef.Type.BOOLEAN;
   public static final Boolean BIGQUERY_MESSAGE_TIME_PARTITIONING_DEFAULT =                   false;
   private static final ConfigDef.Importance BIGQUERY_MESSAGE_TIME_PARTITIONING_IMPORTANCE =  ConfigDef.Importance.HIGH;
