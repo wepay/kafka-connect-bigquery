@@ -31,6 +31,7 @@ public class PartitionedTableId {
 
   private static final String PARTITION_DELIMITER = "$";
   private static final Clock UTC_CLOCK = Clock.systemUTC();
+  private static final Long MILLIS_IN_DAY = 86400000L;
 
   private final String project;
   private final String dataset;
@@ -199,7 +200,7 @@ public class PartitionedTableId {
     }
 
     public Builder setDayPartition(long utcTime) {
-      return setDayPartition(LocalDate.ofEpochDay(utcTime / 86400000L));
+      return setDayPartition(LocalDate.ofEpochDay(utcTime / MILLIS_IN_DAY));
     }
 
     public Builder setDayPartition(LocalDate localDate) {
