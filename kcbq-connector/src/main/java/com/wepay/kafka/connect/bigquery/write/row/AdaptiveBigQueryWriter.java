@@ -62,6 +62,10 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
     this.schemaManager = schemaManager;
   }
 
+  private boolean isTableMissingSchema(BigQueryException e) {
+    return e.getReason().equalsIgnoreCase("invalid");
+  }
+
   /**
    * Sends the request to BigQuery, then checks the response to see if any errors have occurred. If
    * any have, and all errors can be blamed upon invalid columns in the rows sent, attempts to
@@ -74,22 +78,32 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
   public void performWriteRequest(PartitionedTableId tableId,
                                   List<InsertAllRequest.RowToInsert> rows,
                                   String topic) {
-    InsertAllRequest request = createInsertAllRequest(tableId, rows);
-    InsertAllResponse writeResponse = bigQuery.insertAll(request);
-    // Should only perform one schema update attempt; may have to continue insert attempts due to
-    // BigQuery schema updates taking up to two minutes to take effect
-    if (writeResponse.hasErrors()
-        && onlyContainsInvalidSchemaErrors(writeResponse.getInsertErrors())) {
-      try {
-        schemaManager.updateSchema(tableId.getBaseTableId(), topic);
-      } catch (BigQueryException exception) {
-        throw new BigQueryConnectException("Failed to update table schema for: " + tableId.getBaseTableId(), exception);
+    InsertAllResponse writeResponse = null;
+    InsertAllRequest request = null;
+
+    try {
+      request = createInsertAllRequest(tableId, rows);
+      writeResponse = bigQuery.insertAll(request);
+      // Should only perform one schema update attempt; may have to continue insert attempts due to
+      // BigQuery schema updates taking up to two minutes to take effect
+      if (writeResponse.hasErrors()
+              && onlyContainsInvalidSchemaErrors(writeResponse.getInsertErrors())) {
+        attemptSchemaUpdate(tableId, topic);
       }
+    } catch (BigQueryException e) {
+      if (isTableMissingSchema(e)) {
+        attemptSchemaUpdate(tableId, topic);
+      } else {
+        throw e;
+      }
+
+      // If the table was missing its schema, we never received a writeResponse
+      writeResponse = bigQuery.insertAll(request);
     }
 
     // Schema update might be delayed, so multiple insertion attempts may be necessary
     int attemptCount = 0;
-    while (writeResponse.hasErrors()) {
+    while (hasBigQueryResponseErrors(writeResponse, request)) {
       logger.trace("insertion failed");
       if (onlyContainsInvalidSchemaErrors(writeResponse.getInsertErrors())) {
         logger.debug("re-attempting insertion");
@@ -104,6 +118,18 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
       }
     }
     logger.debug("table insertion completed successfully");
+  }
+
+  private boolean hasBigQueryResponseErrors(InsertAllResponse writeResponse, InsertAllRequest request) {
+    return request != null && writeResponse != null && writeResponse.hasErrors();
+  }
+
+  private void attemptSchemaUpdate(PartitionedTableId tableId, String topic) {
+    try {
+      schemaManager.updateSchema(tableId.getBaseTableId(), topic);
+    } catch (BigQueryException exception) {
+      throw new BigQueryConnectException("Failed to update table schema for: " + tableId.getBaseTableId(), exception);
+    }
   }
 
   /*
