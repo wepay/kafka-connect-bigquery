@@ -42,17 +42,15 @@ public class MemorySchemaRetriever implements SchemaRetriever {
     String tableName = table.getTable();
     Schema schema = schemaCache.get(getCacheKey(tableName, topic));
     if (schema != null) {
-      logger.info("Using cached schema");
       return schema;
     }
 
-    logger.info("Using empty struct");
     return SchemaBuilder.struct().build();
   }
 
   @Override
   public void setLastSeenSchema(TableId table, String topic, Schema schema) {
-    logger.info("Updating last seen schema to " + schema.toString());
+    logger.debug("Updating last seen schema to " + schema.toString());
     schemaCache.put(getCacheKey(table.getTable(), topic), schema);
   }
 }
