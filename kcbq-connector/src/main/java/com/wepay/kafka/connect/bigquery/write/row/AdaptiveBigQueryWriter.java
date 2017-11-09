@@ -63,6 +63,8 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
   }
 
   private boolean isTableMissingSchema(BigQueryException e) {
+    // If a table is missing a schema, it will raise a BigQueryException that the input is invalid
+    // For more information about BigQueryExceptions, see: https://cloud.google.com/bigquery/troubleshooting-errors
     return e.getReason().equalsIgnoreCase("invalid");
   }
 
@@ -103,7 +105,7 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
 
     // Schema update might be delayed, so multiple insertion attempts may be necessary
     int attemptCount = 0;
-    while (hasBigQueryResponseErrors(writeResponse, request)) {
+    while (writeResponse.hasErrors()) {
       logger.trace("insertion failed");
       if (onlyContainsInvalidSchemaErrors(writeResponse.getInsertErrors())) {
         logger.debug("re-attempting insertion");
@@ -118,10 +120,6 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
       }
     }
     logger.debug("table insertion completed successfully");
-  }
-
-  private boolean hasBigQueryResponseErrors(InsertAllResponse writeResponse, InsertAllRequest request) {
-    return request != null && writeResponse != null && writeResponse.hasErrors();
   }
 
   private void attemptSchemaUpdate(PartitionedTableId tableId, String topic) {
