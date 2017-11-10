@@ -45,6 +45,9 @@ public class MemorySchemaRetriever implements SchemaRetriever {
       return schema;
     }
 
+    // By returning an empty schema the calling code will create a table without a schema.
+    // When we receive our first message and try to add it, we'll hit the invalid schema case and update the schema
+    // with the schema from the message
     return SchemaBuilder.struct().build();
   }
 

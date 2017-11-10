@@ -95,12 +95,12 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
     } catch (BigQueryException e) {
       if (isTableMissingSchema(e)) {
         attemptSchemaUpdate(tableId, topic);
+
+        // If the table was missing its schema, we never received a writeResponse
+        writeResponse = bigQuery.insertAll(request);
       } else {
         throw e;
       }
-
-      // If the table was missing its schema, we never received a writeResponse
-      writeResponse = bigQuery.insertAll(request);
     }
 
     // Schema update might be delayed, so multiple insertion attempts may be necessary
