@@ -95,9 +95,6 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
     } catch (BigQueryException e) {
       if (isTableMissingSchema(e)) {
         attemptSchemaUpdate(tableId, topic);
-
-        // If the table was missing its schema, we never received a writeResponse
-        writeResponse = bigQuery.insertAll(request);
       } else {
         throw e;
       }
@@ -105,9 +102,10 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
 
     // Schema update might be delayed, so multiple insertion attempts may be necessary
     int attemptCount = 0;
-    while (writeResponse.hasErrors()) {
+    while (writeResponse == null || writeResponse.hasErrors()) {
       logger.trace("insertion failed");
-      if (onlyContainsInvalidSchemaErrors(writeResponse.getInsertErrors())) {
+      if (writeResponse == null || onlyContainsInvalidSchemaErrors(writeResponse.getInsertErrors())) {
+        // If the table was missing its schema, we never received a writeResponse
         logger.debug("re-attempting insertion");
         writeResponse = bigQuery.insertAll(request);
       } else {
