@@ -105,9 +105,13 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
     while (writeResponse == null || writeResponse.hasErrors()) {
       logger.trace("insertion failed");
       if (writeResponse == null || onlyContainsInvalidSchemaErrors(writeResponse.getInsertErrors())) {
-        // If the table was missing its schema, we never received a writeResponse
-        logger.debug("re-attempting insertion");
-        writeResponse = bigQuery.insertAll(request);
+        try {
+          // If the table was missing its schema, we never received a writeResponse
+          logger.debug("re-attempting insertion");
+          writeResponse = bigQuery.insertAll(request);
+        } catch (BigQueryException e) {
+          // no-op, we want to keep retrying the insert
+        }
       } else {
         throw new BigQueryConnectException(writeResponse.getInsertErrors());
       }
