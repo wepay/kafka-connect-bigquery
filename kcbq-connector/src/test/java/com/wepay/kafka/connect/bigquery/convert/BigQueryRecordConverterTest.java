@@ -160,7 +160,7 @@ public class BigQueryRecordConverterTest {
         new BigQueryRecordConverter().convertRecord(kafkaConnectRecord);
     assertEquals(bigQueryExpectedRecord, bigQueryTestRecord);
 
-    final Double fieldDoubleValue = 4242424242.4242;
+    final Double fieldDoubleValue = Double.POSITIVE_INFINITY;
 
     bigQueryExpectedRecord = new HashMap<>();
     bigQueryExpectedRecord.put(fieldName, fieldDoubleValue);
@@ -176,6 +176,7 @@ public class BigQueryRecordConverterTest {
 
     bigQueryTestRecord = new BigQueryRecordConverter().convertRecord(kafkaConnectRecord);
     assertEquals(bigQueryExpectedRecord, bigQueryTestRecord);
+//    assertEquals(bigQueryTestRecord.get(fieldName).getClass(), null);
   }
 
   @Test

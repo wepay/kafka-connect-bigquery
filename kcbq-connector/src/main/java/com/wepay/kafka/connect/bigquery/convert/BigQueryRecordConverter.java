@@ -20,6 +20,7 @@ package com.wepay.kafka.connect.bigquery.convert;
 
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 
+import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig;
 import com.wepay.kafka.connect.bigquery.convert.logicaltype.DebeziumLogicalConverters;
 import com.wepay.kafka.connect.bigquery.convert.logicaltype.KafkaLogicalConverters;
 import com.wepay.kafka.connect.bigquery.convert.logicaltype.LogicalConverterRegistry;
@@ -104,7 +105,7 @@ public class BigQueryRecordConverter implements RecordConverter<Map<String, Obje
       case FLOAT32:
         return (Float) kafkaConnectObject;
       case FLOAT64:
-        return (Double) kafkaConnectObject;
+        return convertDouble(kafkaConnectObject);
       case INT8:
         return (Byte) kafkaConnectObject;
       case INT16:
@@ -179,5 +180,19 @@ public class BigQueryRecordConverter implements RecordConverter<Map<String, Obje
     LogicalTypeConverter converter =
         LogicalConverterRegistry.getConverter(kafkaConnectSchema.name());
     return converter.convert(kafkaConnectObject);
+  }
+
+  private Double convertDouble(Object kafkaConnectObject) {
+    double kafkaConnectDouble = (double)kafkaConnectObject;
+
+    if (BigQuerySinkConfig.DOUBLE_SPECIAL_VALUES_CONVERT) {
+      if (kafkaConnectDouble == Double.POSITIVE_INFINITY) {
+        return Double.MAX_VALUE;
+      } else if (kafkaConnectDouble == Double.NEGATIVE_INFINITY
+              || Double.isNaN(kafkaConnectDouble)) {
+        return Double.MIN_VALUE;
+      }
+    }
+    return (Double)kafkaConnectObject;
   }
 }

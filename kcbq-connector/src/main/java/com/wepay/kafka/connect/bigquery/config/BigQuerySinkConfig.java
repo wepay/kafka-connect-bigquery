@@ -127,6 +127,10 @@ public class BigQuerySinkConfig extends AbstractConfig {
   private static final String AVRO_DATA_CACHE_SIZE_DOC =
       "The size of the cache to use when converting schemas from Avro to Kafka Connect";
 
+  // Should +/- Infinity and NaN be converted to Double.MAX_VALUE and Double.MIN_VALUE
+  // so they can make it to BigQuery
+  public static final Boolean DOUBLE_SPECIAL_VALUES_CONVERT = false;
+
   static {
     config = new ConfigDef()
         .define(
