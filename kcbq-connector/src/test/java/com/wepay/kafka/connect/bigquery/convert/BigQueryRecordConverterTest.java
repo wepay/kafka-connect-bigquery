@@ -162,7 +162,7 @@ public class BigQueryRecordConverterTest {
         new BigQueryRecordConverter().convertRecord(kafkaConnectRecord, SHOULD_CONVERT_DOUBLE);
     assertEquals(bigQueryExpectedRecord, bigQueryTestRecord);
 
-    final Double fieldDoubleValue = Double.POSITIVE_INFINITY;
+    final Double fieldDoubleValue = 4242424242.4242;
 
     bigQueryExpectedRecord = new HashMap<>();
     bigQueryExpectedRecord.put(fieldName, fieldDoubleValue);
@@ -177,6 +177,27 @@ public class BigQueryRecordConverterTest {
     kafkaConnectRecord = spoofSinkRecord(kafkaConnectSchema, kafkaConnectStruct);
 
     bigQueryTestRecord = new BigQueryRecordConverter().convertRecord(kafkaConnectRecord, SHOULD_CONVERT_DOUBLE);
+    assertEquals(bigQueryExpectedRecord, bigQueryTestRecord);
+  }
+
+  @Test public void testDoubleSpecial() {
+    final String fieldName = "Double";
+    final Double fieldDoubleValue = Double.POSITIVE_INFINITY;
+
+    Map<String, Object> bigQueryExpectedRecord = new HashMap<>();
+    bigQueryExpectedRecord.put(fieldName, Double.MAX_VALUE);
+
+    Schema kafkaConnectSchema = SchemaBuilder
+            .struct()
+            .field(fieldName, Schema.FLOAT64_SCHEMA)
+            .build();
+
+    Struct kafkaConnectStruct = new Struct(kafkaConnectSchema);
+    kafkaConnectStruct.put(fieldName, fieldDoubleValue);
+    SinkRecord kafkaConnectRecord = spoofSinkRecord(kafkaConnectSchema, kafkaConnectStruct);
+
+    Map<String, Object> bigQueryTestRecord =
+            new BigQueryRecordConverter().convertRecord(kafkaConnectRecord, SHOULD_CONVERT_DOUBLE);
     assertEquals(bigQueryExpectedRecord, bigQueryTestRecord);
   }
 
