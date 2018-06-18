@@ -65,17 +65,18 @@ public class BigQueryRecordConverter implements RecordConverter<Map<String, Obje
    *                           consist of both a name and a value.
    * @return The result BigQuery row content.
    */
-  public Map<String, Object> convertRecord(SinkRecord kafkaConnectRecord) {
+  public Map<String, Object> convertRecord(SinkRecord kafkaConnectRecord, Boolean shouldConvertSpecialDouble) {
     Schema kafkaConnectSchema = kafkaConnectRecord.valueSchema();
     if (kafkaConnectSchema.type() != Schema.Type.STRUCT) {
       throw new
           ConversionConnectException("Top-level Kafka Connect schema must be of type 'struct'");
     }
-    return convertStruct(kafkaConnectRecord.value(), kafkaConnectSchema);
+    return convertStruct(kafkaConnectRecord.value(), kafkaConnectSchema, shouldConvertSpecialDouble);
   }
 
   @SuppressWarnings("unchecked")
-  private Object convertObject(Object kafkaConnectObject, Schema kafkaConnectSchema) {
+  private Object convertObject(Object kafkaConnectObject, Schema kafkaConnectSchema,
+                               Boolean shouldConvertSpecialDouble) {
     if (kafkaConnectObject == null) {
       if (kafkaConnectSchema.isOptional()) {
         // short circuit converting the object
@@ -91,11 +92,11 @@ public class BigQueryRecordConverter implements RecordConverter<Map<String, Obje
     Schema.Type kafkaConnectSchemaType = kafkaConnectSchema.type();
     switch (kafkaConnectSchemaType) {
       case ARRAY:
-        return convertArray(kafkaConnectObject, kafkaConnectSchema);
+        return convertArray(kafkaConnectObject, kafkaConnectSchema, shouldConvertSpecialDouble);
       case MAP:
-        return convertMap(kafkaConnectObject, kafkaConnectSchema);
+        return convertMap(kafkaConnectObject, kafkaConnectSchema, shouldConvertSpecialDouble);
       case STRUCT:
-        return convertStruct(kafkaConnectObject, kafkaConnectSchema);
+        return convertStruct(kafkaConnectObject, kafkaConnectSchema, shouldConvertSpecialDouble);
       case BYTES:
         ByteBuffer byteBuffer = (ByteBuffer) kafkaConnectObject;
         byte[] bytes = byteBuffer.array();
@@ -105,7 +106,7 @@ public class BigQueryRecordConverter implements RecordConverter<Map<String, Obje
       case FLOAT32:
         return (Float) kafkaConnectObject;
       case FLOAT64:
-        return convertDouble(kafkaConnectObject);
+        return convertDouble(kafkaConnectObject, shouldConvertSpecialDouble);
       case INT8:
         return (Byte) kafkaConnectObject;
       case INT16:
@@ -122,14 +123,16 @@ public class BigQueryRecordConverter implements RecordConverter<Map<String, Obje
   }
 
   private Map<String, Object> convertStruct(Object kafkaConnectObject,
-                                            Schema kafkaConnectSchema) {
+                                            Schema kafkaConnectSchema,
+                                            Boolean shouldConvertSpecialDouble) {
     Map<String, Object> bigQueryRecord = new HashMap<>();
     List<Field> kafkaConnectSchemaFields = kafkaConnectSchema.fields();
     Struct kafkaConnectStruct = (Struct) kafkaConnectObject;
     for (Field kafkaConnectField : kafkaConnectSchemaFields) {
       Object bigQueryObject = convertObject(
           kafkaConnectStruct.get(kafkaConnectField.name()),
-          kafkaConnectField.schema()
+          kafkaConnectField.schema(),
+          shouldConvertSpecialDouble
       );
       if (bigQueryObject != null) {
         bigQueryRecord.put(kafkaConnectField.name(), bigQueryObject);
@@ -140,12 +143,13 @@ public class BigQueryRecordConverter implements RecordConverter<Map<String, Obje
 
   @SuppressWarnings("unchecked")
   private List<Object> convertArray(Object kafkaConnectObject,
-                                    Schema kafkaConnectSchema) {
+                                    Schema kafkaConnectSchema,
+                                    Boolean shouldConvertSpecialDouble) {
     Schema kafkaConnectValueSchema = kafkaConnectSchema.valueSchema();
     List<Object> bigQueryList = new ArrayList<>();
     List<Object> kafkaConnectList = (List<Object>) kafkaConnectObject;
     for (Object kafkaConnectElement : kafkaConnectList) {
-      Object bigQueryValue = convertObject(kafkaConnectElement, kafkaConnectValueSchema);
+      Object bigQueryValue = convertObject(kafkaConnectElement, kafkaConnectValueSchema, shouldConvertSpecialDouble);
       bigQueryList.add(bigQueryValue);
     }
     return bigQueryList;
@@ -153,7 +157,8 @@ public class BigQueryRecordConverter implements RecordConverter<Map<String, Obje
 
   @SuppressWarnings("unchecked")
   private List<Map<String, Object>> convertMap(Object kafkaConnectObject,
-                                               Schema kafkaConnectSchema) {
+                                               Schema kafkaConnectSchema,
+                                               Boolean shouldConvertSpecialDouble) {
     Schema kafkaConnectKeySchema = kafkaConnectSchema.keySchema();
     Schema kafkaConnectValueSchema = kafkaConnectSchema.valueSchema();
     List<Map<String, Object>> bigQueryEntryList = new ArrayList<>();
@@ -162,11 +167,13 @@ public class BigQueryRecordConverter implements RecordConverter<Map<String, Obje
       Map<String, Object> bigQueryEntry = new HashMap<>();
       Object bigQueryKey = convertObject(
           kafkaConnectMapEntry.getKey(),
-          kafkaConnectKeySchema
+          kafkaConnectKeySchema,
+          shouldConvertSpecialDouble
       );
       Object bigQueryValue = convertObject(
           kafkaConnectMapEntry.getValue(),
-          kafkaConnectValueSchema
+          kafkaConnectValueSchema,
+          shouldConvertSpecialDouble
       );
       bigQueryEntry.put(BigQuerySchemaConverter.MAP_KEY_FIELD_NAME, bigQueryKey);
       bigQueryEntry.put(BigQuerySchemaConverter.MAP_VALUE_FIELD_NAME, bigQueryValue);
@@ -182,13 +189,15 @@ public class BigQueryRecordConverter implements RecordConverter<Map<String, Obje
     return converter.convert(kafkaConnectObject);
   }
 
-  private Double convertDouble(Object kafkaConnectObject) {
+  private Double convertDouble(Object kafkaConnectObject, Boolean shouldConvertSpecialDouble) {
     double kafkaConnectDouble = (double)kafkaConnectObject;
 
-    if (BigQuerySinkConfig.DOUBLE_SPECIAL_VALUES_CONVERT) {
+    if (shouldConvertSpecialDouble) {
+
       if (kafkaConnectDouble == Double.POSITIVE_INFINITY) {
         return Double.MAX_VALUE;
-      } else if (kafkaConnectDouble == Double.NEGATIVE_INFINITY
+      }
+      else if (kafkaConnectDouble == Double.NEGATIVE_INFINITY
               || Double.isNaN(kafkaConnectDouble)) {
         return Double.MIN_VALUE;
       }

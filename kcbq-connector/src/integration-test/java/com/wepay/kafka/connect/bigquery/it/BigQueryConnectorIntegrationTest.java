@@ -280,19 +280,6 @@ public class BigQueryConnectorIntegrationTest {
     testRows(expectedRows, readAllRows("kcbq_test_logical_types"));
   }
 
-  @Test
-  public void testDoubleInf() {
-    List<List<Object>> expectedRows = new ArrayList<>();
-
-    // {"row":1,"value":{"double":3.14}}
-    expectedRows.add(Arrays.asList(1L, 3.14));
-    expectedRows.add(Arrays.asList(2L, -3.14));
-    expectedRows.add(Arrays.asList(3L, 0.19));
-    expectedRows.add(Arrays.asList(4L, 42.42));
-
-    testRows(expectedRows, readAllRows("kcbq_test_double_inf"));
-  }
-
   private void testRows(
       List<List<Object>> expectedRows,
       List<List<Object>> testRows) {

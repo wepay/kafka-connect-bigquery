@@ -127,9 +127,14 @@ public class BigQuerySinkConfig extends AbstractConfig {
   private static final String AVRO_DATA_CACHE_SIZE_DOC =
       "The size of the cache to use when converting schemas from Avro to Kafka Connect";
 
-  // Should +/- Infinity and NaN be converted to Double.MAX_VALUE and Double.MIN_VALUE
-  // so they can make it to BigQuery
-  public static final Boolean DOUBLE_SPECIAL_VALUES_CONVERT = false;
+  public static final String CONVERT_DOUBLE_SPECIAL_VALUES_CONFIG =         "convertDoubleSpecialValues";
+  public static final ConfigDef.Type CONVERT_DOUBLE_SPECIAL_VALUES_TYPE =   ConfigDef.Type.BOOLEAN;
+  public static final Boolean CONVERT_DOUBLE_SPECIAL_VALUES_DEFAULT =       true;
+  public static final ConfigDef.Importance CONVERT_DOUBLE_SPECIAL_VALUES_IMPORTANCE =
+      ConfigDef.Importance.LOW;
+  public static final String CONVERT_DOUBLE_SPECIAL_VALUES_DOC =
+          "Should +/- Infinity and NaN be converted to Double.MAX_VALUE and"
+          + "Double.MIN_VALUE so they can make it to BigQuery";
 
   static {
     config = new ConfigDef()
@@ -187,7 +192,13 @@ public class BigQuerySinkConfig extends AbstractConfig {
             AVRO_DATA_CACHE_SIZE_VALIDATOR,
             AVRO_DATA_CACHE_SIZE_IMPORTANCE,
             AVRO_DATA_CACHE_SIZE_DOC
-        );
+        ).define(
+            CONVERT_DOUBLE_SPECIAL_VALUES_CONFIG,
+            CONVERT_DOUBLE_SPECIAL_VALUES_TYPE,
+            CONVERT_DOUBLE_SPECIAL_VALUES_DEFAULT,
+            CONVERT_DOUBLE_SPECIAL_VALUES_IMPORTANCE,
+            CONVERT_DOUBLE_SPECIAL_VALUES_DOC
+         );
   }
 
   @SuppressWarnings("unchecked")

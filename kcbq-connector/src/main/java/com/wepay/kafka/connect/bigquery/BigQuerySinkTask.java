@@ -140,7 +140,7 @@ public class BigQuerySinkTask extends SinkTask {
   private RowToInsert getRecordRow(SinkRecord record) {
     return RowToInsert.of(
       getRowId(record),
-      recordConverter.convertRecord(record)
+      recordConverter.convertRecord(record, config.getBoolean(BigQuerySinkTaskConfig.CONVERT_DOUBLE_SPECIAL_VALUES_CONFIG))
     );
   }
 
