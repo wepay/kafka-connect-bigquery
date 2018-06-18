@@ -42,7 +42,7 @@ import java.util.Map;
 
 public class BigQueryRecordConverterTest {
 
-  private static Boolean SHOULD_CONVERT_DOUBLE = true;
+  private static final Boolean SHOULD_CONVERT_DOUBLE = true;
 
   @Test(expected = ConversionConnectException.class)
   public void testTopLevelRecord() {
