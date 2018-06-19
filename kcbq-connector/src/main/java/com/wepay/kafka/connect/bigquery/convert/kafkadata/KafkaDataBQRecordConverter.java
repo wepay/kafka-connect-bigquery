@@ -35,6 +35,10 @@ import java.util.Map;
  */
 public class KafkaDataBQRecordConverter extends BigQueryRecordConverter {
 
+  public KafkaDataBQRecordConverter(boolean shouldConvertDoubleSpecial) {
+    super(shouldConvertDoubleSpecial);
+  }
+
   /**
    * Convert the kafka {@link SinkRecord} to a BigQuery record, with the addition of extra kafka
    * data.
@@ -45,8 +49,8 @@ public class KafkaDataBQRecordConverter extends BigQueryRecordConverter {
    *                           consist of both a name and a value.
    * @return converted BigQuery record including the kafka topic, partition, and offset.
    */
-  public Map<String, Object> convertRecord(SinkRecord kafkaConnectRecord, Boolean shouldConvertSpecialDouble) {
-    Map<String, Object> record = super.convertRecord(kafkaConnectRecord, shouldConvertSpecialDouble);
+  public Map<String, Object> convertRecord(SinkRecord kafkaConnectRecord) {
+    Map<String, Object> record = super.convertRecord(kafkaConnectRecord);
     HashMap<String, Object> kafkaData = new HashMap<>();
     record.put(KafkaDataBQSchemaConverter.KAFKA_DATA_FIELD_NAME, kafkaData);
     kafkaData.put(KafkaDataBQSchemaConverter.KAFKA_DATA_TOPIC_FIELD_NAME,

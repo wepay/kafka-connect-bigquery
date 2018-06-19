@@ -29,5 +29,5 @@ public interface RecordConverter<R> {
    * @param record The record to convert.
    * @return The converted record.
    */
-  R convertRecord(SinkRecord record, Boolean shouldConvertSpecialDouble);
+  R convertRecord(SinkRecord record);
 }

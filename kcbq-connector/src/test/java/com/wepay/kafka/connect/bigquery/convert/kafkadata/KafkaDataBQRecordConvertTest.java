@@ -71,7 +71,7 @@ public class KafkaDataBQRecordConvertTest {
                                                     kafkaDataPartitionValue,
                                                     kafkaDataOffsetValue);
     Map<String, Object> bigQueryActualRecord =
-        new KafkaDataBQRecordConverter().convertRecord(kafkaConnectRecord, SHOULD_CONVERT_DOUBLE);
+        new KafkaDataBQRecordConverter(SHOULD_CONVERT_DOUBLE).convertRecord(kafkaConnectRecord);
     checkRecord(bigQueryExpectedRecord, bigQueryActualRecord);
   }
 

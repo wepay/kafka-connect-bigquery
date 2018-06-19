@@ -129,12 +129,12 @@ public class BigQuerySinkConfig extends AbstractConfig {
 
   public static final String CONVERT_DOUBLE_SPECIAL_VALUES_CONFIG =         "convertDoubleSpecialValues";
   public static final ConfigDef.Type CONVERT_DOUBLE_SPECIAL_VALUES_TYPE =   ConfigDef.Type.BOOLEAN;
-  public static final Boolean CONVERT_DOUBLE_SPECIAL_VALUES_DEFAULT =       true;
+  public static final Boolean CONVERT_DOUBLE_SPECIAL_VALUES_DEFAULT =       false;
   public static final ConfigDef.Importance CONVERT_DOUBLE_SPECIAL_VALUES_IMPORTANCE =
       ConfigDef.Importance.LOW;
   public static final String CONVERT_DOUBLE_SPECIAL_VALUES_DOC =
-          "Should +/- Infinity and NaN be converted to Double.MAX_VALUE and"
-          + "Double.MIN_VALUE so they can make it to BigQuery";
+          "Should +Infinity be converted to Double.MAX_VALUE and -Infinity and NaN be "
+          + "converted to Double.MIN_VALUE so they can make it to BigQuery";
 
   static {
     config = new ConfigDef()
@@ -374,8 +374,8 @@ public class BigQuerySinkConfig extends AbstractConfig {
    */
   public RecordConverter<Map<String, Object>> getRecordConverter() {
     return getBoolean(INCLUDE_KAFKA_DATA_CONFIG)
-        ? new KafkaDataBQRecordConverter()
-        : new BigQueryRecordConverter();
+        ? new KafkaDataBQRecordConverter(getBoolean(CONVERT_DOUBLE_SPECIAL_VALUES_CONFIG))
+        : new BigQueryRecordConverter(getBoolean(CONVERT_DOUBLE_SPECIAL_VALUES_CONFIG));
   }
 
   /**
