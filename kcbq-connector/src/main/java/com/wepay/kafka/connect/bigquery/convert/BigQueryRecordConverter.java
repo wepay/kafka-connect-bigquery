@@ -188,6 +188,17 @@ public class BigQueryRecordConverter implements RecordConverter<Map<String, Obje
     return converter.convert(kafkaConnectObject);
   }
 
+  /**
+   * Converts a kafka connect {@link Double} into a value that can be stored into BigQuery
+   * If this.shouldDonvertSpecialDouble is true, special values are converted as follows:
+   * Double.POSITIVE_INFINITY -> Double.MAX_VALUE
+   * Doulbe.NEGATIVE_INFINITY -> Double.MIN_VALUE
+   * Double.NaN               -> Double.MIN_VALUE
+   *
+   * @param kafkaConnectDouble The Kafka Connect value to convert.
+   *
+   * @return The resulting Double value to put in BigQuery.
+   */
   private Double convertDouble(Double kafkaConnectDouble) {
     if (shouldConvertSpecialDouble) {
       if (kafkaConnectDouble.equals(Double.POSITIVE_INFINITY)) {
