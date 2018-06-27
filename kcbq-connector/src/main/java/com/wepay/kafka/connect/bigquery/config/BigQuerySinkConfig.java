@@ -40,6 +40,7 @@ import java.lang.reflect.InvocationTargetException;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,6 +59,13 @@ public class BigQuerySinkConfig extends AbstractConfig {
   private static final ConfigDef.Importance TOPICS_IMPORTANCE =  ConfigDef.Importance.HIGH;
   private static final String TOPICS_DOC =
       "A list of Kafka topics to read from";
+
+  public static final String ENABLE_BATCH_CONFIG =                         "enableBatchLoad";
+  public static final ConfigDef.Type ENABLE_BATCH_TYPE =                   ConfigDef.Type.LIST;
+  public static final List<String> ENABLE_BATCH_DEFAULT =                  Collections.emptyList();
+  public static final ConfigDef.Importance ENABLE_BATCH_IMPORTANCE =       ConfigDef.Importance.LOW;
+  public static final String ENABLE_BATCH_DOC =
+      "A list of Kafka topics to batch load through GCS";
 
   public static final String TOPICS_TO_TABLES_CONFIG =                     "topicsToTables";
   private static final ConfigDef.Type TOPICS_TO_TABLES_TYPE =              ConfigDef.Type.LIST;
@@ -143,6 +151,12 @@ public class BigQuerySinkConfig extends AbstractConfig {
             TOPICS_TYPE,
             TOPICS_IMPORTANCE,
             TOPICS_DOC
+        ).define(
+            ENABLE_BATCH_CONFIG,
+            ENABLE_BATCH_TYPE,
+            ENABLE_BATCH_DEFAULT,
+            ENABLE_BATCH_IMPORTANCE,
+            ENABLE_BATCH_DOC
         ).define(
             TOPICS_TO_TABLES_CONFIG,
             TOPICS_TO_TABLES_TYPE,
