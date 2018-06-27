@@ -155,8 +155,7 @@ public class BigQuerySinkTask extends SinkTask {
 
     // add tableWriters to the executor work queue
     for (TableWriterBuilder builderInterface : tableWriterBuilders.values()) {
-      TableWriter.Builder builder = (TableWriter.Builder) builderInterface;
-      executor.execute(builder.build());
+      executor.execute(builderInterface.build());
     }
 
     // check if we should pause topics

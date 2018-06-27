@@ -23,7 +23,7 @@ import org.apache.kafka.connect.sink.SinkRecord;
 /**
  * Interface for building a {@link TableWriter} or TableWriterGCS
  */
-public interface TableWriterBuilder<R> {
+public interface TableWriterBuilder {
 
     /**
      * Add a record to the builder.
@@ -35,5 +35,5 @@ public interface TableWriterBuilder<R> {
      * Create a {@link TableWriter} from this builder.
      * @return a TableWriter containing the given writer, table, topic, and all added rows.
      */
-    R build();
+    Runnable build();
 }
