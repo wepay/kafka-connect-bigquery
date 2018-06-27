@@ -65,7 +65,7 @@ public class BigQuerySinkConfig extends AbstractConfig {
   public static final List<String> ENABLE_BATCH_DEFAULT =                  Collections.emptyList();
   public static final ConfigDef.Importance ENABLE_BATCH_IMPORTANCE =       ConfigDef.Importance.LOW;
   public static final String ENABLE_BATCH_DOC =
-      "A list of Kafka topics to batch load through GCS";
+      "The sublist of topics to be batch loaded through GCS";
 
   public static final String TOPICS_TO_TABLES_CONFIG =                     "topicsToTables";
   private static final ConfigDef.Type TOPICS_TO_TABLES_TYPE =              ConfigDef.Type.LIST;
