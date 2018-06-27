@@ -37,6 +37,7 @@ import com.wepay.kafka.connect.bigquery.utils.Version;
 
 import com.wepay.kafka.connect.bigquery.write.batch.KCBQThreadPoolExecutor;
 import com.wepay.kafka.connect.bigquery.write.batch.TableWriter;
+import com.wepay.kafka.connect.bigquery.write.batch.TableWriterBuilder;
 import com.wepay.kafka.connect.bigquery.write.row.AdaptiveBigQueryWriter;
 import com.wepay.kafka.connect.bigquery.write.row.BigQueryWriter;
 import com.wepay.kafka.connect.bigquery.write.row.SimpleBigQueryWriter;
@@ -134,7 +135,7 @@ public class BigQuerySinkTask extends SinkTask {
   public void put(Collection<SinkRecord> records) {
 
     // create tableWriters
-    Map<PartitionedTableId, TableWriter.Builder> tableWriterBuilders = new HashMap<>();
+    Map<PartitionedTableId, TableWriterBuilder> tableWriterBuilders = new HashMap<>();
 
     for (SinkRecord record : records) {
       if (record.value() != null) {
@@ -153,7 +154,8 @@ public class BigQuerySinkTask extends SinkTask {
     }
 
     // add tableWriters to the executor work queue
-    for (TableWriter.Builder builder : tableWriterBuilders.values()) {
+    for (TableWriterBuilder builderInterface : tableWriterBuilders.values()) {
+      TableWriter.Builder builder = (TableWriter.Builder) builderInterface;
       executor.execute(builder.build());
     }
 
