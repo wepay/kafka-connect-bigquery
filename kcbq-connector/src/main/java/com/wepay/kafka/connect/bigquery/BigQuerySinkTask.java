@@ -130,20 +130,6 @@ public class BigQuerySinkTask extends SinkTask {
     return builder.build();
   }
 
-  private String getRowId(SinkRecord record) {
-    return String.format("%s-%d-%d",
-                         record.topic(),
-                         record.kafkaPartition(),
-                         record.kafkaOffset());
-  }
-
-  private RowToInsert getRecordRow(SinkRecord record) {
-    return RowToInsert.of(
-      getRowId(record),
-      recordConverter.convertRecord(record)
-    );
-  }
-
   @Override
   public void put(Collection<SinkRecord> records) {
 
@@ -159,10 +145,10 @@ public class BigQuerySinkTask extends SinkTask {
 
         if (!tableWriterBuilders.containsKey(table)) {
           TableWriter.Builder tableWriterBuilder =
-              new TableWriter.Builder(bigQueryWriter, table, record.topic());
+              new TableWriter.Builder(bigQueryWriter, table, record.topic(), recordConverter);
           tableWriterBuilders.put(table, tableWriterBuilder);
         }
-        tableWriterBuilders.get(table).addRow(getRecordRow(record));
+        tableWriterBuilders.get(table).addRecord(record);
       }
     }
 
