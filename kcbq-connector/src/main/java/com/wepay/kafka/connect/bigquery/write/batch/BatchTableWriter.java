@@ -18,10 +18,23 @@ package com.wepay.kafka.connect.bigquery.write.batch;
  */
 
 
+import com.google.gson.Gson;
+
+import java.util.Map;
+
 public class BatchTableWriter implements Runnable {
+    Gson gson;
+
+    public BatchTableWriter() {
+        gson = new Gson();
+    }
 
     @Override
     public void run() {
         //todo implement
+    }
+
+    private String toJson(Map<String, Object> record) {
+        return gson.toJson(record);
     }
 }
