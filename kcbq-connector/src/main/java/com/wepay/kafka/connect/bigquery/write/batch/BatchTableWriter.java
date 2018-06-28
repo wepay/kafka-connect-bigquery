@@ -18,15 +18,26 @@ package com.wepay.kafka.connect.bigquery.write.batch;
  */
 
 
+import com.google.cloud.storage.Blob;
+import com.google.cloud.storage.BlobId;
+import com.google.cloud.storage.BlobInfo;
+import com.google.cloud.storage.Storage;
 import com.google.gson.Gson;
 
+import java.io.InputStream;
 import java.util.Map;
 
 public class BatchTableWriter implements Runnable {
-    Gson gson;
+    private Gson gson;
+    private BlobInfo blobInfo;
+    private Storage storage;
 
-    public BatchTableWriter() {
+    public BatchTableWriter(String bucketName, String blobName, Storage storage) {
         gson = new Gson();
+
+        BlobId blobId = BlobId.of(bucketName, blobName+".json");
+        blobInfo = BlobInfo.newBuilder(blobId).setContentType("text/json").build();
+        this.storage = storage;
     }
 
     @Override
@@ -34,6 +45,10 @@ public class BatchTableWriter implements Runnable {
         //todo implement
     }
 
+    private Blob uploadBlob(InputStream jsonRecord) {
+        // todo look into creating from a string because this is depreciated - input stream cannot retry
+        return storage.create(blobInfo, jsonRecord);
+    }
     private String toJson(Map<String, Object> record) {
         return gson.toJson(record);
     }
