@@ -24,7 +24,9 @@ import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
 import com.google.gson.Gson;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.util.List;
 import java.util.Map;
 
 public class BatchTableWriter implements Runnable {
@@ -45,11 +47,25 @@ public class BatchTableWriter implements Runnable {
         //todo implement
     }
 
-    private Blob uploadBlob(InputStream jsonRecord) {
-        // todo look into creating from a string because this is depreciated - input stream cannot retry
-        return storage.create(blobInfo, jsonRecord);
+    Blob uploadRecords(List<Map<String, Object>> records) {
+        return uploadBlob(new ByteArrayInputStream(toJson(records).getBytes()));
     }
+
+    private Blob uploadBlob(InputStream jsonRecords) {
+        // todo look into creating from a string because this is depreciated - input stream cannot retry
+        // todo consider if it would be worth it to switch to a resumable method of uploading
+        return storage.create(blobInfo, jsonRecords);
+    }
+
     private String toJson(Map<String, Object> record) {
         return gson.toJson(record);
+    }
+    String toJson(List<Map<String, Object>> records) {
+        StringBuilder jsonRecordsBuilder = new StringBuilder("");
+        for (Map<String, Object> record : records) {
+            jsonRecordsBuilder.append(toJson(record));
+            jsonRecordsBuilder.append("\n");
+        }
+        return jsonRecordsBuilder.toString();
     }
 }
