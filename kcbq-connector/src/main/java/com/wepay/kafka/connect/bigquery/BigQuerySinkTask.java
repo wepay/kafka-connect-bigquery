@@ -37,6 +37,7 @@ import com.wepay.kafka.connect.bigquery.utils.Version;
 
 import com.wepay.kafka.connect.bigquery.write.batch.KCBQThreadPoolExecutor;
 import com.wepay.kafka.connect.bigquery.write.batch.TableWriter;
+import com.wepay.kafka.connect.bigquery.write.batch.TableWriterBuilder;
 import com.wepay.kafka.connect.bigquery.write.row.AdaptiveBigQueryWriter;
 import com.wepay.kafka.connect.bigquery.write.row.BigQueryWriter;
 import com.wepay.kafka.connect.bigquery.write.row.SimpleBigQueryWriter;
@@ -130,25 +131,11 @@ public class BigQuerySinkTask extends SinkTask {
     return builder.build();
   }
 
-  private String getRowId(SinkRecord record) {
-    return String.format("%s-%d-%d",
-                         record.topic(),
-                         record.kafkaPartition(),
-                         record.kafkaOffset());
-  }
-
-  private RowToInsert getRecordRow(SinkRecord record) {
-    return RowToInsert.of(
-      getRowId(record),
-      recordConverter.convertRecord(record)
-    );
-  }
-
   @Override
   public void put(Collection<SinkRecord> records) {
 
     // create tableWriters
-    Map<PartitionedTableId, TableWriter.Builder> tableWriterBuilders = new HashMap<>();
+    Map<PartitionedTableId, TableWriterBuilder> tableWriterBuilders = new HashMap<>();
 
     for (SinkRecord record : records) {
       if (record.value() != null) {
@@ -159,15 +146,15 @@ public class BigQuerySinkTask extends SinkTask {
 
         if (!tableWriterBuilders.containsKey(table)) {
           TableWriter.Builder tableWriterBuilder =
-              new TableWriter.Builder(bigQueryWriter, table, record.topic());
+              new TableWriter.Builder(bigQueryWriter, table, record.topic(), recordConverter);
           tableWriterBuilders.put(table, tableWriterBuilder);
         }
-        tableWriterBuilders.get(table).addRow(getRecordRow(record));
+        tableWriterBuilders.get(table).addRecord(record);
       }
     }
 
     // add tableWriters to the executor work queue
-    for (TableWriter.Builder builder : tableWriterBuilders.values()) {
+    for (TableWriterBuilder builder : tableWriterBuilders.values()) {
       executor.execute(builder.build());
     }
 
