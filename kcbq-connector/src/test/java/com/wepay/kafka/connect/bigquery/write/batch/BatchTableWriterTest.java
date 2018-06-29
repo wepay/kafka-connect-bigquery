@@ -20,6 +20,7 @@ package com.wepay.kafka.connect.bigquery.write.batch;
 
 import static org.junit.Assert.assertEquals;
 
+import com.google.cloud.bigquery.*;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import org.junit.BeforeClass;
@@ -40,7 +41,11 @@ public class BatchTableWriterTest {
 
     @Test
     public void testMapJsonConversion() {
-        BatchTableWriter batchTableWriter = new BatchTableWriter("someBucket", "kcbqTest", storage);
+        BatchTableWriter batchTableWriter = new BatchTableWriter("someBucket", "kcbqTest",
+                storage,
+                TableId.of("",""),
+                BigQueryOptions.getDefaultInstance().getService(),
+                Schema.newBuilder().build());
         List<Map<String, Object>> records = new ArrayList<>();
         for (int i = 0; i < 3; ++i) {
             Map<String, Object> record = new HashMap<>();

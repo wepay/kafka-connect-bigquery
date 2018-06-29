@@ -18,6 +18,13 @@ package com.wepay.kafka.connect.bigquery.write.batch;
  */
 
 
+import com.google.cloud.bigquery.BigQuery;
+import com.google.cloud.bigquery.FormatOptions;
+import com.google.cloud.bigquery.Job;
+import com.google.cloud.bigquery.JobInfo;
+import com.google.cloud.bigquery.LoadJobConfiguration;
+import com.google.cloud.bigquery.Schema;
+import com.google.cloud.bigquery.TableId;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
@@ -28,18 +35,38 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeoutException;
 
 public class BatchTableWriter implements Runnable {
     private Gson gson;
+
     private BlobInfo blobInfo;
     private Storage storage;
+    private String sourceUri;
 
-    public BatchTableWriter(String bucketName, String blobName, Storage storage) {
+    private BigQuery bigQuery;
+    private TableId tableId;
+    private Schema schema;
+    private LoadJobConfiguration loadJobConfiguration;
+
+    public BatchTableWriter(String bucketName, String blobName, Storage storage,
+                            TableId tableId, BigQuery bigQuery, Schema schema) {
         gson = new Gson();
 
         BlobId blobId = BlobId.of(bucketName, blobName+".json");
         blobInfo = BlobInfo.newBuilder(blobId).setContentType("text/json").build();
         this.storage = storage;
+        this.sourceUri = "gs://" + bucketName + "/" + blobName + ".json";
+
+        this.tableId = tableId;
+        this.bigQuery = bigQuery;
+        this.schema = schema;
+        this.loadJobConfiguration =
+                LoadJobConfiguration.builder(tableId, sourceUri)
+                .setFormatOptions(FormatOptions.json())
+                .setCreateDisposition(JobInfo.CreateDisposition.CREATE_IF_NEEDED)
+                .setSchema(schema)
+                .build();
     }
 
     @Override
@@ -47,7 +74,18 @@ public class BatchTableWriter implements Runnable {
         //todo implement
     }
 
-    Blob uploadRecords(List<Map<String, Object>> records) {
+    void transferBlobToBigQuery() throws InterruptedException, TimeoutException {
+        Job loadJob = bigQuery.create(JobInfo.of(loadJobConfiguration));
+        try {
+            loadJob = loadJob.waitFor();
+        } catch (InterruptedException ie) {
+            throw new InterruptedException(ie + "Transfer from GCS blob to BigQuery unsuccessful.");
+        } catch (TimeoutException toe) {
+            throw new TimeoutException(toe + "Transfer from GCS blob to BigQuery unsuccessful.");
+        }
+    }
+
+    public Blob uploadRecords(List<Map<String, Object>> records) {
         return uploadBlob(new ByteArrayInputStream(toJson(records).getBytes()));
     }
 
