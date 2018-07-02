@@ -40,6 +40,7 @@ public class BatchTableWriterTest {
     }
 
     @Test
+    @Test(expected = ValueException.class)
     public void testMapJsonConversion() {
         BatchTableWriter batchTableWriter = new BatchTableWriter("someBucket", "kcbqTest",
                 storage,
