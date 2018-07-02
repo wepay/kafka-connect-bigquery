@@ -30,7 +30,6 @@ import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
 import com.google.gson.Gson;
-import jdk.nashorn.internal.runtime.regexp.joni.exception.ValueException;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -39,7 +38,7 @@ import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
 /**
- * Batch Table Writer that uploads records to GCS as a blob and then uploads the contents of that blob to BigQuery
+ * Batch Table Writer that uploads records to GCS as a blob and then triggers a load job from that GCS file to BigQuery
  */
 public class BatchTableWriter implements Runnable {
     private static final Gson gson = new Gson();
@@ -96,7 +95,10 @@ public class BatchTableWriter implements Runnable {
         //todo implement
     }
 
-    private void transferBlobToBigQuery() throws RuntimeException {
+    /**
+     * Triggers a load job to transfer JSON records from a GCS blob to a BigQuery table
+     */
+    private void triggerBigQueryTransfer() {
         Job loadJob = bigQuery.create(JobInfo.of(loadJobConfiguration));
         String exceptionMessage = String.format("%s.\nSource URI = \"%s\"\nTable = \"%s\"",
                 "Transfer from GCS blob to BigQuery unsuccessful.",
@@ -109,19 +111,24 @@ public class BatchTableWriter implements Runnable {
         }
     }
 
-    public Blob uploadRecords(List<Map<String, Object>> records) {
-        return uploadBlob(new ByteArrayInputStream(toJson(records).getBytes()));
+    /**
+     * Creates a JSON string containing all records and uploads it as a blob to GCS
+     * @return The blob uploaded to GCS
+     */
+    private Blob uploadRecordsToGcs() {
+        return uploadBlobToGcs(new ByteArrayInputStream(toJson(records).getBytes()));
     }
 
-    private Blob uploadBlob(InputStream jsonRecords) {
+    private Blob uploadBlobToGcs(InputStream blobContent) {
         // todo look into creating from a string because this is depreciated - input stream cannot retry
         // todo consider if it would be worth it to switch to a resumable method of uploading
-        return storage.create(blobInfo, jsonRecords);
+        return storage.create(blobInfo, blobContent);
     }
 
     private String toJson(Map<String, Object> record) {
         return gson.toJson(record);
     }
+
     private String toJson(List<Map<String, Object>> records) {
         StringBuilder jsonRecordsBuilder = new StringBuilder("");
         for (Map<String, Object> record : records) {
