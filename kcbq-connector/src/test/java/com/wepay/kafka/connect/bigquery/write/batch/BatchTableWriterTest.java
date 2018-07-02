@@ -23,6 +23,8 @@ import static org.junit.Assert.assertEquals;
 import com.google.cloud.bigquery.*;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
+
+import jdk.nashorn.internal.runtime.regexp.joni.exception.ValueException;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
