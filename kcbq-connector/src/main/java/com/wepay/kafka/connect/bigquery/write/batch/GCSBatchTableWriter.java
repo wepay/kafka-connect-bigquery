@@ -40,7 +40,7 @@ import java.util.concurrent.TimeoutException;
 /**
  * Batch Table Writer that uploads records to GCS as a blob and then triggers a load job from that GCS file to BigQuery
  */
-public class BatchTableWriter implements Runnable {
+public class GCSBatchTableWriter implements Runnable {
     private static final Gson gson = new Gson();
     private static final int NOT_FOUND_ERROR_CODE = 404;
 
@@ -61,9 +61,9 @@ public class BatchTableWriter implements Runnable {
      * @param bigQuery {@link BigQuery} Object used to perform upload
      * @param records Records to upload to BigQuery through GCS
      */
-    public BatchTableWriter(String bucketName, String blobName, Storage storage,
-                            TableId tableId, BigQuery bigQuery,
-                            List<Map<String, Object>> records) {
+    public GCSBatchTableWriter(String bucketName, String blobName, Storage storage,
+                               TableId tableId, BigQuery bigQuery,
+                               List<Map<String, Object>> records) {
         BlobId blobId = BlobId.of(bucketName, blobName+".json");
         blobInfo = BlobInfo.newBuilder(blobId).setContentType("text/json").build();
         this.storage = storage;
@@ -98,7 +98,7 @@ public class BatchTableWriter implements Runnable {
     /**
      * Triggers a load job to transfer JSON records from a GCS blob to a BigQuery table
      */
-    private void triggerBigQueryTransfer() {
+    private void triggerBigQueryLoadJob() {
         Job loadJob = bigQuery.create(JobInfo.of(loadJobConfiguration));
         String exceptionMessage = String.format("%s.\nSource URI = \"%s\"\nTable = \"%s\"",
                 "Transfer from GCS blob to BigQuery unsuccessful.",

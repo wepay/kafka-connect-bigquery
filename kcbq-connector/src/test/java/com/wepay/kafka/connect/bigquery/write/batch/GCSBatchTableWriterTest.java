@@ -33,7 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class BatchTableWriterTest {
+public class GCSBatchTableWriterTest {
     private static Storage storage;
 
     @BeforeClass
