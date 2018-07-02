@@ -19,6 +19,7 @@ package com.wepay.kafka.connect.bigquery.write.batch;
 
 
 import com.google.cloud.bigquery.BigQuery;
+import com.google.cloud.bigquery.BigQueryException;
 import com.google.cloud.bigquery.FormatOptions;
 import com.google.cloud.bigquery.Job;
 import com.google.cloud.bigquery.JobInfo;
@@ -37,37 +38,48 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
+/**
+ * Batch Table Writer that uploads records to GCS as a blob and then uploads the contents of that blob to BigQuery
+ */
 public class BatchTableWriter implements Runnable {
-    private Gson gson;
+    private static final Gson gson = new Gson();
+    private static final int NOT_FOUND_ERROR_CODE = 404;
 
-    private BlobInfo blobInfo;
-    private Storage storage;
-    private String sourceUri;
+    private final BlobInfo blobInfo;
+    private final Storage storage;
+    private final String sourceUri;
 
-    private BigQuery bigQuery;
-    private TableId tableId;
-    private LoadJobConfiguration loadJobConfiguration;
+    private final BigQuery bigQuery;
+    private final LoadJobConfiguration loadJobConfiguration;
 
+    private final List<Map<String, Object>> records;
+
+    /**
+     * @param bucketName The name of the bucket to which a blob containing record information should be uploaded
+     * @param blobName Full path within the bucket to the blob (without the extension) (Doesn't need to be pre-created)
+     * @param storage GCS Storage
+     * @param tableId {@link TableId} of the BigQuery table to upload to
+     * @param bigQuery {@link BigQuery} Object used to perform upload
+     * @param records Records to upload to BigQuery through GCS
+     */
     public BatchTableWriter(String bucketName, String blobName, Storage storage,
-                            TableId tableId, BigQuery bigQuery) {
-        gson = new Gson();
-
+                            TableId tableId, BigQuery bigQuery,
+                            List<Map<String, Object>> records) {
         BlobId blobId = BlobId.of(bucketName, blobName+".json");
         blobInfo = BlobInfo.newBuilder(blobId).setContentType("text/json").build();
         this.storage = storage;
-        this.sourceUri = "gs://" + bucketName + "/" + blobName + ".json";
+        this.sourceUri = String.format("gs://%s/%s.json", bucketName, blobName);
 
-        this.tableId = tableId;
         this.bigQuery = bigQuery;
 
         // Check if the table specified exists
         try {
             if (!bigQuery.getTable(tableId).exists()) {
-                throw new ValueException("");
+                throw new BigQueryException(NOT_FOUND_ERROR_CODE, "");
             }
-        } catch (ValueException | NullPointerException exception) {
-            throw new ValueException(exception +
-                    String.format("Table id for table {} does not exist"), tableId.getTable());
+        } catch (BigQueryException | NullPointerException exception) {
+            throw new BigQueryException(NOT_FOUND_ERROR_CODE,
+                    exception + String.format("Table id for table %s does not exist", tableId.getTable()));
         }
 
         this.loadJobConfiguration =
@@ -75,6 +87,8 @@ public class BatchTableWriter implements Runnable {
                 .setFormatOptions(FormatOptions.json())
                 .setCreateDisposition(JobInfo.CreateDisposition.CREATE_NEVER)
                 .build();
+
+        this.records = records;
     }
 
     @Override
@@ -82,14 +96,16 @@ public class BatchTableWriter implements Runnable {
         //todo implement
     }
 
-    void transferBlobToBigQuery() throws InterruptedException, TimeoutException {
+    private void transferBlobToBigQuery() throws RuntimeException {
         Job loadJob = bigQuery.create(JobInfo.of(loadJobConfiguration));
+        String exceptionMessage = String.format("%s.\nSource URI = \"%s\"\nTable = \"%s\"",
+                "Transfer from GCS blob to BigQuery unsuccessful.",
+                loadJobConfiguration.getSourceUris(),
+                loadJobConfiguration.getDestinationTable());
         try {
             loadJob = loadJob.waitFor();
-        } catch (InterruptedException ie) {
-            throw new InterruptedException(ie + "Transfer from GCS blob to BigQuery unsuccessful.");
-        } catch (TimeoutException toe) {
-            throw new TimeoutException(toe + "Transfer from GCS blob to BigQuery unsuccessful.");
+        } catch (InterruptedException | TimeoutException exception) {
+            throw new RuntimeException(exceptionMessage, exception);
         }
     }
 
@@ -106,7 +122,7 @@ public class BatchTableWriter implements Runnable {
     private String toJson(Map<String, Object> record) {
         return gson.toJson(record);
     }
-    String toJson(List<Map<String, Object>> records) {
+    private String toJson(List<Map<String, Object>> records) {
         StringBuilder jsonRecordsBuilder = new StringBuilder("");
         for (Map<String, Object> record : records) {
             jsonRecordsBuilder.append(toJson(record));
