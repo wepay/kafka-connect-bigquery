@@ -39,7 +39,6 @@ public class BatchTableWriterTest {
         storage = StorageOptions.getDefaultInstance().getService();
     }
 
-    @Test
     @Test(expected = ValueException.class)
     public void testMapJsonConversion() {
         BatchTableWriter batchTableWriter = new BatchTableWriter("someBucket", "kcbqTest",
