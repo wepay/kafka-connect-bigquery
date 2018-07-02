@@ -33,34 +33,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class BatchTableWriterTest {
+public class GCSBatchTableWriterTest {
     private static Storage storage;
 
     @BeforeClass
     public static void initializeTests() {
         storage = StorageOptions.getDefaultInstance().getService();
-    }
-
-    @Test(expected = ValueException.class)
-    public void testMapJsonConversion() {
-        BatchTableWriter batchTableWriter = new BatchTableWriter("someBucket", "kcbqTest",
-                storage,
-                TableId.of("",""),
-                BigQueryOptions.getDefaultInstance().getService());
-        List<Map<String, Object>> records = new ArrayList<>();
-        for (int i = 0; i < 3; ++i) {
-            Map<String, Object> record = new HashMap<>();
-            record.put("f1", i);
-            record.put("f2", i+1000);
-            records.add(record);
-        }
-
-        String expectedString =
-                  "{\"f1\":0,\"f2\":1000}\n"
-                + "{\"f1\":1,\"f2\":1001}\n"
-                + "{\"f1\":2,\"f2\":1002}\n";
-        String jsonString = batchTableWriter.toJson(records);
-        assertEquals(jsonString, expectedString);
     }
 
 }
