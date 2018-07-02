@@ -23,13 +23,13 @@ import com.google.cloud.bigquery.FormatOptions;
 import com.google.cloud.bigquery.Job;
 import com.google.cloud.bigquery.JobInfo;
 import com.google.cloud.bigquery.LoadJobConfiguration;
-import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
 import com.google.gson.Gson;
+import jdk.nashorn.internal.runtime.regexp.joni.exception.ValueException;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -46,11 +46,10 @@ public class BatchTableWriter implements Runnable {
 
     private BigQuery bigQuery;
     private TableId tableId;
-    private Schema schema;
     private LoadJobConfiguration loadJobConfiguration;
 
     public BatchTableWriter(String bucketName, String blobName, Storage storage,
-                            TableId tableId, BigQuery bigQuery, Schema schema) {
+                            TableId tableId, BigQuery bigQuery) {
         gson = new Gson();
 
         BlobId blobId = BlobId.of(bucketName, blobName+".json");
@@ -60,12 +59,21 @@ public class BatchTableWriter implements Runnable {
 
         this.tableId = tableId;
         this.bigQuery = bigQuery;
-        this.schema = schema;
+
+        // Check if the table specified exists
+        try {
+            if (!bigQuery.getTable(tableId).exists()) {
+                throw new ValueException("");
+            }
+        } catch (ValueException | NullPointerException exception) {
+            throw new ValueException(exception +
+                    String.format("Table id for table {} does not exist"), tableId.getTable());
+        }
+
         this.loadJobConfiguration =
                 LoadJobConfiguration.builder(tableId, sourceUri)
                 .setFormatOptions(FormatOptions.json())
-                .setCreateDisposition(JobInfo.CreateDisposition.CREATE_IF_NEEDED)
-                .setSchema(schema)
+                .setCreateDisposition(JobInfo.CreateDisposition.CREATE_NEVER)
                 .build();
     }
 

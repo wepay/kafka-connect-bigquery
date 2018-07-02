@@ -44,8 +44,7 @@ public class BatchTableWriterTest {
         BatchTableWriter batchTableWriter = new BatchTableWriter("someBucket", "kcbqTest",
                 storage,
                 TableId.of("",""),
-                BigQueryOptions.getDefaultInstance().getService(),
-                Schema.newBuilder().build());
+                BigQueryOptions.getDefaultInstance().getService());
         List<Map<String, Object>> records = new ArrayList<>();
         for (int i = 0; i < 3; ++i) {
             Map<String, Object> record = new HashMap<>();
