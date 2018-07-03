@@ -118,8 +118,12 @@ public class GCSBatchTableWriter implements Runnable {
    * Creates a JSON string containing all records and uploads it as a blob to GCS
    * @return The blob uploaded to GCS
    */
-  private Blob uploadRecordsToGcs() throws UnsupportedEncodingException {
-    return uploadBlobToGcs(new ByteArrayInputStream(toJson(records).getBytes("UTF-8")));
+  private Blob uploadRecordsToGcs() {
+    try {
+      return uploadBlobToGcs(new ByteArrayInputStream(toJson(records).getBytes("UTF-8")));
+    } catch (UnsupportedEncodingException uee) {
+      throw new RuntimeException("Failed to upload blob to GCS", uee);
+    }
   }
 
   private Blob uploadBlobToGcs(InputStream blobContent) {
