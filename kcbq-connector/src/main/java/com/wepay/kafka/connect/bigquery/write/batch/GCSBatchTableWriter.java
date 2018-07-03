@@ -33,108 +33,111 @@ import com.google.gson.Gson;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
 /**
- * Batch Table Writer that uploads records to GCS as a blob and then triggers a load job from that GCS file to BigQuery
+ * Batch Table Writer that uploads records to GCS as a blob
+ * and then triggers a load job from that GCS file to BigQuery.
  */
 public class GCSBatchTableWriter implements Runnable {
-    private static final Gson gson = new Gson();
-    private static final int NOT_FOUND_ERROR_CODE = 404;
+  private static final Gson gson = new Gson();
+  private static final int NOT_FOUND_ERROR_CODE = 404;
 
-    private final BlobInfo blobInfo;
-    private final Storage storage;
-    private final String sourceUri;
+  private final BlobInfo blobInfo;
+  private final Storage storage;
+  private final String sourceUri;
 
-    private final BigQuery bigQuery;
-    private final LoadJobConfiguration loadJobConfiguration;
+  private final BigQuery bigQuery;
+  private final LoadJobConfiguration loadJobConfiguration;
 
-    private final List<Map<String, Object>> records;
+  private final List<Map<String, Object>> records;
 
-    /**
-     * @param bucketName The name of the bucket to which a blob containing record information should be uploaded
-     * @param blobName Full path within the bucket to the blob (without the extension) (Doesn't need to be pre-created)
-     * @param storage GCS Storage
-     * @param tableId {@link TableId} of the BigQuery table to upload to
-     * @param bigQuery {@link BigQuery} Object used to perform upload
-     * @param records Records to upload to BigQuery through GCS
-     */
-    public GCSBatchTableWriter(String bucketName, String blobName, Storage storage,
-                               TableId tableId, BigQuery bigQuery,
-                               List<Map<String, Object>> records) {
-        BlobId blobId = BlobId.of(bucketName, blobName+".json");
-        blobInfo = BlobInfo.newBuilder(blobId).setContentType("text/json").build();
-        this.storage = storage;
-        this.sourceUri = String.format("gs://%s/%s.json", bucketName, blobName);
+  /**
+   * Initializes a batch table writer with a full list of records to write.
+   * @param bucketName The name of the bucket to upload the blob in
+   * @param blobName Full path within the bucket to the blob (without the extension)
+   * @param storage GCS Storage
+   * @param tableId {@link TableId} of the BigQuery table to upload to
+   * @param bigQuery {@link BigQuery} Object used to perform upload
+   * @param records Records to upload to BigQuery through GCS
+   */
+  public GCSBatchTableWriter(String bucketName, String blobName, Storage storage,
+                 TableId tableId, BigQuery bigQuery,
+                 List<Map<String, Object>> records) {
+    BlobId blobId = BlobId.of(bucketName, blobName + ".json");
+    blobInfo = BlobInfo.newBuilder(blobId).setContentType("text/json").build();
+    this.storage = storage;
+    this.sourceUri = String.format("gs://%s/%s.json", bucketName, blobName);
 
-        this.bigQuery = bigQuery;
+    this.bigQuery = bigQuery;
 
-        // Check if the table specified exists
-        try {
-            if (!bigQuery.getTable(tableId).exists()) {
-                throw new BigQueryException(NOT_FOUND_ERROR_CODE, "");
-            }
-        } catch (BigQueryException | NullPointerException exception) {
-            throw new BigQueryException(NOT_FOUND_ERROR_CODE,
-                    exception + String.format("Table id for table %s does not exist", tableId.getTable()));
-        }
-
-        this.loadJobConfiguration =
-                LoadJobConfiguration.builder(tableId, sourceUri)
-                .setFormatOptions(FormatOptions.json())
-                .setCreateDisposition(JobInfo.CreateDisposition.CREATE_NEVER)
-                .build();
-
-        this.records = records;
+    // Check if the table specified exists
+    try {
+      if (!bigQuery.getTable(tableId).exists()) {
+        throw new BigQueryException(NOT_FOUND_ERROR_CODE, "");
+      }
+    } catch (BigQueryException | NullPointerException exception) {
+      throw new BigQueryException(NOT_FOUND_ERROR_CODE,
+          exception + String.format("Table id for table %s does not exist", tableId.getTable()));
     }
 
-    @Override
-    public void run() {
-        //todo implement
-    }
+    this.loadJobConfiguration =
+        LoadJobConfiguration.builder(tableId, sourceUri)
+        .setFormatOptions(FormatOptions.json())
+        .setCreateDisposition(JobInfo.CreateDisposition.CREATE_NEVER)
+        .build();
 
-    /**
-     * Triggers a load job to transfer JSON records from a GCS blob to a BigQuery table
-     */
-    private void triggerBigQueryLoadJob() {
-        Job loadJob = bigQuery.create(JobInfo.of(loadJobConfiguration));
-        String exceptionMessage = String.format("%s.\nSource URI = \"%s\"\nTable = \"%s\"",
-                "Transfer from GCS blob to BigQuery unsuccessful.",
-                loadJobConfiguration.getSourceUris(),
-                loadJobConfiguration.getDestinationTable());
-        try {
-            loadJob = loadJob.waitFor();
-        } catch (InterruptedException | TimeoutException exception) {
-            throw new RuntimeException(exceptionMessage, exception);
-        }
-    }
+    this.records = records;
+  }
 
-    /**
-     * Creates a JSON string containing all records and uploads it as a blob to GCS
-     * @return The blob uploaded to GCS
-     */
-    private Blob uploadRecordsToGcs() {
-        return uploadBlobToGcs(new ByteArrayInputStream(toJson(records).getBytes()));
-    }
+  @Override
+  public void run() {
+    //todo implement
+  }
 
-    private Blob uploadBlobToGcs(InputStream blobContent) {
-        // todo look into creating from a string because this is depreciated - input stream cannot retry
-        // todo consider if it would be worth it to switch to a resumable method of uploading
-        return storage.create(blobInfo, blobContent);
+  /**
+   * Triggers a load job to transfer JSON records from a GCS blob to a BigQuery table.
+   */
+  private void triggerBigQueryLoadJob() {
+    Job loadJob = bigQuery.create(JobInfo.of(loadJobConfiguration));
+    String exceptionMessage = String.format("%s.Source URI = \"%s\" Table = \"%s\"",
+        "Transfer from GCS blob to BigQuery unsuccessful.",
+        loadJobConfiguration.getSourceUris(),
+        loadJobConfiguration.getDestinationTable());
+    try {
+      loadJob.waitFor();
+    } catch (InterruptedException | TimeoutException exception) {
+      throw new RuntimeException(exceptionMessage, exception);
     }
+  }
 
-    private String toJson(Map<String, Object> record) {
-        return gson.toJson(record);
-    }
+  /**
+   * Creates a JSON string containing all records and uploads it as a blob to GCS
+   * @return The blob uploaded to GCS
+   */
+  private Blob uploadRecordsToGcs() throws UnsupportedEncodingException {
+    return uploadBlobToGcs(new ByteArrayInputStream(toJson(records).getBytes("UTF-8")));
+  }
 
-    private String toJson(List<Map<String, Object>> records) {
-        StringBuilder jsonRecordsBuilder = new StringBuilder("");
-        for (Map<String, Object> record : records) {
-            jsonRecordsBuilder.append(toJson(record));
-            jsonRecordsBuilder.append("\n");
-        }
-        return jsonRecordsBuilder.toString();
+  private Blob uploadBlobToGcs(InputStream blobContent) {
+    // todo look into creating from a string because this is depreciated - input stream cannot retry
+    // todo consider if it would be worth it to switch to a resumable method of uploading
+    return storage.create(blobInfo, blobContent);
+  }
+
+  private String toJson(Map<String, Object> record) {
+    return gson.toJson(record);
+  }
+
+  private String toJson(List<Map<String, Object>> records) {
+    StringBuilder jsonRecordsBuilder = new StringBuilder("");
+    for (Map<String, Object> record : records) {
+      jsonRecordsBuilder.append(toJson(record));
+      jsonRecordsBuilder.append("\n");
     }
+    return jsonRecordsBuilder.toString();
+  }
 }

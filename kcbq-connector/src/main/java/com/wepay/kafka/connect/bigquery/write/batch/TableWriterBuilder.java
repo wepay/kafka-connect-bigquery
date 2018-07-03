@@ -21,19 +21,19 @@ package com.wepay.kafka.connect.bigquery.write.batch;
 import org.apache.kafka.connect.sink.SinkRecord;
 
 /**
- * Interface for building a {@link TableWriter} or TableWriterGCS
+ * Interface for building a {@link TableWriter} or TableWriterGCS.
  */
 public interface TableWriterBuilder {
 
-    /**
-     * Add a record to the builder.
-     * @param recordToInsert the record to add.
-     */
-    void addRecord(SinkRecord recordToInsert);
+  /**
+   * Add a record to the builder.
+   * @param recordToInsert the record to add.
+   */
+  void addRecord(SinkRecord recordToInsert);
 
-    /**
-     * Create a {@link TableWriter} from this builder.
-     * @return a TableWriter containing the given writer, table, topic, and all added rows.
-     */
-    Runnable build();
+  /**
+   * Create a {@link TableWriter} from this builder.
+   * @return a TableWriter containing the given writer, table, topic, and all added rows.
+   */
+  Runnable build();
 }
