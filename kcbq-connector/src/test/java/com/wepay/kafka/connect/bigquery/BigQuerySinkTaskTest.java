@@ -116,8 +116,7 @@ public class BigQuerySinkTaskTest {
     testTask.put(Collections.singletonList(spoofSinkRecord(topic)));
     testTask.flush(Collections.emptyMap());
     verify(bigQuery, times(1)).insertAll(any(InsertAllRequest.class));
-    verify(schemaRetriever, times(1)).setLastSeenSchema(any(TableId.class),
-        any(String.class), any(Schema.class));
+    verify(schemaRetriever, times(1)).setLastSeenSchema(any(TableId.class), any(String.class), any(Schema.class));
   }
 
   @Test
@@ -152,7 +151,6 @@ public class BigQuerySinkTaskTest {
   }
 
   @Captor ArgumentCaptor<InsertAllRequest> captor;
-
   @Test
   public void testPutWhenPartitioningOnMessageTime() {
     final String topic = "test-topic";
@@ -173,8 +171,7 @@ public class BigQuerySinkTaskTest {
     testTask.initialize(sinkTaskContext);
     testTask.start(properties);
 
-    testTask.put(Collections.singletonList(spoofSinkRecord(topic, "value", "message text",
-        TimestampType.CREATE_TIME, 1509007584334L)));
+    testTask.put(Collections.singletonList(spoofSinkRecord(topic, "value", "message text", TimestampType.CREATE_TIME, 1509007584334L)));
     testTask.flush(Collections.emptyMap());
     ArgumentCaptor<InsertAllRequest> argument = ArgumentCaptor.forClass(InsertAllRequest.class);
 
@@ -203,8 +200,7 @@ public class BigQuerySinkTaskTest {
     testTask.initialize(sinkTaskContext);
     testTask.start(properties);
 
-    testTask.put(Collections.singletonList(spoofSinkRecord(topic, "value", "message text",
-        TimestampType.NO_TIMESTAMP_TYPE, null)));
+    testTask.put(Collections.singletonList(spoofSinkRecord(topic, "value", "message text", TimestampType.NO_TIMESTAMP_TYPE, null)));
   }
 
   // It's important that the buffer be completely wiped after a call to flush, since any execption
@@ -418,16 +414,14 @@ public class BigQuerySinkTaskTest {
    * @param timestamp The timestamp in milliseconds
    * @return The spoofed SinkRecord.
    */
-  public static SinkRecord spoofSinkRecord(String topic, String field, String value,
-                                           TimestampType timestampType, Long timestamp) {
+  public static SinkRecord spoofSinkRecord(String topic, String field, String value, TimestampType timestampType, Long timestamp) {
     Schema basicRowSchema = SchemaBuilder
             .struct()
             .field(field, Schema.STRING_SCHEMA)
             .build();
     Struct basicRowValue = new Struct(basicRowSchema);
     basicRowValue.put(field, value);
-    return new SinkRecord(topic, 0, null, null,
-        basicRowSchema, basicRowValue, 0, timestamp, timestampType);
+    return new SinkRecord(topic, 0, null, null, basicRowSchema, basicRowValue, 0, timestamp, timestampType);
   }
 
   /**
