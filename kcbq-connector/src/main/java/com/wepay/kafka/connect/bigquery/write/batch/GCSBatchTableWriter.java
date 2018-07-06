@@ -31,6 +31,8 @@ import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
 import com.google.gson.Gson;
 
+import org.apache.kafka.connect.errors.ConnectException;
+
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
@@ -64,9 +66,12 @@ public class GCSBatchTableWriter implements Runnable {
    * @param bigQuery {@link BigQuery} Object used to perform upload
    * @param records Records to upload to BigQuery through GCS
    */
-  public GCSBatchTableWriter(String bucketName, String blobName, Storage storage,
-                 TableId tableId, BigQuery bigQuery,
-                 List<Map<String, Object>> records) {
+  public GCSBatchTableWriter(String bucketName,
+                             String blobName,
+                             Storage storage,
+                             TableId tableId,
+                             BigQuery bigQuery,
+                             List<Map<String, Object>> records) {
     BlobId blobId = BlobId.of(bucketName, blobName + ".json");
     blobInfo = BlobInfo.newBuilder(blobId).setContentType("text/json").build();
     this.storage = storage;
@@ -81,14 +86,15 @@ public class GCSBatchTableWriter implements Runnable {
       }
     } catch (BigQueryException | NullPointerException exception) {
       throw new BigQueryException(NOT_FOUND_ERROR_CODE,
-          exception + String.format("Table id for table %s does not exist", tableId.getTable()));
+          String.format("Table id for table %s does not exist", tableId.getTable()),
+          exception);
     }
 
     this.loadJobConfiguration =
         LoadJobConfiguration.builder(tableId, sourceUri)
-        .setFormatOptions(FormatOptions.json())
-        .setCreateDisposition(JobInfo.CreateDisposition.CREATE_NEVER)
-        .build();
+                            .setFormatOptions(FormatOptions.json())
+                            .setCreateDisposition(JobInfo.CreateDisposition.CREATE_NEVER)
+                            .build();
 
     this.records = records;
   }
@@ -103,14 +109,14 @@ public class GCSBatchTableWriter implements Runnable {
    */
   private void triggerBigQueryLoadJob() {
     Job loadJob = bigQuery.create(JobInfo.of(loadJobConfiguration));
-    String exceptionMessage = String.format("%s.Source URI = \"%s\" Table = \"%s\"",
-        "Transfer from GCS blob to BigQuery unsuccessful.",
-        loadJobConfiguration.getSourceUris(),
-        loadJobConfiguration.getDestinationTable());
     try {
       loadJob.waitFor();
     } catch (InterruptedException | TimeoutException exception) {
-      throw new RuntimeException(exceptionMessage, exception);
+      String exceptionMessage = String.format("%s.Source URI = \"%s\" Table = \"%s\"",
+          "Transfer from GCS blob to BigQuery unsuccessful.",
+          loadJobConfiguration.getSourceUris(),
+          loadJobConfiguration.getDestinationTable());
+      throw new ConnectException(exceptionMessage, exception);
     }
   }
 
@@ -122,7 +128,7 @@ public class GCSBatchTableWriter implements Runnable {
     try {
       return uploadBlobToGcs(new ByteArrayInputStream(toJson(records).getBytes("UTF-8")));
     } catch (UnsupportedEncodingException uee) {
-      throw new RuntimeException("Failed to upload blob to GCS", uee);
+      throw new ConnectException("Failed to upload blob to GCS", uee);
     }
   }
 
