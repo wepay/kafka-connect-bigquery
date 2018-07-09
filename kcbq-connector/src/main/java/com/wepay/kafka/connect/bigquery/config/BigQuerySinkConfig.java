@@ -136,7 +136,7 @@ public class BigQuerySinkConfig extends AbstractConfig {
           "Should +Infinity be converted to Double.MAX_VALUE and -Infinity and NaN be "
           + "converted to Double.MIN_VALUE so they can make it to BigQuery";
 
-  public static final String ALL_BQ_FIELDS_NULLABLE_CONFIG = "allBQFielsNullable";
+  public static final String ALL_BQ_FIELDS_NULLABLE_CONFIG = "allBQFieldsNullable";
   private static final ConfigDef.Type ALL_BQ_FIELDS_NULLABLE_TYPE = ConfigDef.Type.BOOLEAN;
   private static final Boolean ALL_BQ_FIELDS_NULLABLE_DEFAULT = false;
   private static final ConfigDef.Importance ALL_BQ_FIELDS_NULLABLE_IMPORTANCE =
