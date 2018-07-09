@@ -19,7 +19,6 @@ package com.wepay.kafka.connect.bigquery.write.batch;
 
 
 import com.google.cloud.bigquery.BigQuery;
-import com.google.cloud.bigquery.BigQueryException;
 import com.google.cloud.bigquery.FormatOptions;
 import com.google.cloud.bigquery.Job;
 import com.google.cloud.bigquery.JobInfo;
@@ -80,14 +79,9 @@ public class GCSBatchTableWriter implements Runnable {
     this.bigQuery = bigQuery;
 
     // Check if the table specified exists
-    try {
-      if (!bigQuery.getTable(tableId).exists()) {
-        throw new BigQueryException(NOT_FOUND_ERROR_CODE, "");
-      }
-    } catch (BigQueryException | NullPointerException exception) {
-      throw new BigQueryException(NOT_FOUND_ERROR_CODE,
-          String.format("Table id for table %s does not exist", tableId.getTable()),
-          exception);
+    // This error shouldn't be thrown. All tables should be created by the connector at startup
+    if (bigQuery.getTable(tableId) == null || !bigQuery.getTable(tableId).exists()) {
+      throw new ConnectException("Table with TableId %s does not exist.");
     }
 
     this.loadJobConfiguration =
