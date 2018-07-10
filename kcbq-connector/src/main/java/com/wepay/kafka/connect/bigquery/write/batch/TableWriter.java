@@ -157,6 +157,7 @@ public class TableWriter implements Runnable {
      * @param writer the BigQueryWriter to use
      * @param table the BigQuery table to write to.
      * @param topic the kafka source topic associated with the given table.
+     * @param recordConverter the record converter used to convert records to rows
      */
     public Builder(BigQueryWriter writer, PartitionedTableId table, String topic,
                    RecordConverter<Map<String, Object>> recordConverter) {
@@ -181,8 +182,12 @@ public class TableWriter implements Runnable {
     private RowToInsert getRecordRow(SinkRecord record) {
       return RowToInsert.of(getRowId(record), recordConverter.convertRecord(record));
     }
+
     private String getRowId(SinkRecord record) {
-      return String.format("%s-%d-%d", record.topic(), record.kafkaPartition(), record.kafkaOffset());
+      return String.format("%s-%d-%d",
+                           record.topic(),
+                           record.kafkaPartition(),
+                           record.kafkaOffset());
     }
 
     /**
