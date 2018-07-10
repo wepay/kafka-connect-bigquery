@@ -45,11 +45,9 @@ import java.util.concurrent.TimeoutException;
  */
 public class GCSBatchTableWriter implements Runnable {
   private static final Gson gson = new Gson();
-  private static final int NOT_FOUND_ERROR_CODE = 404;
 
   private final BlobInfo blobInfo;
   private final Storage storage;
-  private final String sourceUri;
 
   private final BigQuery bigQuery;
   private final LoadJobConfiguration loadJobConfiguration;
@@ -74,7 +72,7 @@ public class GCSBatchTableWriter implements Runnable {
     BlobId blobId = BlobId.of(bucketName, blobName + ".json");
     blobInfo = BlobInfo.newBuilder(blobId).setContentType("text/json").build();
     this.storage = storage;
-    this.sourceUri = String.format("gs://%s/%s.json", bucketName, blobName);
+    String sourceUri = String.format("gs://%s/%s.json", bucketName, blobName);
 
     this.bigQuery = bigQuery;
 
@@ -106,8 +104,8 @@ public class GCSBatchTableWriter implements Runnable {
     try {
       loadJob.waitFor();
     } catch (InterruptedException | TimeoutException exception) {
-      String exceptionMessage = String.format("%s.Source URI = \"%s\" Table = \"%s\"",
-          "Transfer from GCS blob to BigQuery unsuccessful.",
+      String exceptionMessage = String.format("Transfer from GCS blob to BigQuery unsuccessful. " +
+              "Source URI = \"%s\" Table = \"%s\"",
           loadJobConfiguration.getSourceUris(),
           loadJobConfiguration.getDestinationTable());
       throw new ConnectException(exceptionMessage, exception);
