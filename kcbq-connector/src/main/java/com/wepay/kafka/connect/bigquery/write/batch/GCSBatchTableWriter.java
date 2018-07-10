@@ -132,14 +132,15 @@ public class GCSBatchTableWriter implements Runnable {
     return storage.create(blobInfo, blobContent);
   }
 
-  private String toJson(Map<String, Object> record) {
-    return gson.toJson(record);
-  }
-
+  /**
+   * Converts a list of records to a serialized JSON string
+   * @param records records to be serialized
+   * @return The resulting newline delimited JSON string containing all records in the original list
+   */
   private String toJson(List<Map<String, Object>> records) {
     StringBuilder jsonRecordsBuilder = new StringBuilder("");
     for (Map<String, Object> record : records) {
-      jsonRecordsBuilder.append(toJson(record));
+      jsonRecordsBuilder.append(gson.toJson(record));
       jsonRecordsBuilder.append("\n");
     }
     return jsonRecordsBuilder.toString();

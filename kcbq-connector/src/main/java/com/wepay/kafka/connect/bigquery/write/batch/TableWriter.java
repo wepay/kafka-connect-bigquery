@@ -185,9 +185,9 @@ public class TableWriter implements Runnable {
 
     private String getRowId(SinkRecord record) {
       return String.format("%s-%d-%d",
-                            record.topic(),
-                            record.kafkaPartition(),
-                            record.kafkaOffset());
+                           record.topic(),
+                           record.kafkaPartition(),
+                           record.kafkaOffset());
     }
 
     /**
