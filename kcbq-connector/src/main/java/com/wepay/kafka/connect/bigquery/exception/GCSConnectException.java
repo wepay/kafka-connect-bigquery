@@ -1,4 +1,4 @@
-package com.wepay.kafka.connect.bigquery.write.batch;
+package com.wepay.kafka.connect.bigquery.exception;
 
 /*
  * Copyright 2016 WePay, Inc.
@@ -18,22 +18,17 @@ package com.wepay.kafka.connect.bigquery.write.batch;
  */
 
 
-import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
+import org.apache.kafka.connect.errors.ConnectException;
 
 /**
- * Interface for building a {@link TableWriter} or TableWriterGCS.
+ * Class for exceptions that occur while interacting with Google Cloud Storage, such as login failures
  */
-public interface TableWriterBuilder {
+public class GCSConnectException extends ConnectException {
+  public GCSConnectException(String msg) {
+    super(msg);
+  }
 
-  /**
-   * Add a record to the builder.
-   * @param rowToInsert the row to add.
-   */
-  void addRow(RowToInsert rowToInsert);
-
-  /**
-   * Create a {@link TableWriter} from this builder.
-   * @return a TableWriter containing the given writer, table, topic, and all added rows.
-   */
-  Runnable build();
+  public GCSConnectException(String msg, Throwable thr) {
+    super(msg, thr);
+  }
 }
