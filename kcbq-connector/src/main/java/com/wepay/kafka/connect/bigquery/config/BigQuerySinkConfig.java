@@ -465,8 +465,10 @@ public class BigQuerySinkConfig extends AbstractConfig {
   /**
    * Verifies that the current config is valid. Throws an exception if it is not
    * @throws ConfigException Exception thrown in case the config is not valid
+   * Verifies that a bucket is specified if GCS batch loading is enabled
+   * @throws ConfigException Exception thrown if no bucket is specified and batch loading is on
    */
-  private void verifyConfig() throws ConfigException {
+  private void verifyBucketSpecified() throws ConfigException {
     // Throw an exception if GCS Batch loading will be used but no bucket is specified
     if (getString(GCS_BUCKET_NAME_CONFIG).equals("")
         && !getList(ENABLE_BATCH_CONFIG).isEmpty()) {
@@ -485,11 +487,11 @@ public class BigQuerySinkConfig extends AbstractConfig {
 
   protected BigQuerySinkConfig(ConfigDef config, Map<String, String> properties) {
     super(config, properties);
-    verifyConfig();
+    verifyBucketSpecified();
   }
 
   public BigQuerySinkConfig(Map<String, String> properties) {
     super(config, properties);
-    verifyConfig();
+    verifyBucketSpecified();
   }
 }

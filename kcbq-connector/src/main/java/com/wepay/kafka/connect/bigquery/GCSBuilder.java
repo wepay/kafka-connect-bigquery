@@ -32,8 +32,25 @@ import java.io.InputStream;
 /**
  * Convenience class for creating a {@link com.google.cloud.storage.Storage} instance
  */
-public class GCSHelper {
-  private static final Logger logger = LoggerFactory.getLogger(GCSHelper.class);
+public class GCSBuilder {
+  private static final Logger logger = LoggerFactory.getLogger(GCSBuilder.class);
+
+  private final String projectName;
+  private String keyFileName;
+
+  public GCSBuilder(String projectName) {
+    this.projectName = projectName;
+    this.keyFileName = null;
+  }
+
+  public GCSBuilder setKeyFileName(String keyFileName) {
+    this.keyFileName = keyFileName;
+    return this;
+  }
+
+  public Storage build() {
+    return connect(projectName, keyFileName);
+  }
 
   /**
    * Returns a default {@link Storage} instance for the specified project with credentials provided
@@ -44,7 +61,7 @@ public class GCSHelper {
    *                    credentials to GCS, or null if no authentication should be performed.
    * @return The resulting Storage object.
    */
-  public Storage connect(String projectName, String keyFilename) {
+  private Storage connect(String projectName, String keyFilename) {
     if (keyFilename == null) {
       return connect(projectName);
     }
@@ -69,7 +86,7 @@ public class GCSHelper {
    * @param projectName The name of the GCS project to work with
    * @return The resulting Storage object.
    */
-  public Storage connect(String projectName) {
+  private Storage connect(String projectName) {
     logger.debug("Attempting to access BigQuery without authentication");
     return StorageOptions.newBuilder()
         .setProjectId(projectName)

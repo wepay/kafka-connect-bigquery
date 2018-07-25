@@ -73,8 +73,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 public class BigQuerySinkTask extends SinkTask {
   private static final Logger logger = LoggerFactory.getLogger(BigQuerySinkTask.class);
 
-  private final BigQuery testBigQuery;
-  private final Storage testGCS;
   private SchemaRetriever schemaRetriever;
   private BigQueryWriter bigQueryWriter;
   private GCSWriter gcsWriter;
@@ -86,6 +84,10 @@ public class BigQuerySinkTask extends SinkTask {
   private TopicPartitionManager topicPartitionManager;
 
   private KCBQThreadPoolExecutor executor;
+
+  private final BigQuery testBigQuery;
+  private final Storage testGCS;
+
 
   public BigQuerySinkTask() {
     testBigQuery = null;
@@ -239,7 +241,7 @@ public class BigQuerySinkTask extends SinkTask {
     }
     String projectName = config.getString(config.PROJECT_CONFIG);
     String keyFilename = config.getString(config.KEYFILE_CONFIG);
-    return new GCSHelper().connect(projectName, keyFilename);
+    return new GCSBuilder(projectName).setKeyFileName(keyFilename).build();
   }
 
   private GCSWriter getGCSWriter() {
