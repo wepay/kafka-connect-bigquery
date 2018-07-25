@@ -463,8 +463,6 @@ public class BigQuerySinkConfig extends AbstractConfig {
   }
 
   /**
-   * Verifies that the current config is valid. Throws an exception if it is not
-   * @throws ConfigException Exception thrown in case the config is not valid
    * Verifies that a bucket is specified if GCS batch loading is enabled
    * @throws ConfigException Exception thrown if no bucket is specified and batch loading is on
    */
