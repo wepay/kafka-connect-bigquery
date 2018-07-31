@@ -19,11 +19,9 @@ package com.wepay.kafka.connect.bigquery.utils;
 
 
 import com.google.cloud.bigquery.TableId;
-
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.time.Instant;
 import java.time.LocalDate;
 
 public class PartitionedTableIdTest {
@@ -64,6 +62,27 @@ public class PartitionedTableIdTest {
 
   @Test
   public void testWithPartition() {
+    final String dataset = "dataset";
+    final String table = "table";
+    final String partitionColumn = "custom_partition_key";
+
+    final PartitionedTableId partitionedTableId =
+            new PartitionedTableId.Builder(dataset, table).setPartition(partitionColumn).build();
+
+
+    Assert.assertEquals(dataset, partitionedTableId.getDataset());
+    Assert.assertEquals(table, partitionedTableId.getBaseTableName());
+    Assert.assertEquals(table + "$" + partitionColumn, partitionedTableId.getFullTableName());
+
+    final TableId expectedBaseTableId = TableId.of(dataset, table);
+    final TableId expectedFullTableId = TableId.of(dataset, table + "$" + partitionColumn);
+
+    Assert.assertEquals(expectedBaseTableId, partitionedTableId.getBaseTableId());
+    Assert.assertEquals(expectedFullTableId, partitionedTableId.getFullTableId());
+  }
+
+  @Test
+  public void testWithPartitionDate() {
     final String dataset = "dataset";
     final String table = "table";
     final LocalDate partitionDate = LocalDate.of(2016, 9, 21);
