@@ -43,7 +43,7 @@ import com.wepay.kafka.connect.bigquery.write.batch.TableWriter;
 import com.wepay.kafka.connect.bigquery.write.batch.TableWriterBuilder;
 import com.wepay.kafka.connect.bigquery.write.row.AdaptiveBigQueryWriter;
 import com.wepay.kafka.connect.bigquery.write.row.BigQueryWriter;
-import com.wepay.kafka.connect.bigquery.write.row.GCSWriter;
+import com.wepay.kafka.connect.bigquery.write.row.GCSToBQWriter;
 import com.wepay.kafka.connect.bigquery.write.row.SimpleBigQueryWriter;
 
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
@@ -75,7 +75,7 @@ public class BigQuerySinkTask extends SinkTask {
 
   private SchemaRetriever schemaRetriever;
   private BigQueryWriter bigQueryWriter;
-  private GCSWriter gcsWriter;
+  private GCSToBQWriter gcsToBQWriter;
   private BigQuerySinkTaskConfig config;
   private RecordConverter<Map<String, Object>> recordConverter;
   private Map<String, TableId> topicsToBaseTableIds;
@@ -169,9 +169,10 @@ public class BigQuerySinkTask extends SinkTask {
           TableWriterBuilder tableWriterBuilder;
           if (config.getList(config.ENABLE_BATCH_CONFIG).contains(record.topic())) {
             tableWriterBuilder = new GCSBatchTableWriter.Builder(
-                gcsWriter,
+                gcsToBQWriter,
                 table.getBaseTableId(),
                 config.getString(config.GCS_BUCKET_NAME_CONFIG),
+                record.topic(),
                 recordConverter);
           } else {
             tableWriterBuilder = new TableWriter.Builder(bigQueryWriter, table, record.topic(), recordConverter);
@@ -244,11 +245,11 @@ public class BigQuerySinkTask extends SinkTask {
     return new GCSBuilder(projectName).setKeyFileName(keyFilename).build();
   }
 
-  private GCSWriter getGCSWriter() {
+  private GCSToBQWriter getGCSWriter() {
     BigQuery bigQuery = getBigQuery();
     int retry = config.getInt(config.BIGQUERY_RETRY_CONFIG);
     long retryWait = config.getLong(config.BIGQUERY_RETRY_WAIT_CONFIG);
-    return new GCSWriter(getGCS(),
+    return new GCSToBQWriter(getGCS(),
                          bigQuery,
                          retry,
                          retryWait);
@@ -267,7 +268,7 @@ public class BigQuerySinkTask extends SinkTask {
     }
 
     bigQueryWriter = getBigQueryWriter();
-    gcsWriter = getGCSWriter();
+    gcsToBQWriter = getGCSWriter();
     topicsToBaseTableIds = TopicToTableResolver.getTopicsToTables(config);
     recordConverter = getConverter();
     executor = new KCBQThreadPoolExecutor(config, new LinkedBlockingQueue<>());

@@ -23,7 +23,7 @@ import com.google.cloud.bigquery.TableId;
 
 import com.wepay.kafka.connect.bigquery.convert.RecordConverter;
 
-import com.wepay.kafka.connect.bigquery.write.row.GCSWriter;
+import com.wepay.kafka.connect.bigquery.write.row.GCSToBQWriter;
 import org.apache.kafka.connect.errors.ConnectException;
 
 import org.slf4j.Logger;
@@ -46,17 +46,17 @@ public class GCSBatchTableWriter implements Runnable {
   private final String blobName;
 
   private final List<RowToInsert> rows;
-  private final GCSWriter writer;
+  private final GCSToBQWriter writer;
 
   /**
    * @param rows The list of rows that should be written through GCS
-   * @param writer {@link GCSWriter} to use
+   * @param writer {@link GCSToBQWriter} to use
    * @param tableId the BigQuery table id of the table to write to
    * @param bucketName the name of the GCS bucket where the blob should be uploaded
    * @param blobName the name of the blob in which the serialized rows should be uploaded
    */
   private GCSBatchTableWriter(List<RowToInsert> rows,
-                              GCSWriter writer,
+                              GCSToBQWriter writer,
                               TableId tableId,
                               String bucketName,
                               String blobName) {
@@ -85,17 +85,16 @@ public class GCSBatchTableWriter implements Runnable {
 
     private List<RowToInsert> rows;
     private final RecordConverter<Map<String, Object>> recordConverter;
-    private final GCSWriter writer;
-
-    private static final String DEFAULT_BLOB_NAME = "kcbq_GCS_Batch_Load_Blob";
-
-    public Builder(GCSWriter writer,
+    private final GCSToBQWriter writer;
+    
+    public Builder(GCSToBQWriter writer,
                    TableId tableId,
-                   String GcsBucketName,
+                   String gcsBucketName,
+                   String gcsBlobName,
                    RecordConverter<Map<String, Object>> recordConverter) {
 
-      this.bucketName = GcsBucketName;
-      this.blobName = DEFAULT_BLOB_NAME;
+      this.bucketName = gcsBucketName;
+      this.blobName = gcsBlobName;
 
       this.tableId = tableId;
 

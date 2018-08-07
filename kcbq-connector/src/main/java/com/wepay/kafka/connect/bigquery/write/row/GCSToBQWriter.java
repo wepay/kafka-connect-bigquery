@@ -47,8 +47,8 @@ import java.util.Random;
 /**
  * A class for batch writing list of rows to BigQuery through GCS
  */
-public class GCSWriter {
-  private static final Logger logger = LoggerFactory.getLogger(GCSWriter.class);
+public class GCSToBQWriter {
+  private static final Logger logger = LoggerFactory.getLogger(GCSToBQWriter.class);
 
   private static Gson gson = new Gson();
 
@@ -69,10 +69,10 @@ public class GCSWriter {
    * @param storage GCS Storage
    * @param bigQuery {@link BigQuery} Object used to perform upload
    */
-  public GCSWriter(Storage storage,
-                   BigQuery bigQuery,
-                   int retries,
-                   long retryWaitMs) {
+  public GCSToBQWriter(Storage storage,
+                       BigQuery bigQuery,
+                       int retries,
+                       long retryWaitMs) {
     this.storage = storage;
     this.bigQuery = bigQuery;
 
