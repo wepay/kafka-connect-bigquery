@@ -22,11 +22,14 @@ import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.BigQueryError;
 import com.google.cloud.bigquery.InsertAllRequest;
 import com.google.cloud.bigquery.InsertAllResponse;
+import com.google.cloud.storage.Storage;
+
 import com.wepay.kafka.connect.bigquery.BigQuerySinkTask;
 import com.wepay.kafka.connect.bigquery.SinkTaskPropertiesFactory;
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig;
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkTaskConfig;
 import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
+
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -65,6 +68,7 @@ public class BigQueryWriterTest {
         final Map<String, String> properties = makeProperties("3", "2000", topic, dataset);
 
         BigQuery bigQuery = mock(BigQuery.class);
+        Storage storage = mock(Storage.class);
         Map<Long, List<BigQueryError>> emptyMap = mock(Map.class);
         when(emptyMap.isEmpty()).thenReturn(true);
 
@@ -78,7 +82,7 @@ public class BigQueryWriterTest {
 
         SinkTaskContext sinkTaskContext = mock(SinkTaskContext.class);
 
-        BigQuerySinkTask testTask = new BigQuerySinkTask(bigQuery, null);
+        BigQuerySinkTask testTask = new BigQuerySinkTask(bigQuery, null, storage);
         testTask.initialize(sinkTaskContext);
         testTask.start(properties);
         testTask.put(Collections.singletonList(spoofSinkRecord(topic, 0, 0, "some_field", "some_value")));
@@ -112,6 +116,7 @@ public class BigQueryWriterTest {
         when(insertAllResponseNoError.getInsertErrors()).thenReturn(emptyMap);
 
         BigQuery bigQuery = mock(BigQuery.class);
+        Storage storage = mock(Storage.class);
 
         //first attempt (partial failure); second attempt (success)
         when(bigQuery.insertAll(anyObject()))
@@ -124,7 +129,7 @@ public class BigQueryWriterTest {
 
         SinkTaskContext sinkTaskContext = mock(SinkTaskContext.class);
 
-        BigQuerySinkTask testTask = new BigQuerySinkTask(bigQuery, null);
+        BigQuerySinkTask testTask = new BigQuerySinkTask(bigQuery, null, storage);
         testTask.initialize(sinkTaskContext);
         testTask.start(properties);
         testTask.put(sinkRecordList);
@@ -161,6 +166,7 @@ public class BigQueryWriterTest {
         when(insertAllResponseNoError.getInsertErrors()).thenReturn(emptyMap);
 
         BigQuery bigQuery = mock(BigQuery.class);
+        Storage storage = mock(Storage.class);
 
         //first attempt (complete failure); second attempt (not expected)
         when(bigQuery.insertAll(anyObject()))
@@ -172,7 +178,7 @@ public class BigQueryWriterTest {
 
         SinkTaskContext sinkTaskContext = mock(SinkTaskContext.class);
 
-        BigQuerySinkTask testTask = new BigQuerySinkTask(bigQuery, null);
+        BigQuerySinkTask testTask = new BigQuerySinkTask(bigQuery, null, storage);
         testTask.initialize(sinkTaskContext);
         testTask.start(properties);
         testTask.put(sinkRecordList);

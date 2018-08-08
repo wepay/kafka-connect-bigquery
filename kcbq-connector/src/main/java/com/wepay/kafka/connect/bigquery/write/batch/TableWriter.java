@@ -172,10 +172,9 @@ public class TableWriter implements Runnable {
 
     /**
      * Add a record to the builder.
-     * @param recordToInsert the record to add.
+     * @param rowToInsert the row to add
      */
-    public void addRecord(SinkRecord recordToInsert) {
-      RowToInsert rowToInsert = getRecordRow(recordToInsert);
+    public void addRow(RowToInsert rowToInsert) {
       rows.add(rowToInsert);
     }
 

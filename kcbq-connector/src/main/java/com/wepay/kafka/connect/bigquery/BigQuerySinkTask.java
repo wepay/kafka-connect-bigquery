@@ -22,6 +22,8 @@ import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 import com.google.cloud.bigquery.TableId;
 
+import com.google.cloud.storage.Storage;
+
 import com.wepay.kafka.connect.bigquery.api.SchemaRetriever;
 
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkTaskConfig;
@@ -35,11 +37,13 @@ import com.wepay.kafka.connect.bigquery.utils.PartitionedTableId;
 import com.wepay.kafka.connect.bigquery.utils.TopicToTableResolver;
 import com.wepay.kafka.connect.bigquery.utils.Version;
 
+import com.wepay.kafka.connect.bigquery.write.batch.GCSBatchTableWriter;
 import com.wepay.kafka.connect.bigquery.write.batch.KCBQThreadPoolExecutor;
 import com.wepay.kafka.connect.bigquery.write.batch.TableWriter;
 import com.wepay.kafka.connect.bigquery.write.batch.TableWriterBuilder;
 import com.wepay.kafka.connect.bigquery.write.row.AdaptiveBigQueryWriter;
 import com.wepay.kafka.connect.bigquery.write.row.BigQueryWriter;
+import com.wepay.kafka.connect.bigquery.write.row.GCSToBQWriter;
 import com.wepay.kafka.connect.bigquery.write.row.SimpleBigQueryWriter;
 
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
@@ -69,9 +73,9 @@ import java.util.concurrent.LinkedBlockingQueue;
 public class BigQuerySinkTask extends SinkTask {
   private static final Logger logger = LoggerFactory.getLogger(BigQuerySinkTask.class);
 
-  private final BigQuery testBigQuery;
   private SchemaRetriever schemaRetriever;
   private BigQueryWriter bigQueryWriter;
+  private GCSToBQWriter gcsToBQWriter;
   private BigQuerySinkTaskConfig config;
   private RecordConverter<Map<String, Object>> recordConverter;
   private Map<String, TableId> topicsToBaseTableIds;
@@ -81,15 +85,21 @@ public class BigQuerySinkTask extends SinkTask {
 
   private KCBQThreadPoolExecutor executor;
 
+  private final BigQuery testBigQuery;
+  private final Storage testGCS;
+
+
   public BigQuerySinkTask() {
     testBigQuery = null;
     schemaRetriever = null;
+    testGCS = null;
   }
 
   // For testing purposes only; will never be called by the Kafka Connect framework
-  public BigQuerySinkTask(BigQuery testBigQuery, SchemaRetriever schemaRetriever) {
+  public BigQuerySinkTask(BigQuery testBigQuery, SchemaRetriever schemaRetriever, Storage testGCS) {
     this.testBigQuery = testBigQuery;
     this.schemaRetriever = schemaRetriever;
+    this.testGCS = testGCS;
   }
 
   @Override
@@ -131,6 +141,17 @@ public class BigQuerySinkTask extends SinkTask {
     return builder.build();
   }
 
+  private RowToInsert getRecordRow(SinkRecord record) {
+    return RowToInsert.of(getRowId(record), recordConverter.convertRecord(record));
+  }
+
+  private String getRowId(SinkRecord record) {
+    return String.format("%s-%d-%d",
+        record.topic(),
+        record.kafkaPartition(),
+        record.kafkaOffset());
+  }
+
   @Override
   public void put(Collection<SinkRecord> records) {
 
@@ -145,11 +166,20 @@ public class BigQuerySinkTask extends SinkTask {
         }
 
         if (!tableWriterBuilders.containsKey(table)) {
-          TableWriter.Builder tableWriterBuilder =
-              new TableWriter.Builder(bigQueryWriter, table, record.topic(), recordConverter);
+          TableWriterBuilder tableWriterBuilder;
+          if (config.getList(config.ENABLE_BATCH_CONFIG).contains(record.topic())) {
+            tableWriterBuilder = new GCSBatchTableWriter.Builder(
+                gcsToBQWriter,
+                table.getBaseTableId(),
+                config.getString(config.GCS_BUCKET_NAME_CONFIG),
+                record.topic(),
+                recordConverter);
+          } else {
+            tableWriterBuilder = new TableWriter.Builder(bigQueryWriter, table, record.topic(), recordConverter);
+          }
           tableWriterBuilders.put(table, tableWriterBuilder);
         }
-        tableWriterBuilders.get(table).addRecord(record);
+        tableWriterBuilders.get(table).addRow(getRecordRow(record));
       }
     }
 
@@ -206,6 +236,25 @@ public class BigQuerySinkTask extends SinkTask {
     }
   }
 
+  private Storage getGCS() {
+    if (testGCS != null) {
+      return testGCS;
+    }
+    String projectName = config.getString(config.PROJECT_CONFIG);
+    String keyFilename = config.getString(config.KEYFILE_CONFIG);
+    return new GCSBuilder(projectName).setKeyFileName(keyFilename).build();
+  }
+
+  private GCSToBQWriter getGCSWriter() {
+    BigQuery bigQuery = getBigQuery();
+    int retry = config.getInt(config.BIGQUERY_RETRY_CONFIG);
+    long retryWait = config.getLong(config.BIGQUERY_RETRY_WAIT_CONFIG);
+    return new GCSToBQWriter(getGCS(),
+                         bigQuery,
+                         retry,
+                         retryWait);
+  }
+
   @Override
   public void start(Map<String, String> properties) {
     logger.trace("task.start()");
@@ -219,6 +268,7 @@ public class BigQuerySinkTask extends SinkTask {
     }
 
     bigQueryWriter = getBigQueryWriter();
+    gcsToBQWriter = getGCSWriter();
     topicsToBaseTableIds = TopicToTableResolver.getTopicsToTables(config);
     recordConverter = getConverter();
     executor = new KCBQThreadPoolExecutor(config, new LinkedBlockingQueue<>());
