@@ -68,6 +68,8 @@ public class GCSToBQWriter {
    * Initializes a batch GCS writer with a full list of rows to write.
    * @param storage GCS Storage
    * @param bigQuery {@link BigQuery} Object used to perform upload
+   * @param retries Maximum number of retries
+   * @param retryWaitMs Minimum number of milliseconds to wait before retrying
    */
   public GCSToBQWriter(Storage storage,
                        BigQuery bigQuery,
@@ -139,17 +141,14 @@ public class GCSToBQWriter {
    */
   private Blob uploadRowsToGcs(List<RowToInsert> rows, BlobInfo blobInfo) {
     try {
-      Blob resultBlob = uploadBlobToGcs(
-          new ByteArrayInputStream(toJson(rows).getBytes("UTF-8")), blobInfo);
+      Blob resultBlob = uploadBlobToGcs(toJson(rows).getBytes("UTF-8"), blobInfo);
       return resultBlob;
     } catch (UnsupportedEncodingException uee) {
       throw new GCSConnectException("Failed to upload blob to GCS", uee);
     }
   }
 
-  private Blob uploadBlobToGcs(InputStream blobContent, BlobInfo blobInfo) {
-    // todo look into creating from a string because this is depreciated - input stream cannot retry
-    // todo consider if it would be worth it to switch to a resumable method of uploading
+  private Blob uploadBlobToGcs(byte[] blobContent, BlobInfo blobInfo) {
     return storage.create(blobInfo, blobContent);
   }
 
