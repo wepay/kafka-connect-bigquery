@@ -18,8 +18,7 @@ package com.wepay.kafka.connect.bigquery.convert.logicaltype;
  */
 
 
-import com.google.cloud.bigquery.Field;
-
+import com.google.cloud.bigquery.LegacySQLTypeName;
 import org.apache.kafka.connect.data.Date;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
@@ -48,7 +47,7 @@ public class KafkaLogicalConverters {
     public DateConverter() {
       super(Date.LOGICAL_NAME,
             Schema.Type.INT32,
-            Field.Type.date());
+            LegacySQLTypeName.DATE);
     }
 
     @Override
@@ -67,7 +66,7 @@ public class KafkaLogicalConverters {
     public DecimalConverter() {
       super(Decimal.LOGICAL_NAME,
             Schema.Type.BYTES,
-            Field.Type.floatingPoint());
+            LegacySQLTypeName.FLOAT);
     }
 
     @Override
@@ -87,7 +86,7 @@ public class KafkaLogicalConverters {
     public TimestampConverter() {
       super(Timestamp.LOGICAL_NAME,
         Schema.Type.INT64,
-        Field.Type.timestamp());
+          LegacySQLTypeName.TIMESTAMP);
     }
 
     @Override

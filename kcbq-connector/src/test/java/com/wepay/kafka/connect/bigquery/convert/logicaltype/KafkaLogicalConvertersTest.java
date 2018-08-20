@@ -23,6 +23,7 @@ import static org.junit.Assert.fail;
 
 import com.google.cloud.bigquery.Field;
 
+import com.google.cloud.bigquery.LegacySQLTypeName;
 import com.wepay.kafka.connect.bigquery.convert.logicaltype.KafkaLogicalConverters.DateConverter;
 import com.wepay.kafka.connect.bigquery.convert.logicaltype.KafkaLogicalConverters.DecimalConverter;
 import com.wepay.kafka.connect.bigquery.convert.logicaltype.KafkaLogicalConverters.TimestampConverter;
@@ -43,7 +44,7 @@ public class KafkaLogicalConvertersTest {
   public void testDateConversion() {
     DateConverter converter = new DateConverter();
 
-    assertEquals(Field.Type.date(), converter.getBQSchemaType());
+    assertEquals(LegacySQLTypeName.DATE, converter.getBQSchemaType());
 
     try {
       converter.checkEncodingType(Schema.Type.INT32);
@@ -60,7 +61,7 @@ public class KafkaLogicalConvertersTest {
   public void testDecimalConversion() {
     DecimalConverter converter = new DecimalConverter();
 
-    assertEquals(Field.Type.floatingPoint(), converter.getBQSchemaType());
+    assertEquals(LegacySQLTypeName.FLOAT, converter.getBQSchemaType());
 
     try {
       converter.checkEncodingType(Schema.Type.BYTES);
@@ -80,7 +81,7 @@ public class KafkaLogicalConvertersTest {
   public void testTimestampConversion() {
     TimestampConverter converter = new TimestampConverter();
 
-    assertEquals(Field.Type.timestamp(), converter.getBQSchemaType());
+    assertEquals(LegacySQLTypeName.TIMESTAMP, converter.getBQSchemaType());
 
     try {
       converter.checkEncodingType(Schema.Type.INT64);
