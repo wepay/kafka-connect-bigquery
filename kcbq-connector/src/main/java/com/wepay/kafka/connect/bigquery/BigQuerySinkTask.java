@@ -21,18 +21,15 @@ package com.wepay.kafka.connect.bigquery;
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 import com.google.cloud.bigquery.TableId;
+import com.google.common.annotations.VisibleForTesting;
 
 import com.google.cloud.storage.Storage;
 
 import com.wepay.kafka.connect.bigquery.api.SchemaRetriever;
-
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkTaskConfig;
-
 import com.wepay.kafka.connect.bigquery.convert.RecordConverter;
 import com.wepay.kafka.connect.bigquery.convert.SchemaConverter;
-
 import com.wepay.kafka.connect.bigquery.exception.SinkConfigConnectException;
-
 import com.wepay.kafka.connect.bigquery.utils.PartitionedTableId;
 import com.wepay.kafka.connect.bigquery.utils.TopicToTableResolver;
 import com.wepay.kafka.connect.bigquery.utils.Version;
@@ -47,10 +44,8 @@ import com.wepay.kafka.connect.bigquery.write.row.GCSToBQWriter;
 import com.wepay.kafka.connect.bigquery.write.row.SimpleBigQueryWriter;
 
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
-
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigException;
-
 import org.apache.kafka.common.record.TimestampType;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.sink.SinkRecord;
@@ -62,9 +57,9 @@ import org.slf4j.LoggerFactory;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-
 import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A {@link SinkTask} used to translate Kafka Connect {@link SinkRecord SinkRecords} into BigQuery
@@ -84,6 +79,7 @@ public class BigQuerySinkTask extends SinkTask {
   private TopicPartitionManager topicPartitionManager;
 
   private KCBQThreadPoolExecutor executor;
+  private static final int EXECUTOR_SHUTDOWN_TIMEOUT_SEC = 30;
 
   private final BigQuery testBigQuery;
   private final Storage testGCS;
@@ -130,7 +126,8 @@ public class BigQuerySinkTask extends SinkTask {
     PartitionedTableId.Builder builder = new PartitionedTableId.Builder(baseTableId);
     if (useMessageTimeDatePartitioning) {
       if (record.timestampType() == TimestampType.NO_TIMESTAMP_TYPE) {
-        throw new ConnectException("Message has no timestamp type, cannot use message timestamp to partition.");
+        throw new ConnectException(
+            "Message has no timestamp type, cannot use message timestamp to partition.");
       }
 
       builder.setDayPartition(record.timestamp());
@@ -154,6 +151,7 @@ public class BigQuerySinkTask extends SinkTask {
 
   @Override
   public void put(Collection<SinkRecord> records) {
+    logger.info("Putting {} records in the sink.", records.size());
 
     // create tableWriters
     Map<PartitionedTableId, TableWriterBuilder> tableWriterBuilders = new HashMap<>();
@@ -162,7 +160,9 @@ public class BigQuerySinkTask extends SinkTask {
       if (record.value() != null) {
         PartitionedTableId table = getRecordTable(record);
         if (schemaRetriever != null) {
-          schemaRetriever.setLastSeenSchema(table.getBaseTableId(), record.topic(), record.valueSchema());
+          schemaRetriever.setLastSeenSchema(table.getBaseTableId(),
+                                            record.topic(),
+                                            record.valueSchema());
         }
 
         if (!tableWriterBuilders.containsKey(table)) {
@@ -273,12 +273,26 @@ public class BigQuerySinkTask extends SinkTask {
     recordConverter = getConverter();
     executor = new KCBQThreadPoolExecutor(config, new LinkedBlockingQueue<>());
     topicPartitionManager = new TopicPartitionManager();
-    useMessageTimeDatePartitioning = config.getBoolean(config.BIGQUERY_MESSAGE_TIME_PARTITIONING_CONFIG);
+    useMessageTimeDatePartitioning =
+        config.getBoolean(config.BIGQUERY_MESSAGE_TIME_PARTITIONING_CONFIG);
   }
 
   @Override
   public void stop() {
-    logger.trace("task.stop()");
+    try {
+      executor.shutdown();
+      executor.awaitTermination(EXECUTOR_SHUTDOWN_TIMEOUT_SEC, TimeUnit.SECONDS);
+    } catch (InterruptedException ex) {
+      logger.warn("{} active threads are still executing tasks {}s after shutdown is signaled.",
+          executor.getActiveCount(), EXECUTOR_SHUTDOWN_TIMEOUT_SEC);
+    } finally {
+      logger.trace("task.stop()");
+    }
+  }
+
+  @VisibleForTesting
+  int getTaskThreadsActiveCount() {
+    return executor.getActiveCount();
   }
 
   @Override
