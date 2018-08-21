@@ -172,7 +172,9 @@ public class BigQuerySchemaConverter implements SchemaConverter<com.google.cloud
 
     FieldList fieldList = FieldList.of(bigQueryRecordFields);
 
-    return com.google.cloud.bigquery.Field.newBuilder(fieldName, LegacySQLTypeName.RECORD, fieldList);
+    return com.google.cloud.bigquery.Field.newBuilder(fieldName,
+                                                      LegacySQLTypeName.RECORD,
+                                                      fieldList);
   }
 
   private com.google.cloud.bigquery.Field.Builder convertArray(Schema kafkaConnectSchema,
@@ -188,14 +190,19 @@ public class BigQuerySchemaConverter implements SchemaConverter<com.google.cloud
     Schema keySchema = kafkaConnectSchema.keySchema();
     Schema valueSchema = kafkaConnectSchema.valueSchema();
 
-    com.google.cloud.bigquery.Field keyField = convertField(keySchema, MAP_KEY_FIELD_NAME).build();
-    com.google.cloud.bigquery.Field valueField = convertField(valueSchema, MAP_VALUE_FIELD_NAME).build();
+    com.google.cloud.bigquery.Field keyField =
+        convertField(keySchema, MAP_KEY_FIELD_NAME).build();
+    com.google.cloud.bigquery.Field valueField =
+        convertField(valueSchema, MAP_VALUE_FIELD_NAME).build();
 
     //LegacySQLTypeName bigQueryMapEntryType =
     //    com.google.cloud.bigquery.Field.Type.record(keyField, valueField);
 
     com.google.cloud.bigquery.Field.Builder bigQueryRecordBuilder =
-        com.google.cloud.bigquery.Field.newBuilder(fieldName, LegacySQLTypeName.RECORD, keyField, valueField);
+        com.google.cloud.bigquery.Field.newBuilder(fieldName,
+                                                   LegacySQLTypeName.RECORD,
+                                                   keyField,
+                                                   valueField);
 
     return bigQueryRecordBuilder.setMode(com.google.cloud.bigquery.Field.Mode.REPEATED);
   }

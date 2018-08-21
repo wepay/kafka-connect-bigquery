@@ -28,15 +28,14 @@ import static com.google.cloud.bigquery.LegacySQLTypeName.TIMESTAMP;
 
 import static org.junit.Assert.assertEquals;
 
-import com.google.api.gax.paging.Page;
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.FieldValue;
 import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.Table;
-
 import com.google.cloud.bigquery.TableResult;
+
 import com.wepay.kafka.connect.bigquery.BigQueryHelper;
 import com.wepay.kafka.connect.bigquery.exception.SinkConfigConnectException;
 
@@ -187,9 +186,9 @@ public class BigQueryConnectorIntegrationTest {
     List<List<Object>> rows = new ArrayList<>();
     TableResult tableResult = table.list();
 
-    while (tableResult != null){
+    while (tableResult != null) {
       Iterable<FieldValueList> fieldValueLists = tableResult.iterateAll();
-      for(FieldValueList fieldValueList : fieldValueLists) {
+      for (FieldValueList fieldValueList : fieldValueLists) {
         rows.add(convertRow(schema.getFields(), fieldValueList));
       }
       tableResult = tableResult.getNextPage();

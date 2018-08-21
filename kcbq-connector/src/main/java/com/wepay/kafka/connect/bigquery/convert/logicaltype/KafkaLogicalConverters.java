@@ -19,6 +19,7 @@ package com.wepay.kafka.connect.bigquery.convert.logicaltype;
 
 
 import com.google.cloud.bigquery.LegacySQLTypeName;
+
 import org.apache.kafka.connect.data.Date;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;

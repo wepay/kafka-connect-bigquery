@@ -19,6 +19,7 @@ package com.wepay.kafka.connect.bigquery.convert.logicaltype;
 
 
 import com.google.cloud.bigquery.LegacySQLTypeName;
+
 import com.wepay.kafka.connect.bigquery.exception.ConversionConnectException;
 
 import org.apache.kafka.connect.data.Schema;

@@ -19,6 +19,7 @@ package com.wepay.kafka.connect.bigquery.convert.logicaltype;
 
 
 import com.google.cloud.bigquery.LegacySQLTypeName;
+
 import io.debezium.time.Date;
 import io.debezium.time.MicroTime;
 import io.debezium.time.MicroTimestamp;

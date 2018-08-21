@@ -44,7 +44,8 @@ public class KCBQThreadPoolExecutor extends ThreadPoolExecutor {
   private static final Logger logger = LoggerFactory.getLogger(KCBQThreadPoolExecutor.class);
 
 
-  private ConcurrentHashMap.KeySetView<Throwable, Boolean> encounteredErrors = ConcurrentHashMap.newKeySet();
+  private ConcurrentHashMap.KeySetView<Throwable, Boolean> encounteredErrors =
+      ConcurrentHashMap.newKeySet();
 
   /**
    * @param config the {@link BigQuerySinkTaskConfig}

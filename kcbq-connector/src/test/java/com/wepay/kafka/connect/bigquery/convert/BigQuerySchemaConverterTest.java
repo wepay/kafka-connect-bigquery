@@ -22,6 +22,7 @@ import static org.junit.Assert.assertEquals;
 
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.LegacySQLTypeName;
+
 import com.wepay.kafka.connect.bigquery.exception.ConversionConnectException;
 
 import org.apache.kafka.connect.data.Date;
@@ -280,14 +281,14 @@ public class BigQuerySchemaConverterTest {
     final String keyName = BigQuerySchemaConverter.MAP_KEY_FIELD_NAME;
     final String valueName = BigQuerySchemaConverter.MAP_VALUE_FIELD_NAME;
 
-      Field floatField =
-          Field.newBuilder(keyName, LegacySQLTypeName.FLOAT)
-               .setMode(Field.Mode.REQUIRED)
-               .build();
-      Field stringField =
-          Field.newBuilder(valueName, LegacySQLTypeName.STRING)
-               .setMode(Field.Mode.REQUIRED)
-               .build();
+    Field floatField =
+        Field.newBuilder(keyName, LegacySQLTypeName.FLOAT)
+             .setMode(Field.Mode.REQUIRED)
+             .build();
+    Field stringField =
+        Field.newBuilder(valueName, LegacySQLTypeName.STRING)
+             .setMode(Field.Mode.REQUIRED)
+             .build();
 
     com.google.cloud.bigquery.Schema bigQueryExpectedSchema =
         com.google.cloud.bigquery.Schema.of(

@@ -19,8 +19,8 @@ package com.wepay.kafka.connect.bigquery.convert.kafkadata;
 
 
 import com.google.cloud.bigquery.Field;
-
 import com.google.cloud.bigquery.LegacySQLTypeName;
+
 import com.wepay.kafka.connect.bigquery.convert.BigQuerySchemaConverter;
 
 import org.apache.kafka.connect.data.Schema;

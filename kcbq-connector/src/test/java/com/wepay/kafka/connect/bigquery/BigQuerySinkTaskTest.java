@@ -28,18 +28,18 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.wepay.kafka.connect.bigquery.api.SchemaRetriever;
-import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig;
-import com.wepay.kafka.connect.bigquery.config.BigQuerySinkTaskConfig;
-import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
-import com.wepay.kafka.connect.bigquery.exception.SinkConfigConnectException;
-
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.BigQueryError;
 import com.google.cloud.bigquery.BigQueryException;
 import com.google.cloud.bigquery.InsertAllRequest;
 import com.google.cloud.bigquery.InsertAllResponse;
 import com.google.cloud.bigquery.TableId;
+
+import com.wepay.kafka.connect.bigquery.api.SchemaRetriever;
+import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig;
+import com.wepay.kafka.connect.bigquery.config.BigQuerySinkTaskConfig;
+import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
+import com.wepay.kafka.connect.bigquery.exception.SinkConfigConnectException;
 
 import org.apache.kafka.common.record.TimestampType;
 import org.apache.kafka.connect.data.Schema;
@@ -387,7 +387,8 @@ public class BigQuerySinkTaskTest {
     assertNotNull(new BigQuerySinkTask().version());
   }
 
-  // Existing tasks should succeed upon stop is called. New tasks should be rejected once task is stopped.
+  // Existing tasks should succeed upon stop is called. New tasks should be rejected once task is
+  // stopped.
   @Test(expected = RejectedExecutionException.class)
   public void testStop() {
     final String dataset = "scratch";

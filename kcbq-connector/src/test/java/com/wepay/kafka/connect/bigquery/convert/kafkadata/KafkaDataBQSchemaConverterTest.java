@@ -21,8 +21,8 @@ package com.wepay.kafka.connect.bigquery.convert.kafkadata;
 import static org.junit.Assert.assertEquals;
 
 import com.google.cloud.bigquery.Field;
-
 import com.google.cloud.bigquery.LegacySQLTypeName;
+
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
