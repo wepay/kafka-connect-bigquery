@@ -195,9 +195,6 @@ public class BigQuerySchemaConverter implements SchemaConverter<com.google.cloud
     com.google.cloud.bigquery.Field valueField =
         convertField(valueSchema, MAP_VALUE_FIELD_NAME).build();
 
-    //LegacySQLTypeName bigQueryMapEntryType =
-    //    com.google.cloud.bigquery.Field.Type.record(keyField, valueField);
-
     com.google.cloud.bigquery.Field.Builder bigQueryRecordBuilder =
         com.google.cloud.bigquery.Field.newBuilder(fieldName,
                                                    LegacySQLTypeName.RECORD,
