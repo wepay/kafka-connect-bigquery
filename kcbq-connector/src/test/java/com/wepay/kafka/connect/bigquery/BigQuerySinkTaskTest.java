@@ -414,13 +414,15 @@ public class BigQuerySinkTaskTest {
     properties.put(BigQuerySinkConfig.DATASETS_CONFIG, String.format(".*=%s", dataset));
 
     BigQuery bigQuery = mock(BigQuery.class);
+    Storage storage = mock(Storage.class);
+
     SinkTaskContext sinkTaskContext = mock(SinkTaskContext.class);
     InsertAllResponse insertAllResponse = mock(InsertAllResponse.class);
 
     when(bigQuery.insertAll(anyObject())).thenReturn(insertAllResponse);
     when(insertAllResponse.hasErrors()).thenReturn(false);
 
-    BigQuerySinkTask testTask = new BigQuerySinkTask(bigQuery, null, null);
+    BigQuerySinkTask testTask = new BigQuerySinkTask(bigQuery, null, storage);
     testTask.initialize(sinkTaskContext);
     testTask.start(properties);
     testTask.put(Collections.singletonList(spoofSinkRecord(topic)));
