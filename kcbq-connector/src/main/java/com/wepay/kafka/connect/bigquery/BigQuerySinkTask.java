@@ -54,10 +54,12 @@ import org.apache.kafka.connect.sink.SinkTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -83,6 +85,8 @@ public class BigQuerySinkTask extends SinkTask {
 
   private final BigQuery testBigQuery;
   private final Storage testGCS;
+
+  private final UUID uuid = UUID.randomUUID();
 
 
   public BigQuerySinkTask() {
@@ -168,11 +172,12 @@ public class BigQuerySinkTask extends SinkTask {
         if (!tableWriterBuilders.containsKey(table)) {
           TableWriterBuilder tableWriterBuilder;
           if (config.getList(config.ENABLE_BATCH_CONFIG).contains(record.topic())) {
+            String gcsBlobName = record.topic() + "_" + uuid + "_" + Instant.now().toEpochMilli();
             tableWriterBuilder = new GCSBatchTableWriter.Builder(
                 gcsToBQWriter,
                 table.getBaseTableId(),
                 config.getString(config.GCS_BUCKET_NAME_CONFIG),
-                record.topic(),
+                gcsBlobName,
                 recordConverter);
           } else {
             tableWriterBuilder = new TableWriter.Builder(bigQueryWriter, table, record.topic(), recordConverter);

@@ -149,7 +149,7 @@ public class GCSToBQWriter {
   }
 
   private Blob uploadBlobToGcs(byte[] blobContent, BlobInfo blobInfo) {
-    return storage.create(blobInfo, blobContent);
+    return storage.create(blobInfo, blobContent); // todo options: like a retention policy maybe?
   }
 
   /**

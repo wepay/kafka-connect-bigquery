@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Batch Table Writer that uploads records to GCS as a blob
@@ -39,6 +40,8 @@ import java.util.Map;
  */
 public class GCSBatchTableWriter implements Runnable {
   private static final Logger logger = LoggerFactory.getLogger(GCSBatchTableWriter.class);
+
+  private static AtomicInteger writerId;
 
   private final TableId tableId;
 
@@ -53,16 +56,17 @@ public class GCSBatchTableWriter implements Runnable {
    * @param writer {@link GCSToBQWriter} to use
    * @param tableId the BigQuery table id of the table to write to
    * @param bucketName the name of the GCS bucket where the blob should be uploaded
-   * @param blobName the name of the blob in which the serialized rows should be uploaded
+   * @param baseBlobName the base name of the blob in which the serialized rows should be uploaded.
+   *                     The full name is [baseBlobName]_[writerId]_
    */
   private GCSBatchTableWriter(List<RowToInsert> rows,
                               GCSToBQWriter writer,
                               TableId tableId,
                               String bucketName,
-                              String blobName) {
+                              String baseBlobName) {
     this.tableId = tableId;
     this.bucketName = bucketName;
-    this.blobName = blobName;
+    this.blobName = baseBlobName;
 
     this.rows = rows;
     this.writer = writer;
