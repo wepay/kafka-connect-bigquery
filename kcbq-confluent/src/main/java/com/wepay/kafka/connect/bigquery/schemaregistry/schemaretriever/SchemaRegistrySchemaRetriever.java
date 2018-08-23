@@ -65,7 +65,7 @@ public class SchemaRegistrySchemaRetriever implements SchemaRetriever {
       return avroData.toConnectSchema(avroSchema);
     } catch (IOException | RestClientException exception) {
       throw new ConnectException(String.format(
-          "Exception while fetching latest schema metadata for topic={}, subject={}", topic, subject),
+          "Exception while fetching latest schema metadata for topic=%s, subject=%s", topic, subject),
           exception
       );
     }
