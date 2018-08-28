@@ -41,8 +41,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class GCSBatchTableWriter implements Runnable {
   private static final Logger logger = LoggerFactory.getLogger(GCSBatchTableWriter.class);
 
-  private static AtomicInteger writerId;
-
   private final TableId tableId;
 
   private final String bucketName;
@@ -76,11 +74,14 @@ public class GCSBatchTableWriter implements Runnable {
   public void run() {
     try {
       writer.writeRows(rows, tableId, bucketName, blobName);
-    } catch(ConnectException | InterruptedException ex) {
+    } catch (ConnectException | InterruptedException ex) {
       throw new ConnectException("Thread interrupted while batch writing to BigQuery.", ex);
     }
   }
 
+  /**
+   * A Builder for constructing GCSBatchTableWriters.
+   */
   public static class Builder implements TableWriterBuilder {
     private final String bucketName;
     private String blobName;
@@ -90,7 +91,16 @@ public class GCSBatchTableWriter implements Runnable {
     private List<RowToInsert> rows;
     private final RecordConverter<Map<String, Object>> recordConverter;
     private final GCSToBQWriter writer;
-    
+
+    /**
+     * Create a {@link GCSBatchTableWriter.Builder}.
+     *
+     * @param writer the {@link GCSToBQWriter} to use.
+     * @param tableId The bigquery table to be written to.
+     * @param gcsBucketName The GCS bucket to write to.
+     * @param gcsBlobName The name of the GCS blob to write.
+     * @param recordConverter the {@link RecordConverter} to use.
+     */
     public Builder(GCSToBQWriter writer,
                    TableId tableId,
                    String gcsBucketName,

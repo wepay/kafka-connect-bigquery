@@ -21,9 +21,8 @@ package com.wepay.kafka.connect.bigquery;
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 import com.google.cloud.bigquery.TableId;
-import com.google.common.annotations.VisibleForTesting;
-
 import com.google.cloud.storage.Storage;
+import com.google.common.annotations.VisibleForTesting;
 
 import com.wepay.kafka.connect.bigquery.api.SchemaRetriever;
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkTaskConfig;
@@ -88,14 +87,25 @@ public class BigQuerySinkTask extends SinkTask {
 
   private final UUID uuid = UUID.randomUUID();
 
-
+  /**
+   * Create a new BigquerySinkTask.
+   */
   public BigQuerySinkTask() {
     testBigQuery = null;
     schemaRetriever = null;
     testGCS = null;
   }
 
-  // For testing purposes only; will never be called by the Kafka Connect framework
+  //
+
+  /**
+   * For testing purposes only; will never be called by the Kafka Connect framework.
+   *
+   * @param testBigQuery {@link BigQuery} to use for testing (likely a mock)
+   * @param schemaRetriever {@link SchemaRetriever} to use for testing (likely a mock)
+   * @param testGCS {@link Storage} to use for testing (likely a mock)
+   * @see BigQuerySinkTask#BigQuerySinkTask()
+   */
   public BigQuerySinkTask(BigQuery testBigQuery, SchemaRetriever schemaRetriever, Storage testGCS) {
     this.testBigQuery = testBigQuery;
     this.schemaRetriever = schemaRetriever;
@@ -180,7 +190,8 @@ public class BigQuerySinkTask extends SinkTask {
                 gcsBlobName,
                 recordConverter);
           } else {
-            tableWriterBuilder = new TableWriter.Builder(bigQueryWriter, table, record.topic(), recordConverter);
+            tableWriterBuilder =
+                new TableWriter.Builder(bigQueryWriter, table, record.topic(), recordConverter);
           }
           tableWriterBuilders.put(table, tableWriterBuilder);
         }

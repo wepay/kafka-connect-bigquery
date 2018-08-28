@@ -72,8 +72,8 @@ public class BigQuerySinkConfig extends AbstractConfig {
   private static final Object GCS_BUCKET_NAME_DEFAULT =                   "";
   private static final ConfigDef.Importance GCS_BUCKET_NAME_IMPORTANCE =  ConfigDef.Importance.HIGH;
   private static final String GCS_BUCKET_NAME_DOC =
-      "The name of the bucket in which gcs blobs used to batch load to BigQuery " +
-          "should be located.";
+      "The name of the bucket in which gcs blobs used to batch load to BigQuery "
+      + "should be located.";
 
   public static final String TOPICS_TO_TABLES_CONFIG =                     "topicsToTables";
   private static final ConfigDef.Type TOPICS_TO_TABLES_TYPE =              ConfigDef.Type.LIST;
@@ -478,8 +478,8 @@ public class BigQuerySinkConfig extends AbstractConfig {
   }
 
   /**
-   * Verifies that a bucket is specified if GCS batch loading is enabled
-   * @throws ConfigException Exception thrown if no bucket is specified and batch loading is on
+   * Verifies that a bucket is specified if GCS batch loading is enabled.
+   * @throws ConfigException Exception thrown if no bucket is specified and batch loading is on.
    */
   private void verifyBucketSpecified() throws ConfigException {
     // Throw an exception if GCS Batch loading will be used but no bucket is specified
