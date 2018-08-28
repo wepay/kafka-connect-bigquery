@@ -123,8 +123,8 @@ public class BigQueryWriterTest {
 
     //first attempt (partial failure); second attempt (success)
     when(bigQuery.insertAll(anyObject()))
-            .thenReturn(insertAllResponseWithError)
-            .thenReturn(insertAllResponseNoError);
+        .thenReturn(insertAllResponseWithError)
+        .thenReturn(insertAllResponseNoError);
 
     List<SinkRecord> sinkRecordList = new ArrayList<>();
     sinkRecordList.add(spoofSinkRecord(topic, 0, 0, "some_field", "some_value"));
@@ -173,7 +173,7 @@ public class BigQueryWriterTest {
 
     //first attempt (complete failure); second attempt (not expected)
     when(bigQuery.insertAll(anyObject()))
-            .thenReturn(insertAllResponseWithError);
+        .thenReturn(insertAllResponseWithError);
 
     List<SinkRecord> sinkRecordList = new ArrayList<>();
     sinkRecordList.add(spoofSinkRecord(topic, 0, 0, "some_field", "some_value"));

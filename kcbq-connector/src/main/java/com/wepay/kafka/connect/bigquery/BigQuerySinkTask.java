@@ -81,7 +81,7 @@ public class BigQuerySinkTask extends SinkTask {
 
   private KCBQThreadPoolExecutor executor;
   private static final int EXECUTOR_SHUTDOWN_TIMEOUT_SEC = 30;
-
+  
   private final BigQuery testBigQuery;
   private final Storage testGCS;
 
