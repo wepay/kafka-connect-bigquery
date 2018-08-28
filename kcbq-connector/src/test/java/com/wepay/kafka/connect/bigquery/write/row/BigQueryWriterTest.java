@@ -230,12 +230,12 @@ public class BigQueryWriterTest {
     basicRowValue.put(field, value);
     return new SinkRecord(topic,
                           partition,
-               null,
-                     null,
+                          null,
+                          null,
                           basicRowSchema,
                           basicRowValue,
                           kafkaOffset,
-                null,
-            null);
+                          null,
+                          null);
   }
 }
