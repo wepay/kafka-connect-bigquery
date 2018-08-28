@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Batch Table Writer that uploads records to GCS as a blob
@@ -53,16 +54,17 @@ public class GCSBatchTableWriter implements Runnable {
    * @param writer {@link GCSToBQWriter} to use
    * @param tableId the BigQuery table id of the table to write to
    * @param bucketName the name of the GCS bucket where the blob should be uploaded
-   * @param blobName the name of the blob in which the serialized rows should be uploaded
+   * @param baseBlobName the base name of the blob in which the serialized rows should be uploaded.
+   *                     The full name is [baseBlobName]_[writerId]_
    */
   private GCSBatchTableWriter(List<RowToInsert> rows,
                               GCSToBQWriter writer,
                               TableId tableId,
                               String bucketName,
-                              String blobName) {
+                              String baseBlobName) {
     this.tableId = tableId;
     this.bucketName = bucketName;
-    this.blobName = blobName;
+    this.blobName = baseBlobName;
 
     this.rows = rows;
     this.writer = writer;
@@ -72,11 +74,14 @@ public class GCSBatchTableWriter implements Runnable {
   public void run() {
     try {
       writer.writeRows(rows, tableId, bucketName, blobName);
-    } catch(ConnectException | InterruptedException ex) {
+    } catch (ConnectException | InterruptedException ex) {
       throw new ConnectException("Thread interrupted while batch writing to BigQuery.", ex);
     }
   }
 
+  /**
+   * A Builder for constructing GCSBatchTableWriters.
+   */
   public static class Builder implements TableWriterBuilder {
     private final String bucketName;
     private String blobName;
@@ -86,7 +91,16 @@ public class GCSBatchTableWriter implements Runnable {
     private List<RowToInsert> rows;
     private final RecordConverter<Map<String, Object>> recordConverter;
     private final GCSToBQWriter writer;
-    
+
+    /**
+     * Create a {@link GCSBatchTableWriter.Builder}.
+     *
+     * @param writer the {@link GCSToBQWriter} to use.
+     * @param tableId The bigquery table to be written to.
+     * @param gcsBucketName The GCS bucket to write to.
+     * @param gcsBlobName The name of the GCS blob to write.
+     * @param recordConverter the {@link RecordConverter} to use.
+     */
     public Builder(GCSToBQWriter writer,
                    TableId tableId,
                    String gcsBucketName,

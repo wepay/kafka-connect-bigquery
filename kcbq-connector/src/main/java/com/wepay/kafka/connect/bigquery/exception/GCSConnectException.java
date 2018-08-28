@@ -21,7 +21,8 @@ package com.wepay.kafka.connect.bigquery.exception;
 import org.apache.kafka.connect.errors.ConnectException;
 
 /**
- * Class for exceptions that occur while interacting with Google Cloud Storage, such as login failures
+ * Class for exceptions that occur while interacting with Google Cloud Storage, such as login
+ * failures.
  */
 public class GCSConnectException extends ConnectException {
   public GCSConnectException(String msg) {

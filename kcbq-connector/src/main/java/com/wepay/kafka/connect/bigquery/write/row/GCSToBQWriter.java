@@ -20,8 +20,8 @@ package com.wepay.kafka.connect.bigquery.write.row;
 
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.FormatOptions;
-import com.google.cloud.bigquery.JobInfo;
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
+import com.google.cloud.bigquery.JobInfo;
 import com.google.cloud.bigquery.LoadJobConfiguration;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.storage.Blob;
@@ -37,15 +37,13 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
 /**
- * A class for batch writing list of rows to BigQuery through GCS
+ * A class for batch writing list of rows to BigQuery through GCS.
  */
 public class GCSToBQWriter {
   private static final Logger logger = LoggerFactory.getLogger(GCSToBQWriter.class);
@@ -82,11 +80,19 @@ public class GCSToBQWriter {
     this.retryWaitMs = retryWaitMs;
   }
 
+  /**
+   * Write rows to BQ through GCS.
+   *
+   * @param rows the rows to write.
+   * @param tableId the BQ table to write to.
+   * @param bucketName the GCS bucket to write to.
+   * @param blobName the name of the GCS blob to write.
+   * @throws InterruptedException if interrupted.
+   */
   public void writeRows(List<RowToInsert> rows,
                         TableId tableId,
                         String bucketName,
-                        String blobName)
-      throws InterruptedException {
+                        String blobName) throws InterruptedException {
 
     // Get Source URI
     BlobId blobId = BlobId.of(bucketName, blobName);
@@ -136,7 +142,7 @@ public class GCSToBQWriter {
   }
 
   /**
-   * Creates a JSON string containing all records and uploads it as a blob to GCS
+   * Creates a JSON string containing all records and uploads it as a blob to GCS.
    * @return The blob uploaded to GCS
    */
   private Blob uploadRowsToGcs(List<RowToInsert> rows, BlobInfo blobInfo) {
@@ -149,11 +155,11 @@ public class GCSToBQWriter {
   }
 
   private Blob uploadBlobToGcs(byte[] blobContent, BlobInfo blobInfo) {
-    return storage.create(blobInfo, blobContent);
+    return storage.create(blobInfo, blobContent); // todo options: like a retention policy maybe?
   }
 
   /**
-   * Converts a list of rows to a serialized JSON string of records
+   * Converts a list of rows to a serialized JSON string of records.
    * @param rows rows to be serialized
    * @return The resulting newline delimited JSON string containing all records in the original list
    */
