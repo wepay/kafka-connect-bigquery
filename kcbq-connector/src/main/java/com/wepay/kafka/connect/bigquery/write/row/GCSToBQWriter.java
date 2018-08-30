@@ -38,9 +38,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * A class for batch writing list of rows to BigQuery through GCS.
@@ -61,6 +64,8 @@ public class GCSToBQWriter {
 
   private int retries;
   private long retryWaitMs;
+
+  public static final String GCS_METADATA_TABLE_KEY = "sinkTable";
 
   /**
    * Initializes a batch GCS writer with a full list of rows to write.
@@ -96,7 +101,10 @@ public class GCSToBQWriter {
 
     // Get Source URI
     BlobId blobId = BlobId.of(bucketName, blobName);
-    BlobInfo blobInfo = BlobInfo.newBuilder(blobId).setContentType("text/json").build();
+
+    String serializedTableId = tableId.getProject() + ":" + tableId.getDataset() + "." + tableId.getTable();
+    Map<String, String> metadata = Collections.singletonMap(GCS_METADATA_TABLE_KEY, serializedTableId);
+    BlobInfo blobInfo = BlobInfo.newBuilder(blobId).setContentType("text/json").setMetadata(metadata).build();
     String sourceUri = String.format("gs://%s/%s", bucketName, blobName);
 
     // Check if the table specified exists

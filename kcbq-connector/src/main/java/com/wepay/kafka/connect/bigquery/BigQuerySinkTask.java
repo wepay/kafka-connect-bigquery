@@ -96,8 +96,6 @@ public class BigQuerySinkTask extends SinkTask {
     testGCS = null;
   }
 
-  //
-
   /**
    * For testing purposes only; will never be called by the Kafka Connect framework.
    *
