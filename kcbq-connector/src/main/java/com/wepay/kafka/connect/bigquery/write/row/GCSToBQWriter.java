@@ -42,8 +42,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * A class for batch writing list of rows to BigQuery through GCS.
@@ -102,9 +100,12 @@ public class GCSToBQWriter {
     // Get Source URI
     BlobId blobId = BlobId.of(bucketName, blobName);
 
-    String serializedTableId = tableId.getProject() + ":" + tableId.getDataset() + "." + tableId.getTable();
-    Map<String, String> metadata = Collections.singletonMap(GCS_METADATA_TABLE_KEY, serializedTableId);
-    BlobInfo blobInfo = BlobInfo.newBuilder(blobId).setContentType("text/json").setMetadata(metadata).build();
+    String serializedTableId =
+         tableId.getProject() + ":" + tableId.getDataset() + "." + tableId.getTable();
+    Map<String, String> metadata =
+         Collections.singletonMap(GCS_METADATA_TABLE_KEY, serializedTableId);
+    BlobInfo blobInfo =
+         BlobInfo.newBuilder(blobId).setContentType("text/json").setMetadata(metadata).build();
     String sourceUri = String.format("gs://%s/%s", bucketName, blobName);
 
     // Check if the table specified exists
@@ -131,7 +132,6 @@ public class GCSToBQWriter {
       // Perform GCS Upload and BQ Transfer
       try {
         uploadRowsToGcs(rows, blobInfo);
-        triggerBigQueryLoadJob();
       } catch (ConnectException ce) {
         exceptionsOccurred = true;
         logger.warn("Exceptions occurred for table {}, attempting retry", tableId.getTable());
@@ -140,13 +140,6 @@ public class GCSToBQWriter {
     } while (exceptionsOccurred && (retryCount < retries));
 
     logger.info("Batch loaded {} rows", rows.size());
-  }
-
-  /**
-   * Triggers a load job to transfer JSON records from a GCS blob to a BigQuery table.
-   */
-  private void triggerBigQueryLoadJob() {
-    bigQuery.create(JobInfo.of(loadJobConfiguration));
   }
 
   /**
@@ -169,7 +162,8 @@ public class GCSToBQWriter {
   /**
    * Converts a list of rows to a serialized JSON string of records.
    * @param rows rows to be serialized
-   * @return The resulting newline delimited JSON string containing all records in the original list
+   * @return The resulting newline delimited JSON string containing all records in the original
+   *         list
    */
   private String toJson(List<RowToInsert> rows) {
     StringBuilder jsonRecordsBuilder = new StringBuilder("");

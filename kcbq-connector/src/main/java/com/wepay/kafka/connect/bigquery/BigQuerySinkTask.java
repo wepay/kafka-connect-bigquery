@@ -21,6 +21,8 @@ package com.wepay.kafka.connect.bigquery;
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 import com.google.cloud.bigquery.TableId;
+import com.google.cloud.storage.Bucket;
+import com.google.cloud.storage.BucketInfo;
 import com.google.cloud.storage.Storage;
 import com.google.common.annotations.VisibleForTesting;
 
@@ -59,7 +61,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -83,9 +87,10 @@ public class BigQuerySinkTask extends SinkTask {
   private static final int EXECUTOR_SHUTDOWN_TIMEOUT_SEC = 30;
   
   private final BigQuery testBigQuery;
-  private final Storage testGCS;
+  private final Storage testGcs;
 
   private final UUID uuid = UUID.randomUUID();
+  private ScheduledExecutorService gcsLoadExecutor;
 
   /**
    * Create a new BigquerySinkTask.
@@ -93,7 +98,7 @@ public class BigQuerySinkTask extends SinkTask {
   public BigQuerySinkTask() {
     testBigQuery = null;
     schemaRetriever = null;
-    testGCS = null;
+    testGcs = null;
   }
 
   /**
@@ -101,13 +106,13 @@ public class BigQuerySinkTask extends SinkTask {
    *
    * @param testBigQuery {@link BigQuery} to use for testing (likely a mock)
    * @param schemaRetriever {@link SchemaRetriever} to use for testing (likely a mock)
-   * @param testGCS {@link Storage} to use for testing (likely a mock)
+   * @param testGcs {@link Storage} to use for testing (likely a mock)
    * @see BigQuerySinkTask#BigQuerySinkTask()
    */
-  public BigQuerySinkTask(BigQuery testBigQuery, SchemaRetriever schemaRetriever, Storage testGCS) {
+  public BigQuerySinkTask(BigQuery testBigQuery, SchemaRetriever schemaRetriever, Storage testGcs) {
     this.testBigQuery = testBigQuery;
     this.schemaRetriever = schemaRetriever;
-    this.testGCS = testGCS;
+    this.testGcs = testGcs;
   }
 
   @Override
@@ -251,8 +256,8 @@ public class BigQuerySinkTask extends SinkTask {
   }
 
   private Storage getGCS() {
-    if (testGCS != null) {
-      return testGCS;
+    if (testGcs != null) {
+      return testGcs;
     }
     String projectName = config.getString(config.PROJECT_CONFIG);
     String keyFilename = config.getString(config.KEYFILE_CONFIG);
@@ -272,6 +277,11 @@ public class BigQuerySinkTask extends SinkTask {
   @Override
   public void start(Map<String, String> properties) {
     logger.trace("task.start()");
+    boolean hasGCSBQTask = false;
+    if (properties.containsKey("GCSBQTask")) {
+      properties.remove("GCSBQTask");
+      hasGCSBQTask = true;
+    }
     try {
       config = new BigQuerySinkTaskConfig(properties);
     } catch (ConfigException err) {
@@ -289,6 +299,26 @@ public class BigQuerySinkTask extends SinkTask {
     topicPartitionManager = new TopicPartitionManager();
     useMessageTimeDatePartitioning =
         config.getBoolean(config.BIGQUERY_MESSAGE_TIME_PARTITIONING_CONFIG);
+    if (hasGCSBQTask) {
+      startGCSToBQLoadTask();
+    }
+  }
+
+  private void startGCSToBQLoadTask() {
+    gcsLoadExecutor = Executors.newScheduledThreadPool(1);
+    String bucketName = config.getString(config.GCS_BUCKET_NAME_CONFIG);
+    Storage gcs = getGCS();
+    // get the bucket, or create it if it does not exist.
+    Bucket bucket = gcs.get(bucketName);
+    if (bucket == null) {
+      // todo here is where we /could/ set a retention policy for the bucket,
+      // but for now I don't think we want to do that.
+      BucketInfo bucketInfo = BucketInfo.of(bucketName);
+      bucket = gcs.create(bucketInfo);
+    }
+    GCSToBQLoadRunnable loadRunnable = new GCSToBQLoadRunnable(getBigQuery(), bucket);
+
+    gcsLoadExecutor.scheduleAtFixedRate(loadRunnable, 2, 2, TimeUnit.MINUTES);
   }
 
   @Override
@@ -296,6 +326,15 @@ public class BigQuerySinkTask extends SinkTask {
     try {
       executor.shutdown();
       executor.awaitTermination(EXECUTOR_SHUTDOWN_TIMEOUT_SEC, TimeUnit.SECONDS);
+      if (gcsLoadExecutor != null) {
+        try {
+          gcsLoadExecutor.shutdown();
+          executor.awaitTermination(EXECUTOR_SHUTDOWN_TIMEOUT_SEC, TimeUnit.SECONDS);
+        } catch (InterruptedException ex) {
+          logger.warn("Could not shut down GCS Load Executor within {}s.",
+                      EXECUTOR_SHUTDOWN_TIMEOUT_SEC);
+        }
+      }
     } catch (InterruptedException ex) {
       logger.warn("{} active threads are still executing tasks {}s after shutdown is signaled.",
           executor.getActiveCount(), EXECUTOR_SHUTDOWN_TIMEOUT_SEC);
