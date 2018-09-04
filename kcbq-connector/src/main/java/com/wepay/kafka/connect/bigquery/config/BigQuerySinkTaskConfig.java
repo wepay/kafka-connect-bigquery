@@ -94,19 +94,6 @@ public class BigQuerySinkTaskConfig extends BigQuerySinkConfig {
       "Whether or not to use the message time when inserting records. "
       + "Default uses the connector processing time.";
 
-  /*
-  private static final String GCS_TO_BQ_LOAD_WAIT_TIME_SEC_CONFIG = "GCSToBQLoadWaitTimeSec";
-  private static final ConfigDef.Type GCS_TO_BQ_LOAD_WAIT_TIME_SEC_CONFIG_TYPE =
-      ConfigDef.Type.INT;
-  public static final Integer GCS_TO_BQ_LOAD_WAIT_TIME_SEC_CONFIG_DEFAULT = null;
-  public static final ConfigDef.Importance GCS_TO_BQ_LOAD_WAIT_TIME_SEC_CONFIG_IMPORTANCE =
-      ConfigDef.Importance.HIGH;
-  public static final String GCS_TO_BQ_LOAD_WAIT_TIME_SEC_CONFIG_DOC =
-      "If configured, this task will run a side thread that will trigger and check on GCS to BQ "
-      + "load spaced by the configured time. Google has a limit of 1000 insert jobs per day, so "
-      + "it's not recommended to upload more than once every 120 seconds or so.";
-  */ // I'm pretty sure I don't need this, but I don't know so I'm keeping it here for now.
-
   static {
     config = BigQuerySinkConfig.getConfig()
         .define(

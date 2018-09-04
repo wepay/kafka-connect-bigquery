@@ -65,7 +65,7 @@ public class BigQuerySinkConfig extends AbstractConfig {
   private static final List<String> ENABLE_BATCH_DEFAULT =                 Collections.emptyList();
   private static final ConfigDef.Importance ENABLE_BATCH_IMPORTANCE =      ConfigDef.Importance.LOW;
   private static final String ENABLE_BATCH_DOC =
-      "The sublist of topics to be batch loaded through GCS";
+      "Beta Feature; use with caution: The sublist of topics to be batch loaded through GCS";
 
   public static final String GCS_BUCKET_NAME_CONFIG =                     "gcsBucketName";
   private static final ConfigDef.Type GCS_BUCKET_NAME_TYPE =              ConfigDef.Type.STRING;
