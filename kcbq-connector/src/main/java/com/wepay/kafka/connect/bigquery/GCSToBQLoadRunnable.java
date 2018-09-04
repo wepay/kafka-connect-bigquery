@@ -36,9 +36,11 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -55,6 +57,7 @@ public class GCSToBQLoadRunnable implements Runnable {
   private final BigQuery bigQuery;
   private final Bucket bucket;
   private final Map<Job, List<Blob>> activeJobs;
+  private final Set<Blob> claimedBlobs;
 
   // these numbers are intended to try to make this task not excede Google Cloud Quotas.
   // see: https://cloud.google.com/bigquery/quotas#load_jobs
@@ -75,6 +78,7 @@ public class GCSToBQLoadRunnable implements Runnable {
     this.bigQuery = bigQuery;
     this.bucket = bucket;
     this.activeJobs = new HashMap<>();
+    this.claimedBlobs = new HashSet<>();
   }
 
   private Map<TableId, List<Blob>> getBlobsUpToLimit() {
@@ -86,8 +90,10 @@ public class GCSToBQLoadRunnable implements Runnable {
     for (Blob blob : list.iterateAll()) {
       TableId table = getTableFromBlob(blob);
 
-      if (table == null) {
-        // don't do anything
+      if (table == null || claimedBlobs.contains(blob)) {
+        // don't do anything if:
+        // 1. we don't know what table this should be uploaded to or
+        // 2. this blob is already claimed by a currently-running job.
         continue;
       }
 
@@ -154,6 +160,9 @@ public class GCSToBQLoadRunnable implements Runnable {
             .build();
     // create and return the job.
     Job job = bigQuery.create(JobInfo.of(loadJobConfiguration));
+    // update active jobs and claimed blobs.
+    activeJobs.put(job, blobs);
+    claimedBlobs.addAll(blobs);
     logger.info("Triggered load job for table {} with {} blobs.", table, blobs.size());
     return job;
   }
@@ -172,6 +181,10 @@ public class GCSToBQLoadRunnable implements Runnable {
    * retried during the next run.
    */
   private void checkJobs() {
+    if (activeJobs.isEmpty()) {
+      // quick exit if nothing needs to be done.
+      return;
+    }
     Iterator<Job> jobIterator = activeJobs.keySet().iterator();
     int successCount = 0;
     int failureCount = 0;
@@ -185,8 +198,11 @@ public class GCSToBQLoadRunnable implements Runnable {
           for (Blob blob : blobsToDelete) {
             try {
               blob.delete();
+              claimedBlobs.remove(blob);
               blobsDeleted++;
             } catch (StorageException ex) {
+              // bonus?: don't remove the blob from claimed blobs if it's un-delete-able
+              // (so this error doesn't happen every single time this method is called)
               logger.error("Unable to delete blob {}/{}", blob.getBucket(), blob.getName());
             }
           }
@@ -206,13 +222,11 @@ public class GCSToBQLoadRunnable implements Runnable {
 
   @Override
   public void run() {
-    // step 1. get blobs to load into BQ.
-    Map<TableId, List<Blob>> tablesToSourceURIs = getBlobsUpToLimit();
-    // step 2. load blobs into BQ
-    Map<Job, List<Blob>> jobListMap = triggerBigQueryLoadJobs(tablesToSourceURIs);
-    // step 3. update active jobs
-    activeJobs.putAll(jobListMap);
-    // step 4. check for finished jobs status.
+    // step 1. check for finished jobs status.
     checkJobs();
+    // step 2. get blobs to load into BQ.
+    Map<TableId, List<Blob>> tablesToSourceURIs = getBlobsUpToLimit();
+    // step 3. load blobs into BQ
+    triggerBigQueryLoadJobs(tablesToSourceURIs);
   }
 }
