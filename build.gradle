@@ -272,7 +272,7 @@ project('kcbq-confluent') {
 
     distributions {
         main {
-            baseName = 'someName'
+            baseName = 'kafka-connect-bigquery'
             contents {
                 from configurations.runtime
             }
