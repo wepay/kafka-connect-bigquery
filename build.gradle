@@ -7,24 +7,6 @@ allprojects {
 // for some reason this does not work if applied in allprojects.
 apply plugin: 'distribution'
 
-configurations.all {
-
-    /*
-    resolutionStrategy.eachDependency { DependencyResolveDetails details ->
-        if (details.requested.group == 'org.apache.kafka') {
-            details.useVersion '1.1.1'
-            // force our kafka version.
-        }
-    }
-    */
-    resolutionStrategy {
-        // none of this seems to be working =/
-        force 'org.apache.kafka:connect-api:1.1.1', 'org.apache.kafka:kafka-clients:1.1.1'
-        //forcedModules = ['org.apache.kafka:connect-api:1.1.1', 'org.apache.kafka:kafka-clients:1.1.1']
-        //preferProjectModules()
-    }
-}
-
 // END ALL PROJECTS
 
 // BEGIN SUBPROJECTS //
@@ -115,10 +97,6 @@ subprojects { subproject ->
 }
 // END SUBPROJECTS
 
-// BEGIN ROOT PROJECT
-
-// END ROOT PROJECT
-
 // BEGIN INDIVIDUAL PROJECTS
 project(':kcbq-connector') {
     apply plugin: 'jacoco'
@@ -203,7 +181,7 @@ project(':kcbq-connector') {
     }
 
     artifacts {
-        archives javadocJar, sourcesJar
+        archives javadocJar, sourcesJar, distTar
     }
 
     uploadArchives {

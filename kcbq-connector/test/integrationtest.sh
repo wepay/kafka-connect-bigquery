@@ -233,9 +233,8 @@ echo >> "$CONNECTOR_PROPS"
 CONNECT_DOCKER_IMAGE='kcbq/connect'
 CONNECT_DOCKER_NAME='kcbq_test_connect'
 
-# todo fixme
-cp "$BASE_DIR"/../../kcbq-confluent/build/distributions/kafka-connect-bigquery-*-SNAPSHOT.tar "$DOCKER_DIR/connect/kcbq.tar"
-cp "$BASE_DIR"/../../kcbq-confluent/build/distributions/kafka-connect-bigquery-*-SNAPSHOT.tar "$DOCKER_DIR/connect/retriever.tar"
+cp "$BASE_DIR"/../../kcbq-confluent/build/distributions/kafka-connect-bigquery-*.tar "$DOCKER_DIR/connect/kcbq.tar"
+cp "$BASE_DIR"/../../kcbq-confluent/build/distributions/kafka-connect-bigquery-*.tar "$DOCKER_DIR/connect/retriever.tar"
 cp "$KCBQ_TEST_KEYFILE" "$DOCKER_DIR/connect/key.json"
 
 if ! dockerimageexists "$CONNECT_DOCKER_IMAGE"; then
