@@ -1,7 +1,6 @@
 // BEGIN ALL PROJECTS //
 allprojects {
     apply plugin: 'java'
-    apply plugin: 'project-report' // todo delete me
 }
 
 // for some reason this does not work if applied in allprojects.
@@ -181,7 +180,7 @@ project(':kcbq-connector') {
     }
 
     artifacts {
-        archives javadocJar, sourcesJar, distTar
+        archives javadocJar, sourcesJar
     }
 
     uploadArchives {
@@ -298,7 +297,7 @@ project('kcbq-confluent') {
     }
 
     artifacts {
-        archives javadocJar, sourcesJar
+        archives javadocJar, sourcesJar, distTar
     }
 
     uploadArchives {
