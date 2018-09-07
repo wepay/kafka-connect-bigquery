@@ -55,7 +55,7 @@ $ ./gradlew clean distTar
 And then extract its contents:
 
 ```bash
-$ mkdir bin/jar/ && tar -C bin/jar/ -xf kcbq-confluent/build/distributions/kafka-connect-bigquery-*.tar
+$ mkdir bin/jar/ && tar -C bin/jar/ -xf kcbq-confluent/build/distributions/kcbq-confluent-*.tar
 ```
 
 ### Setting-Up Background Processes
