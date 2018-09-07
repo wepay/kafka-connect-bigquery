@@ -206,7 +206,6 @@ warn 'Deleting existing BigQuery test tables'
 statusupdate 'Executing Kafka Connect in Docker'
 
 # Run clean task to ensure there's only one connector tarball in the build/dist directory
-# todo fixme
 "$GRADLEW" -q -p "$BASE_DIR/../.." clean distTar
 
 [[ ! -e "$DOCKER_DIR/connect/properties" ]] && mkdir "$DOCKER_DIR/connect/properties"
