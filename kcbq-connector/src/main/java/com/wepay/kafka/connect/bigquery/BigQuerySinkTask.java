@@ -27,6 +27,7 @@ import com.google.cloud.storage.Storage;
 import com.google.common.annotations.VisibleForTesting;
 
 import com.wepay.kafka.connect.bigquery.api.SchemaRetriever;
+import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig;
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkTaskConfig;
 import com.wepay.kafka.connect.bigquery.convert.RecordConverter;
 import com.wepay.kafka.connect.bigquery.convert.SchemaConverter;
@@ -255,7 +256,7 @@ public class BigQuerySinkTask extends SinkTask {
     }
   }
 
-  private Storage getGCS() {
+  private Storage getGcs() {
     if (testGcs != null) {
       return testGcs;
     }
@@ -264,11 +265,11 @@ public class BigQuerySinkTask extends SinkTask {
     return new GCSBuilder(projectName).setKeyFileName(keyFilename).build();
   }
 
-  private GCSToBQWriter getGCSWriter() {
+  private GCSToBQWriter getGcsWriter() {
     BigQuery bigQuery = getBigQuery();
     int retry = config.getInt(config.BIGQUERY_RETRY_CONFIG);
     long retryWait = config.getLong(config.BIGQUERY_RETRY_WAIT_CONFIG);
-    return new GCSToBQWriter(getGCS(),
+    return new GCSToBQWriter(getGcs(),
                          bigQuery,
                          retry,
                          retryWait);
@@ -277,11 +278,8 @@ public class BigQuerySinkTask extends SinkTask {
   @Override
   public void start(Map<String, String> properties) {
     logger.trace("task.start()");
-    boolean hasGCSBQTask = false;
-    if (properties.containsKey("GCSBQTask")) {
-      properties.remove("GCSBQTask");
-      hasGCSBQTask = true;
-    }
+    final boolean hasGCSBQTask =
+        properties.remove(BigQuerySinkConnector.GCS_BQ_TASK_CONFIG_KEY) != null;
     try {
       config = new BigQuerySinkTaskConfig(properties);
     } catch (ConfigException err) {
@@ -292,7 +290,7 @@ public class BigQuerySinkTask extends SinkTask {
     }
 
     bigQueryWriter = getBigQueryWriter();
-    gcsToBQWriter = getGCSWriter();
+    gcsToBQWriter = getGcsWriter();
     topicsToBaseTableIds = TopicToTableResolver.getTopicsToTables(config);
     recordConverter = getConverter();
     executor = new KCBQThreadPoolExecutor(config, new LinkedBlockingQueue<>());
@@ -305,9 +303,10 @@ public class BigQuerySinkTask extends SinkTask {
   }
 
   private void startGCSToBQLoadTask() {
+    logger.info("Attempting to start GCS Load Executor.");
     gcsLoadExecutor = Executors.newScheduledThreadPool(1);
     String bucketName = config.getString(config.GCS_BUCKET_NAME_CONFIG);
-    Storage gcs = getGCS();
+    Storage gcs = getGcs();
     // get the bucket, or create it if it does not exist.
     Bucket bucket = gcs.get(bucketName);
     if (bucket == null) {
@@ -318,7 +317,8 @@ public class BigQuerySinkTask extends SinkTask {
     }
     GCSToBQLoadRunnable loadRunnable = new GCSToBQLoadRunnable(getBigQuery(), bucket);
 
-    gcsLoadExecutor.scheduleAtFixedRate(loadRunnable, 2, 2, TimeUnit.MINUTES);
+    int intervalSec = config.getInt(BigQuerySinkConfig.BATCH_LOAD_INTERVAL_SEC_CONFIG);
+    gcsLoadExecutor.scheduleAtFixedRate(loadRunnable, intervalSec, intervalSec, TimeUnit.SECONDS);
   }
 
   @Override
@@ -328,6 +328,7 @@ public class BigQuerySinkTask extends SinkTask {
       executor.awaitTermination(EXECUTOR_SHUTDOWN_TIMEOUT_SEC, TimeUnit.SECONDS);
       if (gcsLoadExecutor != null) {
         try {
+          logger.info("Attempting to shut down GCS Load Executor.");
           gcsLoadExecutor.shutdown();
           executor.awaitTermination(EXECUTOR_SHUTDOWN_TIMEOUT_SEC, TimeUnit.SECONDS);
         } catch (InterruptedException ex) {

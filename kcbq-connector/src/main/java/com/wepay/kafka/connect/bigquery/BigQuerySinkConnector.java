@@ -56,6 +56,8 @@ public class BigQuerySinkConnector extends SinkConnector {
   private final BigQuery testBigQuery;
   private final SchemaManager testSchemaManager;
 
+  public static final String  GCS_BQ_TASK_CONFIG_KEY = "GCSBQTask";
+
   public BigQuerySinkConnector() {
     testBigQuery = null;
     testSchemaManager = null;
@@ -176,7 +178,7 @@ public class BigQuerySinkConnector extends SinkConnector {
       HashMap<String, String> taskConfig = new HashMap<>(configProperties);
       if (i == 0 && !config.getList(BigQuerySinkConfig.ENABLE_BATCH_CONFIG).isEmpty()) {
         // if batch loading is enabled, configure first task to do the GCS -> BQ loading
-        taskConfig.put("GCSBQTask", "true");
+        taskConfig.put(GCS_BQ_TASK_CONFIG_KEY, "true");
       }
       taskConfigs.add(taskConfig);
     }
