@@ -225,7 +225,9 @@ public class GCSToBQLoadRunnable implements Runnable {
         // log a message.
         logger.warn("GCS to BQ load job failed", ex);
         // remove job from active jobs (it's not active anymore)
-        activeJobs.remove(job);
+        List<Blob> blobs = activeJobs.remove(job);
+        // unclaim blobs
+        claimedBlobs.removeAll(blobs);
         failureCount++;
       } finally {
         logger.info("GCS To BQ job tally: {} successful jobs, {} failed jobs.",
@@ -239,6 +241,7 @@ public class GCSToBQLoadRunnable implements Runnable {
    */
   private void deleteBlobs() {
     int deletedBlobs = 0;
+    logger.info("Attempting to delete {} blobs", deletableBlobs.size());
     for (Blob blob : deletableBlobs) {
       try {
         blob.delete();
