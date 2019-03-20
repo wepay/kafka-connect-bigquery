@@ -18,8 +18,10 @@ package com.wepay.kafka.connect.bigquery.config;
  */
 
 
+import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.bigquery.Schema;
 
+import com.wepay.kafka.connect.bigquery.GoogleCredentialsReader;
 import com.wepay.kafka.connect.bigquery.api.SchemaRetriever;
 
 import com.wepay.kafka.connect.bigquery.convert.BigQueryRecordConverter;
@@ -130,7 +132,15 @@ public class BigQuerySinkConfig extends AbstractConfig {
   public static final String KEYFILE_DEFAULT =                    null;
   private static final ConfigDef.Importance KEYFILE_IMPORTANCE =  ConfigDef.Importance.MEDIUM;
   private static final String KEYFILE_DOC =
-      "The file containing a JSON key with BigQuery service account credentials";
+      "The file with GCP service account credentials or user credentials in JSON format";
+
+  public static final String CREDENTIALS_CONFIG =                    "credentials";
+  private static final ConfigDef.Type CREDENTIALS_TYPE =             ConfigDef.Type.STRING;
+  public static final String CREDENTIALS_DEFAULT =                   null;
+  private static final ConfigDef.Importance CREDENTIALS_IMPORTANCE = ConfigDef.Importance.MEDIUM;
+  private static final String CREDENTIALS_DOC =
+      "GCP service account credentials or user credentials in in JSON format (non-escaped JSON blob). " +
+          "Has priority over credentials provided by keyfile.";
 
   public static final String SANITIZE_TOPICS_CONFIG =                     "sanitizeTopics";
   private static final ConfigDef.Type SANITIZE_TOPICS_TYPE =              ConfigDef.Type.BOOLEAN;
@@ -239,6 +249,12 @@ public class BigQuerySinkConfig extends AbstractConfig {
             KEYFILE_DEFAULT,
             KEYFILE_IMPORTANCE,
             KEYFILE_DOC
+        ).define(
+            CREDENTIALS_CONFIG,
+            CREDENTIALS_TYPE,
+            CREDENTIALS_DEFAULT,
+            CREDENTIALS_IMPORTANCE,
+            CREDENTIALS_DOC
         ).define(
             SANITIZE_TOPICS_CONFIG,
             SANITIZE_TOPICS_TYPE,
@@ -504,6 +520,25 @@ public class BigQuerySinkConfig extends AbstractConfig {
     schemaRetriever.configure(originalsStrings());
 
     return schemaRetriever;
+  }
+
+  /**
+   * Returns {@link GoogleCredentials} defined in the configuration.
+   *
+   * @return An object of {@link GoogleCredentials} created based on the configuration,
+   *         or null if there's no credentials in the configuration.
+   */
+  public GoogleCredentials getCredentials() {
+    String credentials = getString(CREDENTIALS_CONFIG);
+    String keyFile = getString(KEYFILE_CONFIG);
+
+    if (credentials != null && !credentials.isEmpty()) {
+      return GoogleCredentialsReader.fromJsonString(credentials);
+    } else if (keyFile != null && !keyFile.isEmpty()) {
+      return GoogleCredentialsReader.fromJsonFile(keyFile);
+    } else {
+      return null;
+    }
   }
 
   /**

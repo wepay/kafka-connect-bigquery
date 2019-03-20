@@ -150,6 +150,7 @@ project(':kcbq-connector') {
         main = 'com.wepay.kafka.connect.bigquery.it.utils.TableClearer'
         classpath = sourceSets.integrationTest.runtimeClasspath
         args findProperty('kcbq_test_keyfile') ?: ''
+        args findProperty('kcbq_test_credentials') ?: ''
         args findProperty('kcbq_test_project') ?: ''
         args findProperty('kcbq_test_dataset') ?: ''
         if (findProperty('kcbq_test_tables') != null)
@@ -160,6 +161,7 @@ project(':kcbq-connector') {
         main = 'com.wepay.kafka.connect.bigquery.it.utils.BucketClearer'
         classpath = sourceSets.integrationTest.runtimeClasspath
         args findProperty('kcbq_test_keyfile') ?: ''
+        args findProperty('kcbq_test_credentials') ?: ''
         args findProperty('kcbq_test_project') ?: ''
         args findProperty('kcbq_test_bucket') ?: ''
     }

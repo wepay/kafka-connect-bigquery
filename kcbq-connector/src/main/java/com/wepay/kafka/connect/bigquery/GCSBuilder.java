@@ -36,20 +36,20 @@ public class GCSBuilder {
   private static final Logger logger = LoggerFactory.getLogger(GCSBuilder.class);
 
   private final String projectName;
-  private String keyFileName;
+  private GoogleCredentials credentials;
 
   public GCSBuilder(String projectName) {
     this.projectName = projectName;
-    this.keyFileName = null;
+    this.credentials = null;
   }
 
-  public GCSBuilder setKeyFileName(String keyFileName) {
-    this.keyFileName = keyFileName;
+  public GCSBuilder setCredentials(GoogleCredentials credentials) {
+    this.credentials = credentials;
     return this;
   }
 
   public Storage build() {
-    return connect(projectName, keyFileName);
+    return connect(projectName, credentials);
   }
 
   /**
@@ -57,26 +57,20 @@ public class GCSBuilder {
    * in the specified file.
    *
    * @param projectName The name of the GCS project to work with
-   * @param keyFilename The name of a file containing a JSON key that can be used to provide
-   *                    credentials to GCS, or null if no authentication should be performed.
+   * @param credentials Storage credentials, or null if no authentication should be performed.
    * @return The resulting Storage object.
    */
-  private Storage connect(String projectName, String keyFilename) {
-    if (keyFilename == null) {
+  private Storage connect(String projectName, GoogleCredentials credentials) {
+    if (credentials == null) {
       return connect(projectName);
     }
 
-    logger.debug("Attempting to open file {} for service account json key", keyFilename);
-    try (InputStream credentialsStream = new FileInputStream(keyFilename)) {
-      logger.debug("Attempting to authenticate with GCS using provided json key");
-      return StorageOptions.newBuilder()
-          .setProjectId(projectName)
-          .setCredentials(GoogleCredentials.fromStream(credentialsStream))
-          .build()
-          .getService();
-    } catch (IOException err) {
-      throw new GCSConnectException("Failed to access json key file", err);
-    }
+    logger.debug("Attempting to authenticate with GCS using provided credentials");
+    return StorageOptions.newBuilder()
+            .setProjectId(projectName)
+            .setCredentials(credentials)
+            .build()
+            .getService();
   }
 
   /**

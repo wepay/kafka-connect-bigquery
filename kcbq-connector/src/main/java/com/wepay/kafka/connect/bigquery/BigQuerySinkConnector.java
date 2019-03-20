@@ -18,6 +18,7 @@ package com.wepay.kafka.connect.bigquery;
  */
 
 
+import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.TableId;
 
@@ -91,8 +92,8 @@ public class BigQuerySinkConnector extends SinkConnector {
       return testBigQuery;
     }
     String projectName = config.getString(config.PROJECT_CONFIG);
-    String keyFilename = config.getString(config.KEYFILE_CONFIG);
-    return new BigQueryHelper().connect(projectName, keyFilename);
+    GoogleCredentials credentials = config.getCredentials();
+    return new BigQueryHelper().connect(projectName, credentials);
   }
 
   private SchemaManager getSchemaManager(BigQuery bigQuery) {

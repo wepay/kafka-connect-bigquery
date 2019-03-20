@@ -28,6 +28,7 @@ import static com.google.cloud.bigquery.LegacySQLTypeName.TIMESTAMP;
 
 import static org.junit.Assert.assertEquals;
 
+import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.FieldValue;
@@ -37,6 +38,7 @@ import com.google.cloud.bigquery.Table;
 import com.google.cloud.bigquery.TableResult;
 
 import com.wepay.kafka.connect.bigquery.BigQueryHelper;
+import com.wepay.kafka.connect.bigquery.GoogleCredentialsReader;
 import com.wepay.kafka.connect.bigquery.exception.SinkConfigConnectException;
 
 import org.junit.BeforeClass;
@@ -56,10 +58,11 @@ import java.util.Properties;
 public class BigQueryConnectorIntegrationTest {
   public static final String TEST_PROPERTIES_FILENAME = "/test.properties";
   public static final String KEYFILE_PROPERTY = "keyfile";
+  public static final String CREDENTIALS_PROPERTY = "credentials";
   public static final String PROJECT_PROPERTY = "project";
   public static final String DATASET_PROPERTY = "dataset";
 
-  private static String keyfile;
+  private static GoogleCredentials credentials;
   private static String project;
   private static String dataset;
 
@@ -84,11 +87,19 @@ public class BigQueryConnectorIntegrationTest {
       Properties properties = new Properties();
       properties.load(propertiesFile);
 
-      keyfile = properties.getProperty(KEYFILE_PROPERTY);
-      if (keyfile == null) {
+      String keyfile = properties.getProperty(KEYFILE_PROPERTY);
+      String credentialsStr = properties.getProperty(CREDENTIALS_PROPERTY);
+
+      if (credentialsStr != null && !credentialsStr.isEmpty()) {
+        credentials = GoogleCredentialsReader.fromJsonString(credentialsStr);
+      } else if (keyfile != null && !keyfile.isEmpty()) {
+        credentials = GoogleCredentialsReader.fromJsonFile(keyfile);
+      } else {
         throw new SinkConfigConnectException(
-            "'" + KEYFILE_PROPERTY
-            + "' property must be specified in test properties file"
+            String.format(
+                "Either '%s' or '%s' property must be specified in test properties file",
+                CREDENTIALS_PROPERTY, KEYFILE_PROPERTY
+            )
         );
       }
 
@@ -111,7 +122,7 @@ public class BigQueryConnectorIntegrationTest {
   }
 
   private static void initializeBigQuery() throws Exception {
-    bigQuery = new BigQueryHelper().connect(project, keyfile);
+    bigQuery = new BigQueryHelper().connect(project, credentials);
   }
 
   private static List<Byte> boxByteArray(byte[] bytes) {

@@ -26,14 +26,22 @@ project=
 # The name of the BigQuery dataset to write to (leave the '.*=' at the beginning, enter your
 # dataset after it)
 datasets=.*=
-# The location of a BigQuery service account JSON key file
+# The location of a GCP service account credentials file or a user credentials file in JSON format
 keyfile=
+# GCP service account credentials or user credentials in JSON format (non-escaped JSON blob)
+credentials=
 ```
 
 You'll need to choose a BigQuery project to write to, a dataset from that project to write to, and
-provide the location of a JSON key file that can be used to access a BigQuery service account that
-can write to the project/dataset pair. Once you've decided on these properties, fill them in and
-save the properties file.
+provide GCP credentials that can be used to access a BigQuery service account that can write
+to the project/dataset pair. This can be done in two ways:
+- by providing the name of a key file using `keyfile` parameter; or
+- by providing the credentials explicitly as a JSON string (a non-escaped JSON blob) using
+`credentials` parameter.
+
+When specified, `credentials` has priority over `keyfile`.
+
+Once you've decided on these properties, fill them in and save the properties file.
 
 Once you get more familiar with the connector, you might want to revisit the `connector.properties`
 file and experiment with tweaking its settings.
@@ -139,11 +147,13 @@ Integration tests run by creating [Docker] instances for [Zookeeper], [Kafka], [
 and the BigQuery Connector itself, then verifying the results using a [JUnit] test.
 
 They use schemas and data that can be found in the `test/docker/populate/test_schemas/` directory, 
-and rely on a user-provided JSON key file (like in the `quickstart` example) to access BigQuery.
+and rely on a user-provided JSON key file (like in the `quickstart` example) or explicit JSON
+credentials to access BigQuery.
 
-The project and dataset they write to, as well as the specific JSON key file they use, can be
-specified by command-line flag, environment variable, or configuration file — the exact details of
-each can be found by running the integration test script with the `-?` flag.
+The project and dataset they write to, as well as the specific JSON key file or JSON credentials
+string they use, can be specified by command-line flag, environment variable,
+or configuration file — the exact details of each can be found by running the integration
+test script with the `-?` flag.
 
 ### Data Corruption Concerns
 

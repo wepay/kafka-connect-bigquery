@@ -43,28 +43,21 @@ public class BigQueryHelper {
    * from specific datasets.
    *
    * @param projectName The name of the BigQuery project to work with
-   * @param keyFilename The name of a file containing a JSON key that can be used to provide
-   *                    credentials to BigQuery, or null if no authentication should be performed.
+   * @param credentials BigQuery credentials, or null if no authentication should be performed.
    * @return The resulting BigQuery object.
    */
-  public BigQuery connect(String projectName, String keyFilename) {
-    if (keyFilename == null) {
+  public BigQuery connect(String projectName, GoogleCredentials credentials) {
+    if (credentials == null) {
       return connect(projectName);
     }
 
-    logger.debug("Attempting to open file {} for service account json key", keyFilename);
-    try (InputStream credentialsStream = new FileInputStream(keyFilename)) {
-      logger.debug("Attempting to authenticate with BigQuery using provided json key");
-      return new
-          BigQueryOptions.DefaultBigQueryFactory().create(
-          BigQueryOptions.newBuilder()
-          .setProjectId(projectName)
-          .setCredentials(GoogleCredentials.fromStream(credentialsStream))
-          .build()
-      );
-    } catch (IOException err) {
-      throw new BigQueryConnectException("Failed to access json key file", err);
-    }
+    logger.debug("Attempting to authenticate with BigQuery using provided credentials");
+    return new BigQueryOptions.DefaultBigQueryFactory().create(
+        BigQueryOptions.newBuilder()
+        .setProjectId(projectName)
+        .setCredentials(credentials)
+        .build()
+    );
   }
 
   /**

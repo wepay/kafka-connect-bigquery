@@ -34,6 +34,7 @@ YELLOW='\033[1;33m'
 usage() {
   echo -e "usage: $0\n" \
        "[-k|--key-file <JSON key file>] (path must be absolute; relative paths will not work)\n" \
+       "[-c|--credentials <credentials in JSON format (quoted JSON blob)>]\n" \
        "[-p|--project <BigQuery project>]\n" \
        "[-d|--dataset <BigQuery project>]\n" \
        "[-b|--bucket <cloud Storage bucket>\n]" \
@@ -41,13 +42,16 @@ usage() {
        1>&2
   echo 1>&2
   echo "Options can also be specified via environment variable:" \
-       "KCBQ_TEST_KEYFILE, KCBQ_TEST_PROJECT, KCBQ_TEST_DATASET, KCBQ_TEST_BUCKET, and KCBQ_TEST_FOLDER" \
-       "respectively control the keyfile, project, dataset, and bucket." \
+       "KCBQ_TEST_KEYFILE, KCBQ_TEST_CREDENTIALS, KCBQ_TEST_PROJECT, KCBQ_TEST_DATASET, KCBQ_TEST_BUCKET, and KCBQ_TEST_FOLDER" \
+       "respectively control the keyfile, credentials, project, dataset, and bucket." \
        1>&2
   echo 1>&2
   echo "Options can also be specified in a file named 'test.conf'" \
        "placed in the same directory as this script, with a series of <property>=<value> lines." \
-       "The properties are 'keyfile', 'project', 'dataset', and 'bucket'." \
+       "The properties are 'keyfile', 'credentials', 'project', 'dataset', and 'bucket'." \
+       1>&2
+  echo 1>&2
+  echo "The credentials specified by 'credentials' have priority over the credentials provided by the file from 'keyfile'." \
        1>&2
   echo 1>&2
   echo "The descending order of priority for each of these forms of specification is:" \
@@ -98,6 +102,7 @@ PROPERTIES_FILE="$BASE_DIR/test.conf"
 # Copy the file's properties into actual test variables,
 # without overriding any that have already been specified
 KCBQ_TEST_KEYFILE=${KCBQ_TEST_KEYFILE:-$keyfile}
+KCBQ_TEST_CREDENTIALS=${KCBQ_TEST_CREDENTIALS:-$credentials}
 KCBQ_TEST_PROJECT=${KCBQ_TEST_PROJECT:-$project}
 KCBQ_TEST_DATASET=${KCBQ_TEST_DATASET:-$dataset}
 KCBQ_TEST_BUCKET=${KCBQ_TEST_BUCKET:-$bucket}
@@ -110,6 +115,11 @@ while [[ $# -gt 0 ]]; do
         [[ -z "$2" ]] && { error "key filename must follow $1 flag"; usage 1; }
         shift
         KCBQ_TEST_KEYFILE="$1"
+        ;;
+    -c|--credentials)
+        [[ -z "$2" ]] && { error "credentials must follow $1 flag"; usage 1; }
+        shift
+        KCBQ_TEST_CREDENTIALS="$1"
         ;;
     -p|--project)
         [[ -z "$2" ]] && { error "project name must follow $1 flag"; usage 1; }
@@ -142,7 +152,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Make sure required arguments have been provided one way or another
-[[ -z "$KCBQ_TEST_KEYFILE" ]] && { error 'a key filename is required'; usage 1; }
+[[ -z "$KCBQ_TEST_KEYFILE" ]] && [[ -z "$KCBQ_TEST_CREDENTIALS" ]] && { error 'a key filename or credentials JSON is required'; usage 1; }
 [[ -z "$KCBQ_TEST_PROJECT" ]] && { error 'a project name is required'; usage 1; }
 [[ -z "$KCBQ_TEST_DATASET" ]] && { error 'a dataset name is required'; usage 1; }
 [[ -z "$KCBQ_TEST_BUCKET" ]] && { error 'a bucket name is required'; usage 1; }
@@ -260,11 +270,13 @@ basename "$BASE_DIR"/resources/test_schemas/* \
   >> "$CONNECTOR_PROPS"
 echo >> "$CONNECTOR_PROPS"
 
+echo "credentials=$KCBQ_TEST_CREDENTIALS" >> "$CONNECTOR_PROPS"
+
 CONNECT_DOCKER_IMAGE='kcbq/connect'
 CONNECT_DOCKER_NAME='kcbq_test_connect'
 
 cp "$BASE_DIR"/../../kcbq-confluent/build/distributions/kcbq-confluent-*.tar "$DOCKER_DIR/connect/kcbq.tar"
-cp "$KCBQ_TEST_KEYFILE" "$DOCKER_DIR/connect/key.json"
+[[ ! -z "$KCBQ_TEST_KEYFILE" ]] && cp "$KCBQ_TEST_KEYFILE" "$DOCKER_DIR/connect/key.json"
 
 if ! dockerimageexists "$CONNECT_DOCKER_IMAGE"; then
   docker build -q -t "$CONNECT_DOCKER_IMAGE" "$DOCKER_DIR/connect"
@@ -286,6 +298,7 @@ INTEGRATION_TEST_RESOURCE_DIR="$BASE_DIR/../src/integration-test/resources"
 INTEGRATION_TEST_PROPERTIES_FILE="$INTEGRATION_TEST_RESOURCE_DIR/test.properties"
 
 echo "keyfile=$KCBQ_TEST_KEYFILE" > "$INTEGRATION_TEST_PROPERTIES_FILE"
+echo "credentials=$KCBQ_TEST_CREDENTIALS" >> "$INTEGRATION_TEST_PROPERTIES_FILE"
 echo "project=$KCBQ_TEST_PROJECT" >> "$INTEGRATION_TEST_PROPERTIES_FILE"
 echo "dataset=$KCBQ_TEST_DATASET" >> "$INTEGRATION_TEST_PROPERTIES_FILE"
 echo "bucket=$KCBQ_TEST_BUCKET" >> "$INTEGRATION_TEST_PROPERTIES_FILE"
