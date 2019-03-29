@@ -50,8 +50,16 @@ public class SchemaRegistrySchemaRetriever implements SchemaRetriever {
   public void configure(Map<String, String> properties) {
     SchemaRegistrySchemaRetrieverConfig config =
         new SchemaRegistrySchemaRetrieverConfig(properties);
-    schemaRegistryClient =
+    if (config.getString(config.BASIC_AUTH_CREDENTIALS_SOURCE_CONFIG) == "USER_INFO" && !config.getString(config.BASIC_AUTH_USER_INFO_CONFIG).isEmpty()) {
+      Map<Integer,String> config_map=new HashMap<String,String>();
+      config_map.put("basic.auth.credentials.source",config.getString(config.BASIC_AUTH_CREDENTIALS_SOURCE_CONFIG))
+      config_map.put("basic.auth.user.info",config.getString(config.BASIC_AUTH_USER_INFO_CONFIG));
+      schemaRegistryClient =
+        new CachedSchemaRegistryClient(config.getString(config.LOCATION_CONFIG), 0, config_map);
+    } else {
+      schemaRegistryClient =
         new CachedSchemaRegistryClient(config.getString(config.LOCATION_CONFIG), 0);
+    }
     avroData = new AvroData(config.getInt(config.AVRO_DATA_CACHE_SIZE_CONFIG));
   }
 
