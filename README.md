@@ -66,7 +66,7 @@ run the following commands:
 ```bash
 gradle.properties filter=id > .gitattributes
 git config filter.id.clean 'git show HEAD:./gradle.properties'
-git config filter.id.smudge 'awk '"'"'$1 == "version" { "git describe --tags" | getline version; $2 = version; } 1'"'"' FS== OFS=='
+git config filter.id.smudge "awk '"'$1 == "version" { "git describe --tags" | getline $2 } 1'"' FS== OFS=="
 ```
 
 After doing that, you can auto update the version with:
