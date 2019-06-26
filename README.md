@@ -61,23 +61,19 @@ $ mkdir bin/jar/ && tar -C bin/jar/ -xf kcbq-confluent/build/distributions/kcbq-
 ### Setting up smudge filter
 Rather than hand editing gradle.properties to change the version, it is relatively simple to
 set up a smudge filter which will automagically insert a version based on git tags.  To do so,
-add the following line to .gitattributes:
+run the following line:
 
-gradle.properties filter=id
-
-Then, create smudge and clean filters by executing:
-
+```bash
+gradle.properties filter=id > .gitattributes
 git config filter.id.clean 'git show HEAD:./gradle.properties'
 git config filter.id.smudge 'awk '"'"'$1 == "version" { "git describe --tags" | getline version; $2 = version; } 1'"'"' FS== OFS=='
+```
 
-or by adding the following stanza to .git/config
-[filter "id"]
-	clean = git show HEAD:./gradle.properties
-	smudge = "awk '$1 == \"version\" { \"git describe --tags\" | getline version; $2 = version; } 1' FS== OFS=="
-
-Note that using smudge filters is a terrible kludge, and the clean filter described above will make
-it difficult to commit changes to gradle.properties.
-
+After doing that, you can auto update the version with:
+```bash
+rm gradle.properties
+git checkout HEAD gradle.properties
+```
 
 ### Setting-Up Background Processes
 
