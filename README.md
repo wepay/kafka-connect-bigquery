@@ -64,7 +64,7 @@ set up a smudge filter which will automagically insert a version based on git ta
 run the following commands:
 
 ```bash
-gradle.properties filter=id > .gitattributes
+echo gradle.properties filter=id > .gitattributes
 git config filter.id.clean 'git show HEAD:./gradle.properties'
 git config filter.id.smudge "awk '"'$1 == "version" { "git describe --tags" | getline $2 } 1'"' FS== OFS=="
 ```
