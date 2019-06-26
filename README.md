@@ -61,7 +61,7 @@ $ mkdir bin/jar/ && tar -C bin/jar/ -xf kcbq-confluent/build/distributions/kcbq-
 ### Setting up smudge filter
 Rather than hand editing gradle.properties to change the version, it is relatively simple to
 set up a smudge filter which will automagically insert a version based on git tags.  To do so,
-run the following line:
+run the following commands:
 
 ```bash
 gradle.properties filter=id > .gitattributes
