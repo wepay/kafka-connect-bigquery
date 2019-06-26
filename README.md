@@ -67,13 +67,12 @@ run the following commands:
 echo gradle.properties filter=id > .gitattributes
 git config filter.id.clean 'git show HEAD:./gradle.properties'
 git config filter.id.smudge "awk '"'$1 == "version" { "git describe --tags" | getline $2 } 1'"' FS== OFS=="
+echo '#!/bin/sh' > .git/hooks/post-commit
+echo 'rm gradle.properties; git checkout HEAD gradle.properties' >> .git/hooks/post-commit
+chmod +x .git/hooks/post-commit
 ```
 
-After doing that, you can auto update the version with:
-```bash
-rm gradle.properties
-git checkout HEAD gradle.properties
-```
+After doing that, you can auto update the version by running the post-commit hook, or by making a commit.
 
 ### Setting-Up Background Processes
 
