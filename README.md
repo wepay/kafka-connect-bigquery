@@ -68,12 +68,12 @@ gradle.properties filter=id
 Then, create smudge and clean filters by executing:
 
 git config filter.id.clean 'git show HEAD:./gradle.properties'
-git config filter.id.smudge 'awk '"'"'$1 == "version" { "git describe --tags --dirty" | getline version; $2 = version; } 1'"'"' FS== OFS=='
+git config filter.id.smudge 'awk '"'"'$1 == "version" { "git describe --tags" | getline version; $2 = version; } 1'"'"' FS== OFS=='
 
 or by adding the following stanza to .git/config
 [filter "id"]
 	clean = git show HEAD:./gradle.properties
-	smudge = "awk '$1 == \"version\" { \"git describe --tags --dirty\" | getline version; $2 = version; } 1' FS== OFS=="
+	smudge = "awk '$1 == \"version\" { \"git describe --tags\" | getline version; $2 = version; } 1' FS== OFS=="
 
 Note that using smudge filters is a terrible kludge, and the clean filter described above will make
 it difficult to commit changes to gradle.properties.
