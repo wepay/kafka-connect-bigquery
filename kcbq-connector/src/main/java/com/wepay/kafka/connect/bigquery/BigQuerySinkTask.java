@@ -177,7 +177,7 @@ public class BigQuerySinkTask extends SinkTask {
           if (config.getList(config.ENABLE_BATCH_CONFIG).contains(record.topic())) {
             String gcsBlobName = record.topic() + "_" + uuid + "_" + Instant.now().toEpochMilli();
             String gcsFolderName = config.getString(config.GCS_FOLDER_NAME_CONFIG);
-            if (!gcsFolderName.equals("")) {
+            if (!"".equals(gcsFolderName)) {
               gcsBlobName = gcsFolderName + "/" + gcsBlobName;
             }
             tableWriterBuilder = new GCSBatchTableWriter.Builder(
