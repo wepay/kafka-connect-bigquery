@@ -75,9 +75,9 @@ public class GCSBatchTableWriter implements Runnable {
     try {
       writer.writeRows(rows, tableId, bucketName, blobName);
     } catch (ConnectException ex) {
-      throw new ConnectException("Failed to write rows to GCS", ex);
+      throw new ConnectException(String.format("Failed to write rows to GCS for table %s", tableId.getTable()), ex);
     } catch (InterruptedException ex) {
-      throw new ConnectException("Thread interrupted while batch writing to GCS.", ex);
+      throw new ConnectException(String.format("Thread interrupted while batch writing to GCS for table %s", tableId.getTable()), ex);
     }
   }
 
