@@ -20,6 +20,7 @@ package com.wepay.kafka.connect.bigquery.write.row;
 
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.Table;
+import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageException;
@@ -78,7 +79,33 @@ public class GCSToBQWriterTest {
   }
 
   @Test
-  public void testGCSFailure(){
+  public void testGCSSomeFailures(){
+    // test failure through all configured retry attempts.
+    final String topic = "test_topic";
+    final String dataset = "scratch";
+    final Map<String, String> properties = makeProperties("3", "2000", topic, dataset);
+
+    BigQuery bigQuery = mock(BigQuery.class);
+    expectTable(bigQuery);
+    Storage storage = mock(Storage.class);
+    SinkTaskContext sinkTaskContext = mock(SinkTaskContext.class);
+
+    when(storage.create((BlobInfo)anyObject(), (byte[])anyObject()))
+        .thenThrow(new StorageException(500, "internal server error")) // throw first time
+        .thenReturn(null); // return second time. (we don't care about the result.)
+
+    BigQuerySinkTask testTask = new BigQuerySinkTask(bigQuery, null, storage);
+    testTask.initialize(sinkTaskContext);
+    testTask.start(properties);
+    testTask.put(
+        Collections.singletonList(spoofSinkRecord(topic, 0, 0, "some_field", "some_value")));
+    testTask.flush(Collections.emptyMap());
+
+    verify(storage, times(2)).create((BlobInfo)anyObject(), (byte[])anyObject());
+  }
+
+  @Test
+  public void testGCSAllFailures(){
     // test failure through all configured retry attempts.
     final String topic = "test_topic";
     final String dataset = "scratch";
@@ -101,7 +128,7 @@ public class GCSToBQWriterTest {
       testTask.flush(Collections.emptyMap());
       Assert.fail("expected testTask.flush to fail.");
     } catch (ConnectException ex){
-      // expected!
+      verify(storage, times(3)).create((BlobInfo)anyObject(), (byte[])anyObject());
     }
   }
 

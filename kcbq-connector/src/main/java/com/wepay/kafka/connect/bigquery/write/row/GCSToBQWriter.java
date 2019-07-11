@@ -109,23 +109,20 @@ public class GCSToBQWriter {
     }
 
     int retryCount = 0;
-    boolean exceptionsOccurred;
     boolean success = false;
     do {
       if (retryCount > 0) {
         waitRandomTime();
       }
-      exceptionsOccurred = false;
       // Perform GCS Upload
       try {
         uploadRowsToGcs(rows, blobInfo);
         success = true;
       } catch (StorageException se) {
-        exceptionsOccurred = true;
         logger.warn("Exceptions occurred for table {}, attempting retry", tableId.getTable());
       }
       retryCount++;
-    } while (exceptionsOccurred && (retryCount < retries));
+    } while (!success && (retryCount < retries));
 
     if (success) {
       logger.info("Batch loaded {} rows", rows.size());
