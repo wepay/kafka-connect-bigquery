@@ -25,6 +25,7 @@ import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageException;
 import com.google.gson.Gson;
 
 import com.wepay.kafka.connect.bigquery.exception.GCSConnectException;
@@ -109,22 +110,30 @@ public class GCSToBQWriter {
 
     int retryCount = 0;
     boolean exceptionsOccurred;
+    boolean success = false;
     do {
       if (retryCount > 0) {
         waitRandomTime();
       }
       exceptionsOccurred = false;
-      // Perform GCS Upload and BQ Transfer
+      // Perform GCS Upload
       try {
         uploadRowsToGcs(rows, blobInfo);
-      } catch (ConnectException ce) {
+        success = true;
+      } catch (StorageException se) {
         exceptionsOccurred = true;
         logger.warn("Exceptions occurred for table {}, attempting retry", tableId.getTable());
       }
       retryCount++;
     } while (exceptionsOccurred && (retryCount < retries));
 
-    logger.info("Batch loaded {} rows", rows.size());
+    if (success) {
+      logger.info("Batch loaded {} rows", rows.size());
+    }
+    else {
+      throw new ConnectException(String.format("Failed to load %d rows into GCS within %d attempts.", rows.size(), retries));
+    }
+
   }
 
   private static Map<String, String> getMetadata(TableId tableId) {
