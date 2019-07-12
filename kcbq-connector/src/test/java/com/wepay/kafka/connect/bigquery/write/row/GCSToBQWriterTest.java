@@ -128,7 +128,7 @@ public class GCSToBQWriterTest {
       testTask.flush(Collections.emptyMap());
       Assert.fail("expected testTask.flush to fail.");
     } catch (ConnectException ex){
-      verify(storage, times(3)).create((BlobInfo)anyObject(), (byte[])anyObject());
+      verify(storage, times(4)).create((BlobInfo)anyObject(), (byte[])anyObject());
     }
   }
 

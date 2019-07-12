@@ -108,10 +108,10 @@ public class GCSToBQWriter {
           String.format("Table with TableId %s does not exist.", tableId.getTable()));
     }
 
-    int retryCount = 0;
+    int attemptCount = 0;
     boolean success = false;
-    do {
-      if (retryCount > 0) {
+    while (!success && (attemptCount <= retries)) {
+      if (attemptCount > 0) {
         waitRandomTime();
       }
       // Perform GCS Upload
@@ -121,14 +121,13 @@ public class GCSToBQWriter {
       } catch (StorageException se) {
         logger.warn("Exceptions occurred for table {}, attempting retry", tableId.getTable());
       }
-      retryCount++;
-    } while (!success && (retryCount < retries));
+      attemptCount++;
+    }
 
     if (success) {
       logger.info("Batch loaded {} rows", rows.size());
-    }
-    else {
-      throw new ConnectException(String.format("Failed to load %d rows into GCS within %d attempts.", rows.size(), retries));
+    } else {
+      throw new ConnectException(String.format("Failed to load %d rows into GCS within %d re-attempts.", rows.size(), retries));
     }
 
   }
