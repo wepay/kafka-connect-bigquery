@@ -25,3 +25,5 @@ test.conf
 kcbq-connector/src/integration-test/resources/test.properties
 kcbq-connector/test/docker/connect/properties/
 kcbq-connector/out/
+
+compile.sh
