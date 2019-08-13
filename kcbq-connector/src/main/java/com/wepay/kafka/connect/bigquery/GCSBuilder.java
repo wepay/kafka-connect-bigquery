@@ -19,9 +19,12 @@ package com.wepay.kafka.connect.bigquery;
 
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
+import com.wepay.kafka.connect.bigquery.exception.GCSConnectException;
 import com.wepay.kafka.connect.bigquery.utils.GoogleCredentialUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
 
 /**
  * Convenience class for creating a {@link com.google.cloud.storage.Storage} instance
@@ -61,11 +64,15 @@ public class GCSBuilder {
     }
 
     logger.debug("Attempting to authenticate with GCS using provided json key");
-    return StorageOptions.newBuilder()
-        .setProjectId(projectName)
-        .setCredentials(GoogleCredentialUtil.getCredentials(keyFileName))
-        .build()
-        .getService();
+    try {
+      return StorageOptions.newBuilder()
+              .setProjectId(projectName)
+              .setCredentials(GoogleCredentialUtil.getCredentials(keyFileName))
+              .build()
+              .getService();
+    } catch (IOException err) {
+      throw new GCSConnectException("Failed to access json key file", err);
+    }
   }
 
   /**
