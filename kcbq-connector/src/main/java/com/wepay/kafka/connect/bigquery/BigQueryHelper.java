@@ -17,18 +17,11 @@ package com.wepay.kafka.connect.bigquery;
  * under the License.
  */
 
-import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.BigQueryOptions;
-
-import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
-
+import com.wepay.kafka.connect.bigquery.utils.GoogleCredentialUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 
 /**
  * Convenience class for creating a default {@link com.google.cloud.bigquery.BigQuery} instance,
@@ -52,19 +45,14 @@ public class BigQueryHelper {
       return connect(projectName);
     }
 
-    logger.debug("Attempting to open file {} for service account json key", keyFilename);
-    try (InputStream credentialsStream = new FileInputStream(keyFilename)) {
-      logger.debug("Attempting to authenticate with BigQuery using provided json key");
-      return new
-          BigQueryOptions.DefaultBigQueryFactory().create(
-          BigQueryOptions.newBuilder()
-          .setProjectId(projectName)
-          .setCredentials(GoogleCredentials.fromStream(credentialsStream))
-          .build()
-      );
-    } catch (IOException err) {
-      throw new BigQueryConnectException("Failed to access json key file", err);
-    }
+    logger.debug("Attempting to authenticate with BigQuery using provided json key");
+    return new
+        BigQueryOptions.DefaultBigQueryFactory().create(
+        BigQueryOptions.newBuilder()
+        .setProjectId(projectName)
+        .setCredentials(GoogleCredentialUtil.getCredentials(keyFilename))
+        .build()
+    );
   }
 
   /**
