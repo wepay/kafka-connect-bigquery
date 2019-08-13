@@ -10,6 +10,7 @@ project.ext {
     avroVersion = '1.8.1'
     debeziumVersion = '0.6.1'
     googleCloudVersion = '1.79.0'
+    commonsVersion = '3.9'
     googleAuthVersion = '0.9.0'
     googleCloudGsonVersion = '2.8.5'
     ioConfluentVersion = '5.1.1'
@@ -203,6 +204,7 @@ project(':kcbq-connector') {
                 "com.google.code.gson:gson:$googleCloudVersion",
                 "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion",
                 "io.debezium:debezium-core:$debeziumVersion",
+                "org.apache.commons:commons-lang3:$commonsVersion",
                 "org.apache.kafka:connect-api:$kafkaVersion",
                 "org.apache.kafka:kafka-clients:$kafkaVersion",
                 "org.slf4j:slf4j-api:$slf4jVersion",

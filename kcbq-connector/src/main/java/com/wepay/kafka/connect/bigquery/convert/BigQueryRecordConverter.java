@@ -19,31 +19,25 @@ package com.wepay.kafka.connect.bigquery.convert;
 
 
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
-
-import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig;
 import com.wepay.kafka.connect.bigquery.convert.logicaltype.DebeziumLogicalConverters;
 import com.wepay.kafka.connect.bigquery.convert.logicaltype.KafkaLogicalConverters;
 import com.wepay.kafka.connect.bigquery.convert.logicaltype.LogicalConverterRegistry;
 import com.wepay.kafka.connect.bigquery.convert.logicaltype.LogicalTypeConverter;
 import com.wepay.kafka.connect.bigquery.exception.ConversionConnectException;
-
-import org.apache.kafka.connect.data.Date;
-import org.apache.kafka.connect.data.Decimal;
+import org.apache.commons.lang3.ClassUtils;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.data.Timestamp;
+import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.sink.SinkRecord;
 
 import java.nio.ByteBuffer;
-
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Class for converting from {@link SinkRecord SinkRecords} and BigQuery rows, which are represented
@@ -76,7 +70,7 @@ public class BigQueryRecordConverter implements RecordConverter<Map<String, Obje
     Object kafkaConnectValue = kafkaConnectRecord.value();
     if (kafkaConnectSchema == null) {
       if (kafkaConnectValue instanceof Map) {
-        return (Map) kafkaConnectRecord;
+        return (Map<String, Object>) validateSchemalessRecord(kafkaConnectValue);
       }
       throw new ConversionConnectException("Only Map objects supported in absence of schema for " +
               "record conversion to BigQuery format.");
@@ -86,6 +80,38 @@ public class BigQueryRecordConverter implements RecordConverter<Map<String, Obje
           ConversionConnectException("Top-level Kafka Connect schema must be of type 'struct'");
     }
     return convertStruct(kafkaConnectRecord.value(), kafkaConnectSchema);
+  }
+
+  private Object validateSchemalessRecord(Object value) {
+    if (ClassUtils.isPrimitiveWrapper(value.getClass()) || value instanceof String) {
+      return value;
+    }
+    if (value instanceof byte[] || value instanceof ByteBuffer) {
+      return convertBytes(value);
+    }
+    if (value instanceof ArrayList) {
+      return
+          ((ArrayList) value).stream().map(
+                  v -> validateSchemalessRecord(v)
+          ).collect(Collectors.toList());
+    }
+    if (value instanceof Map) {
+      return
+        ((Map<?, ?>) value).entrySet().stream().collect(
+                Collectors.toMap(
+                        entry -> {
+                          if (!(entry.getKey() instanceof String)) {
+                            throw new DataException(
+                                    "Map objects in absence of schema needs to have string value keys.");
+                          }
+                          return entry.getKey();
+                        },
+                        entry -> validateSchemalessRecord(entry.getValue())
+                )
+        );
+    }
+    throw new ConversionConnectException("Invalid data type found in schemaless record. " +
+            "Can't convert record to bigQuery format");
   }
 
   @SuppressWarnings("unchecked")
@@ -111,9 +137,7 @@ public class BigQueryRecordConverter implements RecordConverter<Map<String, Obje
       case STRUCT:
         return convertStruct(kafkaConnectObject, kafkaConnectSchema);
       case BYTES:
-        ByteBuffer byteBuffer = (ByteBuffer) kafkaConnectObject;
-        byte[] bytes = byteBuffer.array();
-        return Base64.getEncoder().encodeToString(bytes);
+        return convertBytes(kafkaConnectObject);
       case BOOLEAN:
         return (Boolean) kafkaConnectObject;
       case FLOAT32:
@@ -217,5 +241,16 @@ public class BigQueryRecordConverter implements RecordConverter<Map<String, Obje
       }
     }
     return kafkaConnectDouble;
+  }
+
+  private String convertBytes(Object kafkaConnectObject) {
+    byte[] bytes;
+    if (kafkaConnectObject instanceof ByteBuffer) {
+      ByteBuffer byteBuffer = (ByteBuffer) kafkaConnectObject;
+      bytes = byteBuffer.array();
+    } else {
+      bytes = (byte[]) kafkaConnectObject;
+    }
+    return Base64.getEncoder().encodeToString(bytes);
   }
 }
