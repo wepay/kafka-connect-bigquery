@@ -19,9 +19,12 @@ package com.wepay.kafka.connect.bigquery;
 
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.BigQueryOptions;
+import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
 import com.wepay.kafka.connect.bigquery.utils.GoogleCredentialUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
 
 /**
  * Convenience class for creating a default {@link com.google.cloud.bigquery.BigQuery} instance,
@@ -46,13 +49,17 @@ public class BigQueryHelper {
     }
 
     logger.debug("Attempting to authenticate with BigQuery using provided json key");
-    return new
-        BigQueryOptions.DefaultBigQueryFactory().create(
-        BigQueryOptions.newBuilder()
-        .setProjectId(projectName)
-        .setCredentials(GoogleCredentialUtil.getCredentials(keyFilename))
-        .build()
-    );
+    try {
+      return new
+              BigQueryOptions.DefaultBigQueryFactory().create(
+              BigQueryOptions.newBuilder()
+                      .setProjectId(projectName)
+                      .setCredentials(GoogleCredentialUtil.getCredentials(keyFilename))
+                      .build()
+      );
+    } catch (IOException err){
+      throw new BigQueryConnectException("Failed to access json key file", err);
+    }
   }
 
   /**

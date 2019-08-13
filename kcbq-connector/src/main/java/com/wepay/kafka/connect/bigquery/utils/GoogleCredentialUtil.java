@@ -2,7 +2,6 @@ package com.wepay.kafka.connect.bigquery.utils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.auth.oauth2.GoogleCredentials;
-import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,17 +31,13 @@ public class GoogleCredentialUtil {
   private static final String CLIENT_EMAIL = "client_email";
   private static final String CLIENT_ID = "client_id";
 
-  public static GoogleCredentials getCredentials(String fileName) {
+  public static GoogleCredentials getCredentials(String fileName) throws IOException{
     logger.debug("Attempting to open file {} for service account json key", fileName);
-    try {
-      if (isValidJsonFile(fileName)) {
-        return GoogleCredentials
-                .fromStream(new FileInputStream(fileName));
-      } else {
-        return buildCredentialsFromProperties(fileName);
-      }
-    } catch (IOException e) {
-      throw new BigQueryConnectException("No valid credentials source was provided.");
+    if (isValidJsonFile(fileName)) {
+      return GoogleCredentials
+              .fromStream(new FileInputStream(fileName));
+    } else {
+      return buildCredentialsFromProperties(fileName);
     }
   }
 
