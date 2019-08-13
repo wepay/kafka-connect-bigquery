@@ -147,9 +147,12 @@ public class BigQuerySinkConfig extends AbstractConfig {
   private static final ConfigDef.Importance SANITIZE_FIELD_NAME_IMPORTANCE =
           ConfigDef.Importance.MEDIUM;
   private static final String SANITIZE_FIELD_NAME_DOC =
-          "Whether to automatically sanitize field names before using them as field names in big query;"
-                  + " Big query only allows field name beginning with a letter or underscore and can only"
-                  + "contain letters, numbers, and underscores";
+          "Whether to automatically sanitize field names before using them as field names in big query. "
+                  + "Big query specifies that field name can only contain letters, numbers, and "
+                  + "underscores. The sanitizer will replace the invalid symbols with underscore. "
+                  + "If the field name starts with a digit, the sanitizer will add an underscore in "
+                  + "front of field name. Note: field a.b and a_b will have same value after sanitizing, "
+                  + "and might cause key duplication error.";
 
   public static final String INCLUDE_KAFKA_DATA_CONFIG =                   "includeKafkaData";
   public static final ConfigDef.Type INCLUDE_KAFKA_DATA_TYPE =             ConfigDef.Type.BOOLEAN;
