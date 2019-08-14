@@ -69,7 +69,7 @@ public class BigQueryRecordConverter implements RecordConverter<Map<String, Obje
     Object kafkaConnectValue = kafkaConnectRecord.value();
     if (kafkaConnectSchema == null) {
       if (kafkaConnectValue instanceof Map) {
-        return (Map<String, Object>) validateSchemalessRecord(kafkaConnectValue);
+        return (Map<String, Object>) convertSchemalessRecord(kafkaConnectValue);
       }
       throw new ConversionConnectException("Only Map objects supported in absence of schema for " +
               "record conversion to BigQuery format.");
@@ -81,7 +81,10 @@ public class BigQueryRecordConverter implements RecordConverter<Map<String, Obje
     return convertStruct(kafkaConnectRecord.value(), kafkaConnectSchema);
   }
 
-  private Object validateSchemalessRecord(Object value) {
+  private Object convertSchemalessRecord(Object value) {
+    if (value == null) {
+      return null;
+    }
     if (value instanceof Double) {
       return convertDouble((Double) value);
     }
@@ -91,15 +94,15 @@ public class BigQueryRecordConverter implements RecordConverter<Map<String, Obje
     if (value instanceof byte[] || value instanceof ByteBuffer) {
       return convertBytes(value);
     }
-    if (value instanceof ArrayList) {
+    if (value instanceof List) {
       return
-          ((ArrayList) value).stream().map(
-                  v -> validateSchemalessRecord(v)
+          ((List) value).stream().map(
+                  v -> convertSchemalessRecord(v)
           ).collect(Collectors.toList());
     }
     if (value instanceof Map) {
       return
-        ((Map<?, ?>) value).entrySet().stream().collect(
+        ((Map<Object, Object>) value).entrySet().stream().collect(
                 Collectors.toMap(
                         entry -> {
                           if (!(entry.getKey() instanceof String)) {
@@ -109,12 +112,12 @@ public class BigQueryRecordConverter implements RecordConverter<Map<String, Obje
                           }
                           return entry.getKey();
                         },
-                        entry -> validateSchemalessRecord(entry.getValue())
+                        entry -> convertSchemalessRecord(entry.getValue())
                 )
         );
     }
-    throw new ConversionConnectException("Invalid data type found in schemaless record. " +
-            "Can't convert record to bigQuery format");
+    throw new ConversionConnectException("Unsupported class " + value.getClass() +
+            " found in schemaless record data. Can't convert record to bigQuery format");
   }
 
   @SuppressWarnings("unchecked")
