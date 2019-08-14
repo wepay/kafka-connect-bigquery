@@ -28,7 +28,6 @@ import org.apache.commons.lang3.ClassUtils;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.sink.SinkRecord;
 
 import java.nio.ByteBuffer;
@@ -83,6 +82,9 @@ public class BigQueryRecordConverter implements RecordConverter<Map<String, Obje
   }
 
   private Object validateSchemalessRecord(Object value) {
+    if (value instanceof Double) {
+      return convertDouble((Double) value);
+    }
     if (ClassUtils.isPrimitiveWrapper(value.getClass()) || value instanceof String) {
       return value;
     }
@@ -101,8 +103,9 @@ public class BigQueryRecordConverter implements RecordConverter<Map<String, Obje
                 Collectors.toMap(
                         entry -> {
                           if (!(entry.getKey() instanceof String)) {
-                            throw new DataException(
-                                    "Map objects in absence of schema needs to have string value keys.");
+                            throw new ConversionConnectException(
+                                    "Map objects in absence of schema needs to have string value keys. " +
+                                    "Failed to convert record to bigQuery format.");
                           }
                           return entry.getKey();
                         },
