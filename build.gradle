@@ -14,6 +14,7 @@ project.ext {
     googleAuthVersion = '0.9.0'
     googleCloudGsonVersion = '2.8.5'
     ioConfluentVersion = '5.1.1'
+    jacksonVersion = '2.0.1'
     junitVersion = '4.12'
     kafkaVersion = '1.1.1'
     mockitoVersion = '1.10.19'
@@ -200,6 +201,7 @@ project(':kcbq-connector') {
                 "com.google.cloud:google-cloud-storage:$googleCloudVersion",
                 "com.google.auth:google-auth-library-oauth2-http:$googleAuthVersion",
                 "com.google.code.gson:gson:$googleCloudGsonVersion",
+                "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion",
                 "io.debezium:debezium-core:$debeziumVersion",
                 "org.apache.commons:commons-lang3:$commonsVersion",
                 "org.apache.kafka:connect-api:$kafkaVersion",
