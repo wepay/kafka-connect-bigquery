@@ -1,3 +1,4 @@
+TEST DO NOT COMMIT 
 # Kafka Connect BigQuery Connector
 
 [![Build Status](https://img.shields.io/travis/wepay/kafka-connect-bigquery.svg?style=flat-square)](https://travis-ci.org/wepay/kafka-connect-bigquery)
