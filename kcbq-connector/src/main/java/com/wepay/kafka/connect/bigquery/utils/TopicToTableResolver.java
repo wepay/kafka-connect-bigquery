@@ -49,31 +49,7 @@ public class TopicToTableResolver {
     Boolean sanitize = config.getBoolean(BigQuerySinkConfig.SANITIZE_TOPICS_CONFIG);
     Map<String, TableId> matches = new HashMap<>();
     for (String value : topics) {
-      String match = null;
-      String previousPattern = null;
-      for (Map.Entry<Pattern, String> pattern : patterns) {
-        Matcher patternMatcher = pattern.getKey().matcher(value);
-        if (patternMatcher.matches()) {
-          if (match != null) {
-            String secondMatch = pattern.getKey().toString();
-            throw new ConfigException("Value '" + value
-              + "' for property '" + BigQuerySinkConfig.TOPICS_CONFIG
-              + "' matches " + BigQuerySinkConfig.TOPICS_TO_TABLES_CONFIG
-              + " regexes for both '" + previousPattern
-              + "' and '" + secondMatch + "'"
-            );
-          }
-          String formatString = pattern.getValue();
-          try {
-            match = patternMatcher.replaceAll(formatString);
-            previousPattern = pattern.getKey().toString();
-          } catch (IndexOutOfBoundsException err) {
-            throw new ConfigException("Format string '" + formatString
-              + "' is invalid in property '" + BigQuerySinkConfig.TOPICS_TO_TABLES_CONFIG
-              + "'", err);
-          }
-        }
-      }
+      String match = getTopicToTableSingleMatch(config, value);
       if (match == null) {
         match = value;
       }
@@ -84,6 +60,40 @@ public class TopicToTableResolver {
       matches.put(value, TableId.of(dataset, match));
     }
     return matches;
+  }
+
+  public static String getTopicToTableSingleMatch(BigQuerySinkConfig config, String topicName) {
+    String match = null;
+    String previousPattern = null;
+
+    List<Map.Entry<Pattern, String>> patterns = config.getSinglePatterns(
+        BigQuerySinkConfig.TOPICS_TO_TABLES_CONFIG);
+
+    for (Map.Entry<Pattern, String> pattern : patterns) {
+      Matcher patternMatcher = pattern.getKey().matcher(topicName);
+      if (patternMatcher.matches()) {
+        if (match != null) {
+          String secondMatch = pattern.getKey().toString();
+          throw new ConfigException("Value '" + topicName
+                  + "' for property '" + BigQuerySinkConfig.TOPICS_CONFIG
+                  + "' matches " + BigQuerySinkConfig.TOPICS_TO_TABLES_CONFIG
+                  + " regexes for both '" + previousPattern
+                  + "' and '" + secondMatch + "'"
+          );
+        }
+        String formatString = pattern.getValue();
+        try {
+          match = patternMatcher.replaceAll(formatString);
+          previousPattern = pattern.getKey().toString();
+        } catch (IndexOutOfBoundsException err) {
+          throw new ConfigException("Format string '" + formatString
+                  + "' is invalid in property '" + BigQuerySinkConfig.TOPICS_TO_TABLES_CONFIG
+                  + "'", err);
+        }
+      }
+    }
+
+    return match;
   }
 
   /**

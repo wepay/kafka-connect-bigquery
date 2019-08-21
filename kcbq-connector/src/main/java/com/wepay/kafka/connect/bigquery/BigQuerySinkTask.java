@@ -34,8 +34,8 @@ import com.wepay.kafka.connect.bigquery.convert.SchemaConverter;
 import com.wepay.kafka.connect.bigquery.exception.SinkConfigConnectException;
 import com.wepay.kafka.connect.bigquery.utils.PartitionedTableId;
 import com.wepay.kafka.connect.bigquery.utils.TopicToTableResolver;
+import com.wepay.kafka.connect.bigquery.utils.TopicToTableUpdater;
 import com.wepay.kafka.connect.bigquery.utils.Version;
-
 import com.wepay.kafka.connect.bigquery.write.batch.GCSBatchTableWriter;
 import com.wepay.kafka.connect.bigquery.write.batch.KCBQThreadPoolExecutor;
 import com.wepay.kafka.connect.bigquery.write.batch.TableWriter;
@@ -128,6 +128,11 @@ public class BigQuerySinkTask extends SinkTask {
   }
 
   private PartitionedTableId getRecordTable(SinkRecord record) {
+    if (!topicsToBaseTableIds.containsKey(record.topic())) {
+      topicsToBaseTableIds = TopicToTableUpdater.updateTopicToTable(config, record.topic(),
+              topicsToBaseTableIds);
+    }
+
     TableId baseTableId = topicsToBaseTableIds.get(record.topic());
 
     PartitionedTableId.Builder builder = new PartitionedTableId.Builder(baseTableId);
