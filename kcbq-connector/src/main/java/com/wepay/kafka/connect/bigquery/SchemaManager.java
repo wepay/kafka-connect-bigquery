@@ -5,12 +5,11 @@ import com.google.cloud.bigquery.StandardTableDefinition;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableInfo;
 import com.google.cloud.bigquery.TimePartitioning;
-
 import com.wepay.kafka.connect.bigquery.api.SchemaRetriever;
 import com.wepay.kafka.connect.bigquery.convert.SchemaConverter;
-
-import com.wepay.kafka.connect.bigquery.write.row.AdaptiveBigQueryWriter;
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.sink.SinkRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,6 +45,10 @@ public class SchemaManager {
    */
   public void createTable(TableId table, String topic) {
     Schema kafkaConnectSchema = schemaRetriever.retrieveSchema(table, topic);
+    if (kafkaConnectSchema == null) {
+      kafkaConnectSchema = SchemaBuilder.struct().field("dummy", Schema.STRING_SCHEMA)
+              .optional().build();
+    }
     bigQuery.create(constructTableInfo(table, kafkaConnectSchema));
   }
 
@@ -54,8 +57,11 @@ public class SchemaManager {
    * @param table The BigQuery table to update.
    * @param topic The Kafka topic used to determine the schema.
    */
-  public void updateSchema(TableId table, String topic) {
+  public void updateSchema(TableId table, String topic, SinkRecord record) {
     Schema kafkaConnectSchema = schemaRetriever.retrieveSchema(table, topic);
+    if (kafkaConnectSchema == null) {
+      kafkaConnectSchema = schemaRetriever.retrieveSchema(record);
+    }
     TableInfo tableInfo = constructTableInfo(table, kafkaConnectSchema);
     logger.info("Attempting to update table `{}` with schema {}",
         table, tableInfo.getDefinition().getSchema());

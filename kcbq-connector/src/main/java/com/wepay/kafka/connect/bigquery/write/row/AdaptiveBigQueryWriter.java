@@ -29,6 +29,7 @@ import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
 
 import com.wepay.kafka.connect.bigquery.utils.PartitionedTableId;
 
+import org.apache.kafka.connect.sink.SinkRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,13 +74,14 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
    * Sends the request to BigQuery, then checks the response to see if any errors have occurred. If
    * any have, and all errors can be blamed upon invalid columns in the rows sent, attempts to
    * update the schema of the table in BigQuery and then performs the same write request.
-   * @see BigQueryWriter#performWriteRequest(PartitionedTableId, List, String)
+   * @see BigQueryWriter#performWriteRequest(PartitionedTableId, List, String, SinkRecord)
    */
   @Override
   public Map<Long, List<BigQueryError>> performWriteRequest(
       PartitionedTableId tableId,
       List<InsertAllRequest.RowToInsert> rows,
-      String topic) {
+      String topic,
+      SinkRecord record) {
     InsertAllResponse writeResponse = null;
     InsertAllRequest request = null;
 
@@ -90,11 +92,11 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
       // BigQuery schema updates taking up to two minutes to take effect
       if (writeResponse.hasErrors()
               && onlyContainsInvalidSchemaErrors(writeResponse.getInsertErrors())) {
-        attemptSchemaUpdate(tableId, topic);
+        attemptSchemaUpdate(tableId, topic, record);
       }
     } catch (BigQueryException exception) {
       if (isTableMissingSchema(exception)) {
-        attemptSchemaUpdate(tableId, topic);
+        attemptSchemaUpdate(tableId, topic, record);
       } else {
         throw exception;
       }
@@ -127,9 +129,9 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
     return new HashMap<>();
   }
 
-  private void attemptSchemaUpdate(PartitionedTableId tableId, String topic) {
+  private void attemptSchemaUpdate(PartitionedTableId tableId, String topic, SinkRecord record) {
     try {
-      schemaManager.updateSchema(tableId.getBaseTableId(), topic);
+      schemaManager.updateSchema(tableId.getBaseTableId(), topic, record);
     } catch (BigQueryException exception) {
       throw new BigQueryConnectException(
           "Failed to update table schema for: " + tableId.getBaseTableId(), exception);
