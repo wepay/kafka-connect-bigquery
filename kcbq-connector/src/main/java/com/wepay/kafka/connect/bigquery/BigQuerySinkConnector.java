@@ -105,9 +105,9 @@ public class BigQuerySinkConnector extends SinkConnector {
   }
 
   private void ensureExistingTables(
-      BigQuery bigQuery,
-      SchemaManager schemaManager,
-      Map<String, TableId> topicsToTableIds) {
+          BigQuery bigQuery,
+          SchemaManager schemaManager,
+          Map<String, TableId> topicsToTableIds) {
     for (Map.Entry<String, TableId> topicToTableId : topicsToTableIds.entrySet()) {
       String topic = topicToTableId.getKey();
       TableId tableId = topicToTableId.getValue();

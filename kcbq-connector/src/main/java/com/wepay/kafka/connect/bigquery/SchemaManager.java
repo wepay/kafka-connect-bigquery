@@ -46,8 +46,7 @@ public class SchemaManager {
   public void createTable(TableId table, String topic) {
     Schema kafkaConnectSchema = schemaRetriever.retrieveSchema(table, topic);
     if (kafkaConnectSchema == null) {
-      kafkaConnectSchema = SchemaBuilder.struct().field("dummy", Schema.STRING_SCHEMA)
-              .optional().build();
+      kafkaConnectSchema = SchemaBuilder.struct().build();
     }
     bigQuery.create(constructTableInfo(table, kafkaConnectSchema));
   }

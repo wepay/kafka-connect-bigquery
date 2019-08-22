@@ -18,37 +18,31 @@ package com.wepay.kafka.connect.bigquery;
  */
 
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotSame;
-
-import static org.mockito.Matchers.any;
-
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.Table;
 import com.google.cloud.bigquery.TableId;
-
 import com.wepay.kafka.connect.bigquery.api.SchemaRetriever;
-
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig;
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConnectorConfig;
-
 import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
 import com.wepay.kafka.connect.bigquery.exception.SinkConfigConnectException;
-
 import org.apache.kafka.connect.data.Schema;
-
+import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class BigQuerySinkConnectorTest {
   private static SinkConnectorPropertiesFactory propertiesFactory;
@@ -63,6 +57,11 @@ public class BigQuerySinkConnectorTest {
     @Override
     public Schema retrieveSchema(TableId table, String topic) {
       // Shouldn't be called
+      return null;
+    }
+
+    @Override
+    public Schema retrieveSchema(SinkRecord record) {
       return null;
     }
 
