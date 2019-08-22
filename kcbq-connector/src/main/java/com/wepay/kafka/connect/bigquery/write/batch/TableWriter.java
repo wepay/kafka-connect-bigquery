@@ -48,6 +48,7 @@ public class TableWriter implements Runnable {
   private final PartitionedTableId table;
   private final List<RowToInsert> rows;
   private final String topic;
+  private final SinkRecord record;
 
   /**
    * @param writer the {@link BigQueryWriter} to use.
@@ -58,11 +59,13 @@ public class TableWriter implements Runnable {
   public TableWriter(BigQueryWriter writer,
                      PartitionedTableId table,
                      List<RowToInsert> rows,
-                     String topic) {
+                     String topic,
+                     SinkRecord record) {
     this.writer = writer;
     this.table = table;
     this.rows = rows;
     this.topic = topic;
+    this.record = record;
   }
 
   @Override
@@ -77,7 +80,7 @@ public class TableWriter implements Runnable {
         List<RowToInsert> currentBatch =
             rows.subList(currentIndex, Math.min(currentIndex + currentBatchSize, rows.size()));
         try {
-          writer.writeRows(table, currentBatch, topic);
+          writer.writeRows(table, currentBatch, topic, record);
           currentIndex += currentBatchSize;
           successCount++;
         } catch (BigQueryException err) {
@@ -152,6 +155,7 @@ public class TableWriter implements Runnable {
     private List<RowToInsert> rows;
 
     private RecordConverter<Map<String, Object>> recordConverter;
+    private SinkRecord record;
 
     /**
      * @param writer the BigQueryWriter to use
@@ -160,7 +164,7 @@ public class TableWriter implements Runnable {
      * @param recordConverter the record converter used to convert records to rows
      */
     public Builder(BigQueryWriter writer, PartitionedTableId table, String topic,
-                   RecordConverter<Map<String, Object>> recordConverter) {
+                   RecordConverter<Map<String, Object>> recordConverter, SinkRecord record) {
       this.writer = writer;
       this.table = table;
       this.topic = topic;
@@ -168,6 +172,7 @@ public class TableWriter implements Runnable {
       this.rows = new ArrayList<>();
 
       this.recordConverter = recordConverter;
+      this.record = record;
     }
 
     /**
@@ -194,7 +199,7 @@ public class TableWriter implements Runnable {
      * @return a TableWriter containing the given writer, table, topic, and all added rows.
      */
     public TableWriter build() {
-      return new TableWriter(writer, table, rows, topic);
+      return new TableWriter(writer, table, rows, topic, record);
     }
   }
 }

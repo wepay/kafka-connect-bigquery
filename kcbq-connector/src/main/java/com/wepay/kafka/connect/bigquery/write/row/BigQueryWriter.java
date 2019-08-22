@@ -25,6 +25,7 @@ import com.google.cloud.bigquery.InsertAllRequest;
 import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
 import com.wepay.kafka.connect.bigquery.utils.PartitionedTableId;
 
+import org.apache.kafka.connect.sink.SinkRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,12 +73,14 @@ public abstract class BigQueryWriter {
    * @param tableId The PartitionedTableId.
    * @param rows The rows to write.
    * @param topic The Kafka topic that the row data came from.
+   * @param record connect record with schema
    * @return map from failed row id to the BigQueryError.
    */
   protected abstract Map<Long, List<BigQueryError>> performWriteRequest(
-      PartitionedTableId tableId,
-      List<InsertAllRequest.RowToInsert> rows,
-      String topic)
+          PartitionedTableId tableId,
+          List<InsertAllRequest.RowToInsert> rows,
+          String topic,
+          SinkRecord record)
       throws BigQueryException, BigQueryConnectException;
 
   /**
@@ -102,7 +105,8 @@ public abstract class BigQueryWriter {
    */
   public void writeRows(PartitionedTableId table,
                         List<InsertAllRequest.RowToInsert> rows,
-                        String topic)
+                        String topic,
+                        SinkRecord record)
       throws BigQueryConnectException, BigQueryException, InterruptedException {
     logger.debug("writing {} row{} to table {}", rows.size(), rows.size() != 1 ? "s" : "", table);
 
@@ -115,7 +119,7 @@ public abstract class BigQueryWriter {
         waitRandomTime();
       }
       try {
-        failedRowsMap = performWriteRequest(table, rows, topic);
+        failedRowsMap = performWriteRequest(table, rows, topic, record);
         if (failedRowsMap.isEmpty()) {
           // table insertion completed with no reported errors
           return;

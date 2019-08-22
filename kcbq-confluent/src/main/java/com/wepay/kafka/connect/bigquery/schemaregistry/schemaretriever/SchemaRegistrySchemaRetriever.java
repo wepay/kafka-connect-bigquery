@@ -17,6 +17,7 @@ import org.apache.kafka.connect.data.Schema;
 
 import org.apache.kafka.connect.errors.ConnectException;
 
+import org.apache.kafka.connect.sink.SinkRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,6 +76,11 @@ public class SchemaRegistrySchemaRetriever implements SchemaRetriever {
           exception
       );
     }
+  }
+
+  @Override
+  public Schema retrieveSchema(SinkRecord record) {
+    return null;
   }
 
   @Override
