@@ -196,7 +196,7 @@ public class BigQuerySinkTask extends SinkTask {
                 recordConverter);
           } else {
             tableWriterBuilder =
-                new TableWriter.Builder(bigQueryWriter, table, record.topic(), recordConverter);
+                new TableWriter.Builder(bigQueryWriter, table, record.topic(), recordConverter, record);
           }
           tableWriterBuilders.put(table, tableWriterBuilder);
         }
