@@ -123,7 +123,7 @@ public class TopicToTableResolver {
    * @param tableName The table name to sanitize.
    * @return A clean table name with only alpha-numerics and underscores.
    */
-  private static String sanitizeTableName(String tableName) {
+  public static String sanitizeTableName(String tableName) {
     return tableName.replaceAll("[^a-zA-Z0-9_]", "_");
   }
 }

@@ -1,20 +1,15 @@
 package com.wepay.kafka.connect.bigquery.schemaregistry.schemaretriever;
 
 import com.google.cloud.bigquery.TableId;
-
 import com.wepay.kafka.connect.bigquery.api.SchemaRetriever;
-
 import io.confluent.connect.avro.AvroData;
-
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.SchemaMetadata;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
-
 import org.apache.avro.Schema.Parser;
-
+import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.data.Schema;
-
 import org.apache.kafka.connect.errors.ConnectException;
 
 import org.apache.kafka.connect.sink.SinkRecord;
@@ -22,7 +17,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-
 import java.util.Map;
 
 /**
@@ -51,13 +45,17 @@ public class SchemaRegistrySchemaRetriever implements SchemaRetriever {
   public void configure(Map<String, String> properties) {
     SchemaRegistrySchemaRetrieverConfig config =
         new SchemaRegistrySchemaRetrieverConfig(properties);
-    Map<String, ?> schemaRegistryClientProperties =
-        config.originalsWithPrefix(config.SCHEMA_REGISTRY_CLIENT_PREFIX);
-    schemaRegistryClient = new CachedSchemaRegistryClient(
-        config.getString(config.LOCATION_CONFIG),
-        0,
-        schemaRegistryClientProperties
-    );
+    try {
+      Map<String, ?> schemaRegistryClientProperties =
+              config.originalsWithPrefix(config.SCHEMA_REGISTRY_CLIENT_PREFIX);
+      schemaRegistryClient = new CachedSchemaRegistryClient(
+              config.getString(config.LOCATION_CONFIG),
+              0,
+              schemaRegistryClientProperties
+      );
+    } catch (Exception e) {
+      throw new ConfigException("Unable to construct schema registry client.");
+    }
     avroData = new AvroData(config.getInt(config.AVRO_DATA_CACHE_SIZE_CONFIG));
   }
 

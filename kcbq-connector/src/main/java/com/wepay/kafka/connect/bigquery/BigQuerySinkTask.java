@@ -73,6 +73,7 @@ public class BigQuerySinkTask extends SinkTask {
   private static final Logger logger = LoggerFactory.getLogger(BigQuerySinkTask.class);
 
   private SchemaRetriever schemaRetriever;
+  private BigQuery bigQuery;
   private BigQueryWriter bigQueryWriter;
   private GCSToBQWriter gcsToBQWriter;
   private BigQuerySinkTaskConfig config;
@@ -132,6 +133,10 @@ public class BigQuerySinkTask extends SinkTask {
     }
 
     TableId baseTableId = topicsToBaseTableIds.get(record.topic());
+    if (bigQuery.getTable(baseTableId) == null) {
+      logger.info("Table {} does not exist; attempting to create", baseTableId);
+      getSchemaManager(bigQuery).createTable(baseTableId, record.topic());
+    }
 
     PartitionedTableId.Builder builder = new PartitionedTableId.Builder(baseTableId);
     if (useMessageTimeDatePartitioning) {
@@ -290,6 +295,7 @@ public class BigQuerySinkTask extends SinkTask {
       );
     }
 
+    bigQuery = getBigQuery();
     bigQueryWriter = getBigQueryWriter();
     gcsToBQWriter = getGcsWriter();
     topicsToBaseTableIds = TopicToTableResolver.getTopicsToTables(config);
