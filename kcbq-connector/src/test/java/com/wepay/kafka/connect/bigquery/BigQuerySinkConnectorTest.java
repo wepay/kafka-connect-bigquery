@@ -43,6 +43,7 @@ import com.wepay.kafka.connect.bigquery.exception.SinkConfigConnectException;
 
 import org.apache.kafka.connect.data.Schema;
 
+import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -63,6 +64,11 @@ public class BigQuerySinkConnectorTest {
     @Override
     public Schema retrieveSchema(TableId table, String topic) {
       // Shouldn't be called
+      return null;
+    }
+
+    @Override
+    public Schema retrieveSchema(SinkRecord record) {
       return null;
     }
 
