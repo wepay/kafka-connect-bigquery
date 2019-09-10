@@ -28,7 +28,6 @@ public class FieldNameSanitizerTest {
         }};
   }
 
-
   @Test
   public void testInvalidSymbol() {
     testMap = (HashMap)FieldNameSanitizer.replaceInvalidKeys(testMap);
@@ -48,7 +47,5 @@ public class FieldNameSanitizerTest {
 
     assertEquals(((HashMap)(testMap.get("A_2"))).get("_2A_"), "hello B5");
     assertEquals(((HashMap)(testMap.get("A_2"))).get("_3A_"), "hello B6");
-
   }
-
 }
