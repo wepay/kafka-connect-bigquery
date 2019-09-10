@@ -24,7 +24,6 @@ import com.wepay.kafka.connect.bigquery.convert.logicaltype.KafkaLogicalConverte
 import com.wepay.kafka.connect.bigquery.convert.logicaltype.LogicalConverterRegistry;
 import com.wepay.kafka.connect.bigquery.convert.logicaltype.LogicalTypeConverter;
 import com.wepay.kafka.connect.bigquery.exception.ConversionConnectException;
-import org.apache.commons.lang3.ClassUtils;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -32,10 +31,13 @@ import org.apache.kafka.connect.sink.SinkRecord;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -44,6 +46,11 @@ import java.util.stream.Collectors;
  */
 public class BigQueryRecordConverter implements RecordConverter<Map<String, Object>> {
 
+  private static final Set<Class> BASIC_TYPES = new HashSet(
+          Arrays.asList(
+            Boolean.class, Character.class, Byte.class, Short.class,
+                  Integer.class, Long.class, Float.class, Double.class, String.class)
+          );
   private boolean shouldConvertSpecialDouble;
 
   static {
@@ -88,7 +95,7 @@ public class BigQueryRecordConverter implements RecordConverter<Map<String, Obje
     if (value instanceof Double) {
       return convertDouble((Double) value);
     }
-    if (ClassUtils.isPrimitiveWrapper(value.getClass()) || value instanceof String) {
+    if (BASIC_TYPES.contains(value.getClass())) {
       return value;
     }
     if (value instanceof byte[] || value instanceof ByteBuffer) {
@@ -107,8 +114,8 @@ public class BigQueryRecordConverter implements RecordConverter<Map<String, Obje
                         entry -> {
                           if (!(entry.getKey() instanceof String)) {
                             throw new ConversionConnectException(
-                                    "Map objects in absence of schema needs to have string value keys. " +
-                                    "Failed to convert record to bigQuery format.");
+                                    "Failed to convert record to bigQuery format: " +
+                                    "Map objects in absence of schema needs to have string value keys. ");
                           }
                           return entry.getKey();
                         },

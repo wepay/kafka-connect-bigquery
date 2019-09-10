@@ -583,7 +583,7 @@ public class BigQueryRecordConverterTest {
   }
 
   @Test (expected = ConversionConnectException.class)
-  public void testInValidMapSchemaless() {
+  public void testInvalidMapSchemaless() {
     Map kafkaConnectMap = new HashMap<Object, Object>(){{
       put("f1", "f2");
       put( "f3" ,
