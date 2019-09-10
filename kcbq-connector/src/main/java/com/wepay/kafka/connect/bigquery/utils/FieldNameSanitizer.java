@@ -9,7 +9,7 @@ public class FieldNameSanitizer {
   // append underscore in front of name if it does not begin with letter or underscore
   private static String sanitizeName(String name) {
     name = name.replaceAll("[^a-zA-Z0-9_]", "_");
-    if (name.matches("^[^a-zA-Z_]+.*")) {
+    if (name.matches("^[^a-zA-Z_].*")) {
       name = "_" + name;
     }
     return name;
