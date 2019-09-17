@@ -154,7 +154,7 @@ public class BigQuerySinkTask extends SinkTask {
   }
 
   private RowToInsert getRecordRow(SinkRecord record) {
-    Map convertedRecord = recordConverter.convertRecord(record);
+    Map<String,Object> convertedRecord = recordConverter.convertRecord(record);
     if (config.getBoolean(config.SANITIZE_FIELD_NAME_CONFIG)) {
       convertedRecord = FieldNameSanitizer.replaceInvalidKeys(convertedRecord);
     }
