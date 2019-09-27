@@ -94,8 +94,9 @@ init() {
 }
 
 parse_args() {
+	folder=kcbq-test  # assign default
 	# Process command line
-	while [[ $# -gt 0 ]]; do
+	while test $# -gt 0; do
 		case "$1" in
 		-k) keyfile="$2"; shift ;;
 		-p) project="$2"; shift ;;
@@ -107,7 +108,8 @@ parse_args() {
 		project=*) project=${1#project=};;
 		dataset=*) dataset=${1#dataset=};;
 		bucket=*) bucket=${1#bucket=};;
-		*) error "unrecognized option: '$1'" ;;
+		folder=*) folder=${1#folder-};;
+		*) error "unrecognized argument: '$1'" ;;
 		esac
 		shift
 	done
