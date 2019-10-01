@@ -60,6 +60,7 @@ public class BigQueryHelper {
     if (keyFile == null) {
       return connect(projectName);
     }
+    //
     logger.debug("Attempting to open file {} for service account json key", keyFile);
     InputStream credentialsStream;
     try {
