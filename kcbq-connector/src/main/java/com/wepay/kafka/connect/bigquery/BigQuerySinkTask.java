@@ -234,7 +234,7 @@ public class BigQuerySinkTask extends SinkTask {
     String projectName = config.getString(config.PROJECT_CONFIG);
     String keyFile = config.getString(config.KEYFILE_CONFIG);
     String keyFileType = config.getString(config.KEYFILE_TYPE_CONFIG);
-    return new BigQueryHelper().setKeyFile(keyFileType).connect(projectName, keyFile);
+    return new BigQueryHelper().setKeyFileType(keyFileType).connect(projectName, keyFile);
   }
 
   private SchemaManager getSchemaManager(BigQuery bigQuery) {
