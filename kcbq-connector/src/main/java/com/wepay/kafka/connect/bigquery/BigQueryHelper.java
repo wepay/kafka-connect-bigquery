@@ -40,18 +40,18 @@ public class BigQueryHelper {
   private static final Logger logger = LoggerFactory.getLogger(BigQueryHelper.class);
   private static String keyFileType;
 
-  /**
-   * Returns a default {@link BigQuery} instance for the specified project with credentials provided
-   * in the specified file, which can then be used for creating, updating, and inserting into tables
-   * from specific datasets.
-   *
-   * @param projectName The name of the BigQuery project to work with
-   * @param keyFile The name of a file containing a JSON key that can be used to provide
-   *                    credentials to BigQuery, or null if no authentication should be performed.
-   * @param keyFileType The type of keyfile config we can expect. This is either a String
-  representation of the keyfile, or the path to the keyfile.
-   * @return The resulting BigQuery object.
-   */
+//  /**
+//   * Returns a default {@link BigQuery} instance for the specified project with credentials provided
+//   * in the specified file, which can then be used for creating, updating, and inserting into tables
+//   * from specific datasets.
+//   *
+//   * @param projectName The name of the BigQuery project to work with
+//   * @param keyFile The name of a file containing a JSON key that can be used to provide
+//   *                    credentials to BigQuery, or null if no authentication should be performed.
+//   * @param keyFileType The type of keyfile config we can expect. This is either a String
+//                        representation of the keyfile, or the path to the keyfile.
+//   * @return The resulting BigQuery object.
+//   */
   public BigQueryHelper setKeyFileType(String keyFileType) {
     this.keyFileType = keyFileType;
     return this;
