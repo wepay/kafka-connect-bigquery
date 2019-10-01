@@ -27,6 +27,8 @@ import org.slf4j.LoggerFactory;
 
 public class TableClearer {
   private static final Logger logger = LoggerFactory.getLogger(TableClearer.class);
+  private static String keyFileType;
+
 
   /**
    * Clears tables in the given project and dataset, using a provided JSON service account key.
@@ -35,7 +37,10 @@ public class TableClearer {
     if (args.length < 5) {
       usage();
     }
-    BigQuery bigQuery = new BigQueryHelper().setKeyFileType(args[4]).connect(args[1], args[0]);
+    if (args.length == 5) {
+      keyFileType = args[4];
+    }
+    BigQuery bigQuery = new BigQueryHelper().setKeyFileType(keyFileType).connect(args[1], args[0]);
     for (int i = 3; i < args.length; i++) {
       if (bigQuery.delete(args[2], args[i])) {
         logger.info("Table {} in dataset {} deleted successfully", args[i], args[2]);
