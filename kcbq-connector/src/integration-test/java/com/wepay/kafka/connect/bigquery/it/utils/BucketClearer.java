@@ -33,11 +33,11 @@ public class BucketClearer {
    * Clears tables in the given project and dataset, using a provided JSON service account key.
    */
   public static void main(String[] args) {
-    if (args.length < 3) {
+    if (args.length < 4) {
       usage();
     }
 
-    Storage gcs = new GCSBuilder(args[1]).setKeyFile(args[0]).setKeyFileType("JSON").build();
+    Storage gcs = new GCSBuilder(args[1]).setKeyFile(args[0]).setKeyFileType(args[3]).build();
 
     // if bucket exists, delete it.
     String bucketName = args[2];

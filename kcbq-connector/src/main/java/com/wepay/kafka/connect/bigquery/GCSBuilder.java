@@ -72,20 +72,9 @@ public class GCSBuilder {
         if (keyFile == null) {
             return connect(projectName);
         }
-//        logger.debug("Attempting to open file {} for service account json key", keyFile);
-//        try (InputStream credentialsStream = new FileInputStream(keyFile)) {
-//            logger.debug("Attempting to authenticate with GCS using provided json key");
-//            return StorageOptions.newBuilder()
-//                    .setProjectId(projectName)
-//                    .setCredentials(GoogleCredentials.fromStream(credentialsStream))
-//                    .build()
-//                    .getService();
-//        } catch (IOException err) {
-//            throw new GCSConnectException("Failed to access json key file", err);
-//        }
         try {
             InputStream credentialsStream;
-            if (keyFileType.equals("JSON")) {
+            if (keyFileType != null && keyFileType.equals("JSON")) {
                 credentialsStream = new ByteArrayInputStream(keyFile.getBytes(StandardCharsets.UTF_8));
             } else {
                 credentialsStream = new FileInputStream(keyFile);

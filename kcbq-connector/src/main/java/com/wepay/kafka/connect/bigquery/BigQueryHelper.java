@@ -63,7 +63,7 @@ public class BigQueryHelper {
     logger.debug("Attempting to open file {} for service account json key", keyFile);
     InputStream credentialsStream;
     try {
-      if (keyFile != null && keyFileType.equals("JSON")) {
+      if (keyFileType != null && keyFileType.equals("JSON")) {
         credentialsStream = new ByteArrayInputStream(keyFile.getBytes(StandardCharsets.UTF_8));
       } else {
         credentialsStream = new FileInputStream(keyFile);

@@ -111,12 +111,6 @@ public class BigQueryConnectorIntegrationTest {
       }
 
       keyFileType = properties.getProperty(KEYFILE_TYPE_PROPERTY);
-      if (keyFileType == null) {
-        throw new SinkConfigConnectException(
-                "'" + KEYFILE_TYPE_PROPERTY
-                        + "' property must be specified in test properties file"
-        );
-      }
     }
   }
 
