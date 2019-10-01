@@ -132,6 +132,15 @@ public class BigQuerySinkConfig extends AbstractConfig {
   private static final String KEYFILE_DOC =
       "The file containing a JSON key with BigQuery service account credentials";
 
+  public static final String KEYFILE_TYPE_CONFIG =                "keyFileType";
+  private static final ConfigDef.Type KEYFILE_TYPE_TYPE =         ConfigDef.Type.STRING;
+  public static final String KEYFILE_TYPE_DEFAULT =               "FILE";
+  private static final ConfigDef.Validator KEYFILE_TYPE_VALIDATOR =
+          ConfigDef.ValidString.in("FILE", "JSON");
+  private static final ConfigDef.Importance KEYFILE_TYPE_IMPORTANCE = ConfigDef.Importance.MEDIUM;
+  private static final String KEYFILE_TYPE_DOC =
+          "Determines whether the keyfile config is the path to the credentials json, or the json itself";
+
   public static final String SANITIZE_TOPICS_CONFIG =                     "sanitizeTopics";
   private static final ConfigDef.Type SANITIZE_TOPICS_TYPE =              ConfigDef.Type.BOOLEAN;
   public static final Boolean SANITIZE_TOPICS_DEFAULT =                   false;
@@ -193,103 +202,110 @@ public class BigQuerySinkConfig extends AbstractConfig {
 
   static {
     config = new ConfigDef()
-        .define(
-            TOPICS_CONFIG,
-            TOPICS_TYPE,
-            TOPICS_IMPORTANCE,
-            TOPICS_DOC
-        ).define(
-            ENABLE_BATCH_CONFIG,
-            ENABLE_BATCH_TYPE,
-            ENABLE_BATCH_DEFAULT,
-            ENABLE_BATCH_IMPORTANCE,
-            ENABLE_BATCH_DOC
-        ).define(
-            BATCH_LOAD_INTERVAL_SEC_CONFIG,
-            BATCH_LOAD_INTERVAL_SEC_TYPE,
-            BATCH_LOAD_INTERVAL_SEC_DEFAULT,
-            BATCH_LOAD_INTERVAL_SEC_IMPORTANCE,
-            BATCH_LOAD_INTERVAL_SEC_DOC
-        ).define(
-            GCS_BUCKET_NAME_CONFIG,
-            GCS_BUCKET_NAME_TYPE,
-            GCS_BUCKET_NAME_DEFAULT,
-            GCS_BUCKET_NAME_IMPORTANCE,
-            GCS_BUCKET_NAME_DOC
-        ).define(
-            GCS_FOLDER_NAME_CONFIG,
-            GCS_FOLDER_NAME_TYPE,
-            GCS_FOLDER_NAME_DEFAULT,
-            GCS_FOLDER_NAME_IMPORTANCE,
-            GCS_FOLDER_NAME_DOC
-        ).define(
-            TOPICS_TO_TABLES_CONFIG,
-            TOPICS_TO_TABLES_TYPE,
-            TOPICS_TO_TABLES_DEFAULT,
-            TOPICS_TO_TABLES_IMPORTANCE,
-            TOPICS_TO_TABLES_DOC
-        ).define(
-            PROJECT_CONFIG,
-            PROJECT_TYPE,
-            PROJECT_IMPORTANCE,
-            PROJECT_DOC
-        ).define(
-            DATASETS_CONFIG,
-            DATASETS_TYPE,
-            DATASETS_DEFAULT,
-            DATASETS_VALIDATOR,
-            DATASETS_IMPORTANCE,
-            DATASETS_DOC
-        ).define(
-            SCHEMA_RETRIEVER_CONFIG,
-            SCHEMA_RETRIEVER_TYPE,
-            SCHEMA_RETRIEVER_DEFAULT,
-            SCHEMA_RETRIEVER_IMPORTANCE,
-            SCHEMA_RETRIEVER_DOC
-        ).define(
-            KEYFILE_CONFIG,
-            KEYFILE_TYPE,
-            KEYFILE_DEFAULT,
-            KEYFILE_IMPORTANCE,
-            KEYFILE_DOC
-        ).define(
-            SANITIZE_TOPICS_CONFIG,
-            SANITIZE_TOPICS_TYPE,
-            SANITIZE_TOPICS_DEFAULT,
-            SANITIZE_TOPICS_IMPORTANCE,
-            SANITIZE_TOPICS_DOC
-        ).define(
-            SANITIZE_FIELD_NAME_CONFIG,
-            SANITIZE_FIELD_NAME_TYPE,
-            SANITIZE_FIELD_NAME_DEFAULT,
-            SANITIZE_FIELD_NAME_IMPORTANCE,
-            SANITIZE_FIELD_NAME_DOC
-        ).define(
-            INCLUDE_KAFKA_DATA_CONFIG,
-            INCLUDE_KAFKA_DATA_TYPE,
-            INCLUDE_KAFKA_DATA_DEFAULT,
-            INCLUDE_KAFKA_DATA_IMPORTANCE,
-            INSTANCE_KAFKA_DATA_DOC
-        ).define(
-            AVRO_DATA_CACHE_SIZE_CONFIG,
-            AVRO_DATA_CACHE_SIZE_TYPE,
-            AVRO_DATA_CACHE_SIZE_DEFAULT,
-            AVRO_DATA_CACHE_SIZE_VALIDATOR,
-            AVRO_DATA_CACHE_SIZE_IMPORTANCE,
-            AVRO_DATA_CACHE_SIZE_DOC
-        ).define(
-            ALL_BQ_FIELDS_NULLABLE_CONFIG,
-            ALL_BQ_FIELDS_NULLABLE_TYPE,
-            ALL_BQ_FIELDS_NULLABLE_DEFAULT,
-            ALL_BQ_FIELDS_NULLABLE_IMPORTANCE,
-            ALL_BQ_FIELDS_NULLABLE_DOC
-        ).define(
-            CONVERT_DOUBLE_SPECIAL_VALUES_CONFIG,
-            CONVERT_DOUBLE_SPECIAL_VALUES_TYPE,
-            CONVERT_DOUBLE_SPECIAL_VALUES_DEFAULT,
-            CONVERT_DOUBLE_SPECIAL_VALUES_IMPORTANCE,
-            CONVERT_DOUBLE_SPECIAL_VALUES_DOC
-         );
+            .define(
+                    TOPICS_CONFIG,
+                    TOPICS_TYPE,
+                    TOPICS_IMPORTANCE,
+                    TOPICS_DOC
+            ).define(
+                    ENABLE_BATCH_CONFIG,
+                    ENABLE_BATCH_TYPE,
+                    ENABLE_BATCH_DEFAULT,
+                    ENABLE_BATCH_IMPORTANCE,
+                    ENABLE_BATCH_DOC
+            ).define(
+                    BATCH_LOAD_INTERVAL_SEC_CONFIG,
+                    BATCH_LOAD_INTERVAL_SEC_TYPE,
+                    BATCH_LOAD_INTERVAL_SEC_DEFAULT,
+                    BATCH_LOAD_INTERVAL_SEC_IMPORTANCE,
+                    BATCH_LOAD_INTERVAL_SEC_DOC
+            ).define(
+                    GCS_BUCKET_NAME_CONFIG,
+                    GCS_BUCKET_NAME_TYPE,
+                    GCS_BUCKET_NAME_DEFAULT,
+                    GCS_BUCKET_NAME_IMPORTANCE,
+                    GCS_BUCKET_NAME_DOC
+            ).define(
+                    GCS_FOLDER_NAME_CONFIG,
+                    GCS_FOLDER_NAME_TYPE,
+                    GCS_FOLDER_NAME_DEFAULT,
+                    GCS_FOLDER_NAME_IMPORTANCE,
+                    GCS_FOLDER_NAME_DOC
+            ).define(
+                    TOPICS_TO_TABLES_CONFIG,
+                    TOPICS_TO_TABLES_TYPE,
+                    TOPICS_TO_TABLES_DEFAULT,
+                    TOPICS_TO_TABLES_IMPORTANCE,
+                    TOPICS_TO_TABLES_DOC
+            ).define(
+                    PROJECT_CONFIG,
+                    PROJECT_TYPE,
+                    PROJECT_IMPORTANCE,
+                    PROJECT_DOC
+            ).define(
+                    DATASETS_CONFIG,
+                    DATASETS_TYPE,
+                    DATASETS_DEFAULT,
+                    DATASETS_VALIDATOR,
+                    DATASETS_IMPORTANCE,
+                    DATASETS_DOC
+            ).define(
+                    SCHEMA_RETRIEVER_CONFIG,
+                    SCHEMA_RETRIEVER_TYPE,
+                    SCHEMA_RETRIEVER_DEFAULT,
+                    SCHEMA_RETRIEVER_IMPORTANCE,
+                    SCHEMA_RETRIEVER_DOC
+            ).define(
+                    KEYFILE_CONFIG,
+                    KEYFILE_TYPE,
+                    KEYFILE_DEFAULT,
+                    KEYFILE_IMPORTANCE,
+                    KEYFILE_DOC
+            ).define(
+                    KEYFILE_TYPE_CONFIG,
+                    KEYFILE_TYPE_TYPE,
+                    KEYFILE_TYPE_DEFAULT,
+                    KEYFILE_TYPE_VALIDATOR,
+                    KEYFILE_TYPE_IMPORTANCE,
+                    KEYFILE_TYPE_DOC
+            ).define(
+                    SANITIZE_TOPICS_CONFIG,
+                    SANITIZE_TOPICS_TYPE,
+                    SANITIZE_TOPICS_DEFAULT,
+                    SANITIZE_TOPICS_IMPORTANCE,
+                    SANITIZE_TOPICS_DOC
+            ).define(
+                    SANITIZE_FIELD_NAME_CONFIG,
+                    SANITIZE_FIELD_NAME_TYPE,
+                    SANITIZE_FIELD_NAME_DEFAULT,
+                    SANITIZE_FIELD_NAME_IMPORTANCE,
+                    SANITIZE_FIELD_NAME_DOC
+            ).define(
+                    INCLUDE_KAFKA_DATA_CONFIG,
+                    INCLUDE_KAFKA_DATA_TYPE,
+                    INCLUDE_KAFKA_DATA_DEFAULT,
+                    INCLUDE_KAFKA_DATA_IMPORTANCE,
+                    INSTANCE_KAFKA_DATA_DOC
+            ).define(
+                    AVRO_DATA_CACHE_SIZE_CONFIG,
+                    AVRO_DATA_CACHE_SIZE_TYPE,
+                    AVRO_DATA_CACHE_SIZE_DEFAULT,
+                    AVRO_DATA_CACHE_SIZE_VALIDATOR,
+                    AVRO_DATA_CACHE_SIZE_IMPORTANCE,
+                    AVRO_DATA_CACHE_SIZE_DOC
+            ).define(
+                    ALL_BQ_FIELDS_NULLABLE_CONFIG,
+                    ALL_BQ_FIELDS_NULLABLE_TYPE,
+                    ALL_BQ_FIELDS_NULLABLE_DEFAULT,
+                    ALL_BQ_FIELDS_NULLABLE_IMPORTANCE,
+                    ALL_BQ_FIELDS_NULLABLE_DOC
+            ).define(
+                    CONVERT_DOUBLE_SPECIAL_VALUES_CONFIG,
+                    CONVERT_DOUBLE_SPECIAL_VALUES_TYPE,
+                    CONVERT_DOUBLE_SPECIAL_VALUES_DEFAULT,
+                    CONVERT_DOUBLE_SPECIAL_VALUES_IMPORTANCE,
+                    CONVERT_DOUBLE_SPECIAL_VALUES_DOC
+            );
   }
 
   @SuppressWarnings("unchecked")

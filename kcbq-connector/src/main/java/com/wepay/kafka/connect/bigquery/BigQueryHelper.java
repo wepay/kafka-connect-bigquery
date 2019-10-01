@@ -29,6 +29,8 @@ import org.slf4j.LoggerFactory;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Convenience class for creating a default {@link com.google.cloud.bigquery.BigQuery} instance,
@@ -36,6 +38,7 @@ import java.io.InputStream;
  */
 public class BigQueryHelper {
   private static final Logger logger = LoggerFactory.getLogger(BigQueryHelper.class);
+  private static String keyFileType;
 
   /**
    * Returns a default {@link BigQuery} instance for the specified project with credentials provided
@@ -43,24 +46,34 @@ public class BigQueryHelper {
    * from specific datasets.
    *
    * @param projectName The name of the BigQuery project to work with
-   * @param keyFilename The name of a file containing a JSON key that can be used to provide
+   * @param keyFile The name of a file containing a JSON key that can be used to provide
    *                    credentials to BigQuery, or null if no authentication should be performed.
+   * @param keyFileType The type of keyfile config we can expect. This is either a String
+  representation of the keyfile, or the path to the keyfile.
    * @return The resulting BigQuery object.
    */
-  public BigQuery connect(String projectName, String keyFilename) {
-    if (keyFilename == null) {
+  public BigQueryHelper setKeyFileType(String keyFileType) {
+    this.keyFileType = keyFileType;
+    return this;
+  }
+  public BigQuery connect(String projectName, String keyFile) {
+    if (keyFile == null) {
       return connect(projectName);
     }
-
-    logger.debug("Attempting to open file {} for service account json key", keyFilename);
-    try (InputStream credentialsStream = new FileInputStream(keyFilename)) {
-      logger.debug("Attempting to authenticate with BigQuery using provided json key");
+    logger.debug("Attempting to open file {} for service account json key", keyFile);
+    InputStream credentialsStream;
+    try {
+      if (keyFile != null && keyFileType.equals("JSON")) {
+        credentialsStream = new ByteArrayInputStream(keyFile.getBytes(StandardCharsets.UTF_8));
+      } else {
+        credentialsStream = new FileInputStream(keyFile);
+      }
       return new
-          BigQueryOptions.DefaultBigQueryFactory().create(
-          BigQueryOptions.newBuilder()
-          .setProjectId(projectName)
-          .setCredentials(GoogleCredentials.fromStream(credentialsStream))
-          .build()
+              BigQueryOptions.DefaultBigQueryFactory().create(
+              BigQueryOptions.newBuilder()
+                      .setProjectId(projectName)
+                      .setCredentials(GoogleCredentials.fromStream(credentialsStream))
+                      .build()
       );
     } catch (IOException err) {
       throw new BigQueryConnectException("Failed to access json key file", err);
@@ -78,9 +91,9 @@ public class BigQueryHelper {
   public BigQuery connect(String projectName) {
     logger.debug("Attempting to access BigQuery without authentication");
     return new BigQueryOptions.DefaultBigQueryFactory().create(
-        BigQueryOptions.newBuilder()
-        .setProjectId(projectName)
-        .build()
+            BigQueryOptions.newBuilder()
+                    .setProjectId(projectName)
+                    .build()
     );
   }
 }

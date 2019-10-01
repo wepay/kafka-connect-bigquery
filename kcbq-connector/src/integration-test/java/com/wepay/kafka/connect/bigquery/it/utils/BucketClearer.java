@@ -37,7 +37,7 @@ public class BucketClearer {
       usage();
     }
 
-    Storage gcs = new GCSBuilder(args[1]).setKeyFileName(args[0]).build();
+    Storage gcs = new GCSBuilder(args[1]).setKeyFile(args[0]).setKeyFileType("JSON").build();
 
     // if bucket exists, delete it.
     String bucketName = args[2];

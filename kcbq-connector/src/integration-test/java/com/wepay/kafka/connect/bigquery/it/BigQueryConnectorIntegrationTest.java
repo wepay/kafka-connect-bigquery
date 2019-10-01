@@ -58,10 +58,12 @@ public class BigQueryConnectorIntegrationTest {
   public static final String KEYFILE_PROPERTY = "keyfile";
   public static final String PROJECT_PROPERTY = "project";
   public static final String DATASET_PROPERTY = "dataset";
+  public static final String KEYFILE_TYPE_PROPERTY = "keyFileType";
 
   private static String keyfile;
   private static String project;
   private static String dataset;
+  private static String keyFileType;
 
   private static BigQuery bigQuery;
 
@@ -107,11 +109,19 @@ public class BigQueryConnectorIntegrationTest {
             + "' property must be specified in test properties file"
         );
       }
+
+      keyFileType = properties.getProperty(KEYFILE_TYPE_PROPERTY);
+      if (keyFileType == null) {
+        throw new SinkConfigConnectException(
+                "'" + KEYFILE_TYPE_PROPERTY
+                        + "' property must be specified in test properties file"
+        );
+      }
     }
   }
 
   private static void initializeBigQuery() throws Exception {
-    bigQuery = new BigQueryHelper().connect(project, keyfile);
+    bigQuery = new BigQueryHelper().setKeyFileType(keyFileType).connect(project, keyfile);
   }
 
   private static List<Byte> boxByteArray(byte[] bytes) {

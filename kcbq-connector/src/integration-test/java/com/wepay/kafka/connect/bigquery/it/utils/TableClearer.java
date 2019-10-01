@@ -35,7 +35,7 @@ public class TableClearer {
     if (args.length < 4) {
       usage();
     }
-    BigQuery bigQuery = new BigQueryHelper().connect(args[1], args[0]);
+    BigQuery bigQuery = new BigQueryHelper().setKeyFileType("JSON").connect(args[1], args[0]);
     for (int i = 3; i < args.length; i++) {
       if (bigQuery.delete(args[2], args[i])) {
         logger.info("Table {} in dataset {} deleted successfully", args[i], args[2]);
