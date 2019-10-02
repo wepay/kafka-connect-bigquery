@@ -67,11 +67,11 @@ public class BigQueryHelper {
         credentialsStream = new FileInputStream(keyFile);
       }
       return new
-              BigQueryOptions.DefaultBigQueryFactory().create(
+          BigQueryOptions.DefaultBigQueryFactory().create(
               BigQueryOptions.newBuilder()
-                      .setProjectId(projectName)
-                      .setCredentials(GoogleCredentials.fromStream(credentialsStream))
-                      .build()
+                  .setProjectId(projectName)
+                  .setCredentials(GoogleCredentials.fromStream(credentialsStream))
+                  .build()
       );
     } catch (IOException err) {
       throw new BigQueryConnectException("Failed to access json key file", err);
@@ -90,8 +90,8 @@ public class BigQueryHelper {
     logger.debug("Attempting to access BigQuery without authentication");
     return new BigQueryOptions.DefaultBigQueryFactory().create(
             BigQueryOptions.newBuilder()
-                    .setProjectId(projectName)
-                    .build()
+                .setProjectId(projectName)
+                .build()
     );
   }
 }
