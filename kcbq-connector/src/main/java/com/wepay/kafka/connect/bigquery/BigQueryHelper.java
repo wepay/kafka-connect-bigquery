@@ -45,14 +45,11 @@ public class BigQueryHelper {
    * in the specified file, which can then be used for creating, updating, and inserting into tables
    * from specific datasets.
    *
-   * @param keyFileType The type of keyfile config we can expect. This is either a String
-                        representation of the keyfile, or the path to the keyfile.
+   * @param projectName The name of the BigQuery project to work with
+   * @param keyFile The name of a file containing a JSON key that can be used to provide
+   *                    credentials to BigQuery, or null if no authentication should be performed.
    * @return The resulting BigQuery object.
    */
-  public BigQueryHelper setKeyFileType(String keyFileType) {
-    this.keyFileType = keyFileType;
-    return this;
-  }
   public BigQuery connect(String projectName, String keyFile) {
     if (keyFile == null) {
       return connect(projectName);
@@ -76,6 +73,19 @@ public class BigQueryHelper {
     } catch (IOException err) {
       throw new BigQueryConnectException("Failed to access json key file", err);
     }
+  }
+  /**
+   * Returns a default {@link BigQuery} instance for the specified project with credentials provided
+   * in the specified file, which can then be used for creating, updating, and inserting into tables
+   * from specific datasets.
+   *
+   * @param keyFileType The type of keyFile config we can expect. This is either a String
+   *                        representation of the keyFile, or the path to the keyFile.
+   * @return The resulting BigQuery object.
+   */
+  public BigQueryHelper setKeyFileType(String keyFileType) {
+    this.keyFileType = keyFileType;
+    return this;
   }
 
   /**
