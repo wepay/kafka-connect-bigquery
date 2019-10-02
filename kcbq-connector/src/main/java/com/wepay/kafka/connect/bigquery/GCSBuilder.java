@@ -28,6 +28,8 @@ import org.slf4j.LoggerFactory;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Convenience class for creating a {@link com.google.cloud.storage.Storage} instance
@@ -37,17 +39,22 @@ public class GCSBuilder {
 
     private final String projectName;
     private String keyFileName;
+    private String keyFileType;
 
     public GCSBuilder(String projectName) {
         this.projectName = projectName;
         this.keyFileName = null;
     }
 
-    public GCSBuilder setKeyFileName(String keyFileName) {
-        this.keyFileName = keyFileName;
+    public GCSBuilder setKeyFileType(String keyFileType) {
+        this.keyFileType = keyFileType;
         return this;
     }
 
+    public GCSBuilder setKeyFile(String keyFileName) {
+        this.keyFileName = keyFileName;
+        return this;
+    }
     public Storage build() {
         return connect(projectName, keyFileName);
     }
@@ -61,14 +68,17 @@ public class GCSBuilder {
      *                    credentials to GCS, or null if no authentication should be performed.
      * @return The resulting Storage object.
      */
-    private Storage connect(String projectName, String keyFilename) {
-        if (keyFilename == null) {
+    private Storage connect(String projectName, String keyFile) {
+        if (keyFile == null) {
             return connect(projectName);
         }
-
-        logger.debug("Attempting to open file {} for service account json key", keyFilename);
-        try (InputStream credentialsStream = new FileInputStream(keyFilename)) {
-            logger.debug("Attempting to authenticate with GCS using provided json key");
+        try {
+            InputStream credentialsStream;
+            if (keyFileType != null && keyFileType.equals("JSON")) {
+                credentialsStream = new ByteArrayInputStream(keyFile.getBytes(StandardCharsets.UTF_8));
+            } else {
+                credentialsStream = new FileInputStream(keyFile);
+            }
             return StorageOptions.newBuilder()
                 .setProjectId(projectName)
                 .setCredentials(GoogleCredentials.fromStream(credentialsStream))
@@ -94,3 +104,4 @@ public class GCSBuilder {
             .getService();
     }
 }
+
