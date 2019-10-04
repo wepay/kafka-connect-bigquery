@@ -123,7 +123,7 @@ public abstract class BigQueryWriter {
           logger.info("{} rows succeeded, {} rows failed",
               rows.size() - failedRowsMap.size(), failedRowsMap.size());
           // update insert rows and retry in case of partial failure
-          rows = getFailedRows(rows, failedRowsMap.keySet());
+          rows = getFailedRows(rows, failedRowsMap.keySet(), topic, table);
           mostRecentException = new BigQueryConnectException(failedRowsMap);
           retryCount++;
         } else {
@@ -182,11 +182,13 @@ public abstract class BigQueryWriter {
    * @return A list of failed rows.
    */
   private List<InsertAllRequest.RowToInsert> getFailedRows(List<InsertAllRequest.RowToInsert> rows,
-                                                           Set<Long> failRowsSet) {
+                                                           Set<Long> failRowsSet,
+                                                           String topic,
+                                                           PartitionedTableId table) {
     List<InsertAllRequest.RowToInsert> failRows = new ArrayList<>();
     for (int index = 0; index < rows.size(); index++) {
       if (failRowsSet.contains((long)index)) {
-        logger.debug("[row with index {}]: failed", index);
+        logger.debug("Row with index {} from topic {} failed to be written to table {}.", index, topic, table);
         failRows.add(rows.get(index));
       }
     }
