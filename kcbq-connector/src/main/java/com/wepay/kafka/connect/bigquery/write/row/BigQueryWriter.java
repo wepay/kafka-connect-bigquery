@@ -188,10 +188,10 @@ public abstract class BigQueryWriter {
     List<InsertAllRequest.RowToInsert> failRows = new ArrayList<>();
     for (int index = 0; index < rows.size(); index++) {
       if (failRowsSet.contains((long)index)) {
-        logger.debug("Row with index {} from topic {} failed to be written to table {}.", index, topic, table.getFullTableName());
         failRows.add(rows.get(index));
       }
     }
+    logger.debug("{} rows from topic {} failed to be written to table {}.", rows.size(), topic, table.getFullTableName());
     return failRows;
   }
 
