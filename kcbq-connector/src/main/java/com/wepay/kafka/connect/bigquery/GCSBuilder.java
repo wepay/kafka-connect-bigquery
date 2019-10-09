@@ -38,25 +38,25 @@ public class GCSBuilder {
     private static final Logger logger = LoggerFactory.getLogger(GCSBuilder.class);
 
     private final String projectName;
-    private String keyFileName;
-    private String keyFileType;
+    private String key;
+    private String keySource;
 
     public GCSBuilder(String projectName) {
         this.projectName = projectName;
-        this.keyFileName = null;
+        this.key = null;
     }
 
-    public GCSBuilder setKeyFileType(String keyFileType) {
-        this.keyFileType = keyFileType;
+    public GCSBuilder setKeySource(String keySourceType) {
+        this.keySource = keySourceType;
         return this;
     }
 
-    public GCSBuilder setKeyFile(String keyFileName) {
-        this.keyFileName = keyFileName;
+    public GCSBuilder setKey(String keyFile) {
+        this.key = keyFile;
         return this;
     }
     public Storage build() {
-        return connect(projectName, keyFileName);
+        return connect(projectName, key);
     }
 
     /**
@@ -64,20 +64,20 @@ public class GCSBuilder {
      * in the specified file.
      *
      * @param projectName The name of the GCS project to work with
-     * @param keyFilename The name of a file containing a JSON key that can be used to provide
+     * @param key The name of a file containing a JSON key that can be used to provide
      *                    credentials to GCS, or null if no authentication should be performed.
      * @return The resulting Storage object.
      */
-    private Storage connect(String projectName, String keyFile) {
-        if (keyFile == null) {
+    private Storage connect(String projectName, String key) {
+        if (key == null) {
             return connect(projectName);
         }
         try {
             InputStream credentialsStream;
-            if (keyFileType != null && keyFileType.equals("JSON")) {
-                credentialsStream = new ByteArrayInputStream(keyFile.getBytes(StandardCharsets.UTF_8));
+            if (keySource != null && keySource.equals("JSON")) {
+                credentialsStream = new ByteArrayInputStream(key.getBytes(StandardCharsets.UTF_8));
             } else {
-                credentialsStream = new FileInputStream(keyFile);
+                credentialsStream = new FileInputStream(key);
             }
             return StorageOptions.newBuilder()
                 .setProjectId(projectName)

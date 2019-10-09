@@ -38,7 +38,7 @@ import java.nio.charset.StandardCharsets;
  */
 public class BigQueryHelper {
   private static final Logger logger = LoggerFactory.getLogger(BigQueryHelper.class);
-  private static String keyFileType;
+  private static String keySource;
 
   /**
    * Returns a default {@link BigQuery} instance for the specified project with credentials provided
@@ -46,22 +46,21 @@ public class BigQueryHelper {
    * from specific datasets.
    *
    * @param projectName The name of the BigQuery project to work with
-   * @param keyFile The name of a file containing a JSON key that can be used to provide
+   * @param key The google credentials JSON key that can be used to provide
    *                    credentials to BigQuery, or null if no authentication should be performed.
    * @return The resulting BigQuery object.
    */
-  public BigQuery connect(String projectName, String keyFile) {
-    if (keyFile == null) {
+  public BigQuery connect(String projectName, String key) {
+    if (key == null) {
       return connect(projectName);
     }
-    //
-    logger.debug("Attempting to open file {} for service account json key", keyFile);
+    logger.debug("Attempting to open file {} for service account json key", key);
     InputStream credentialsStream;
     try {
-      if (keyFileType != null && keyFileType.equals("JSON")) {
-        credentialsStream = new ByteArrayInputStream(keyFile.getBytes(StandardCharsets.UTF_8));
+      if (keySource != null && keySource.equals("JSON")) {
+        credentialsStream = new ByteArrayInputStream(key.getBytes(StandardCharsets.UTF_8));
       } else {
-        credentialsStream = new FileInputStream(keyFile);
+        credentialsStream = new FileInputStream(key);
       }
       return new
           BigQueryOptions.DefaultBigQueryFactory().create(
@@ -79,12 +78,12 @@ public class BigQueryHelper {
    * in the specified file, which can then be used for creating, updating, and inserting into tables
    * from specific datasets.
    *
-   * @param keyFileType The type of keyFile config we can expect. This is either a String
-   *                        representation of the keyFile, or the path to the keyFile.
+   * @param keySource The type of key config we can expect. This is either a String
+   *                        representation of the Google credentials file, or the path to the Google credentials file.
    * @return The resulting BigQuery object.
    */
-  public BigQueryHelper setKeyFileType(String keyFileType) {
-    this.keyFileType = keyFileType;
+  public BigQueryHelper setKeySource(String keySource) {
+    this.keySource = keySource;
     return this;
   }
 

@@ -91,9 +91,9 @@ public class BigQuerySinkConnector extends SinkConnector {
       return testBigQuery;
     }
     String projectName = config.getString(config.PROJECT_CONFIG);
-    String keyFilename = config.getString(config.KEYFILE_CONFIG);
-    String keyFileType = config.getString(config.KEYFILE_TYPE_CONFIG);
-    return new BigQueryHelper().setKeyFileType(keyFileType).connect(projectName, keyFilename);
+    String key = config.getString(config.KEYFILE_CONFIG);
+    String keySource = config.getString(config.KEY_SOURCE_CONFIG);
+    return new BigQueryHelper().setKeySource(keySource).connect(projectName, key);
   }
 
   private SchemaManager getSchemaManager(BigQuery bigQuery) {
