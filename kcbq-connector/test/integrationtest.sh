@@ -59,7 +59,7 @@ usage() {
 error() {
   echo -ne "$RED"
   echo -ne "$0: $@"
-  echo -ne "$NORMAL"
+  echo -e "$NORMAL"
   exit 1
 } >&2
 
