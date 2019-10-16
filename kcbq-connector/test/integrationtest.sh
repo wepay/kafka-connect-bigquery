@@ -56,33 +56,12 @@ usage() {
   exit ${1:-0}
 }
 
-error() {
-  echo -ne "$RED"
-  echo -ne "$0: $@"
-  echo -e "$NORMAL"
-  exit 1
-} >&2
+msg() { printf "$1%s: $2$NORMAL\n" "$(basename $0)"; }
+error() { msg "$RED" "$*"; exit 1; } >&2
+warn() { msg "$YELLOW" "$*"; } >&2
+statusupdate() { msg "$GREEN" "$*"; }
+log() { msg "$BOLD" "$*"; }
 
-warn() {
-  echo -ne "$YELLOW"
-  echo -ne "$0: $@"
-  echo -ne "$NORMAL"
-  echo
-} >&2
-
-statusupdate() {
-  echo -ne "$GREEN"
-  echo -ne "$0: $@"
-  echo -ne "$NORMAL"
-  echo
-}
-
-log() {
-  echo -ne "$BOLD"
-  echo -ne "$0: $@"
-  echo -ne "$NORMAL"
-  echo
-}
 
 BASE_DIR=$(dirname "$0")
 GRADLEW="$BASE_DIR/../../gradlew"
