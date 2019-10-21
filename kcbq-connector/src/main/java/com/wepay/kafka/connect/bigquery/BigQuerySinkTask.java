@@ -31,7 +31,6 @@ import com.wepay.kafka.connect.bigquery.config.BigQuerySinkTaskConfig;
 import com.wepay.kafka.connect.bigquery.convert.RecordConverter;
 import com.wepay.kafka.connect.bigquery.convert.SchemaConverter;
 import com.wepay.kafka.connect.bigquery.exception.SinkConfigConnectException;
-import com.wepay.kafka.connect.bigquery.utils.FieldNameSanitizer;
 import com.wepay.kafka.connect.bigquery.utils.PartitionedTableId;
 import com.wepay.kafka.connect.bigquery.utils.TopicToTableResolver;
 import com.wepay.kafka.connect.bigquery.utils.Version;
@@ -72,6 +71,7 @@ public class BigQuerySinkTask extends SinkTask {
   private static final Logger logger = LoggerFactory.getLogger(BigQuerySinkTask.class);
 
   private SchemaRetriever schemaRetriever;
+  private BigQuery bigQuery;
   private BigQueryWriter bigQueryWriter;
   private GCSToBQWriter gcsToBQWriter;
   private BigQuerySinkTaskConfig config;
@@ -83,7 +83,7 @@ public class BigQuerySinkTask extends SinkTask {
 
   private KCBQThreadPoolExecutor executor;
   private static final int EXECUTOR_SHUTDOWN_TIMEOUT_SEC = 30;
-  
+
   private final BigQuery testBigQuery;
   private final Storage testGcs;
 
@@ -149,22 +149,6 @@ public class BigQuerySinkTask extends SinkTask {
     return builder.build();
   }
 
-  private RowToInsert getRecordRow(SinkRecord record) {
-    Map<String,Object> convertedRecord = recordConverter.convertRecord(record);
-    if (config.getBoolean(config.SANITIZE_FIELD_NAME_CONFIG)) {
-      convertedRecord = FieldNameSanitizer.replaceInvalidKeys(convertedRecord);
-    }
-
-    return RowToInsert.of(getRowId(record), convertedRecord);
-  }
-
-  private String getRowId(SinkRecord record) {
-    return String.format("%s-%d-%d",
-        record.topic(),
-        record.kafkaPartition(),
-        record.kafkaOffset());
-  }
-
   @Override
   public void put(Collection<SinkRecord> records) {
     logger.info("Putting {} records in the sink.", records.size());
@@ -194,14 +178,15 @@ public class BigQuerySinkTask extends SinkTask {
                 table.getBaseTableId(),
                 config.getString(config.GCS_BUCKET_NAME_CONFIG),
                 gcsBlobName,
-                recordConverter);
+                recordConverter,
+                config.getBoolean(config.SANITIZE_FIELD_NAME_CONFIG));
           } else {
             tableWriterBuilder =
                 new TableWriter.Builder(bigQueryWriter, table, record.topic(), recordConverter);
           }
           tableWriterBuilders.put(table, tableWriterBuilder);
         }
-        tableWriterBuilders.get(table).addRow(getRecordRow(record));
+        tableWriterBuilders.get(table).addRow(record);
       }
     }
 
@@ -248,14 +233,16 @@ public class BigQuerySinkTask extends SinkTask {
     boolean updateSchemas = config.getBoolean(config.SCHEMA_UPDATE_CONFIG);
     int retry = config.getInt(config.BIGQUERY_RETRY_CONFIG);
     long retryWait = config.getLong(config.BIGQUERY_RETRY_WAIT_CONFIG);
-    BigQuery bigQuery = getBigQuery();
     if (updateSchemas) {
       return new AdaptiveBigQueryWriter(bigQuery,
                                         getSchemaManager(bigQuery),
                                         retry,
-                                        retryWait);
+                                        retryWait,
+                                        recordConverter,
+                                        config.getBoolean(config.SANITIZE_FIELD_NAME_CONFIG));
     } else {
-      return new SimpleBigQueryWriter(bigQuery, retry, retryWait);
+      return new SimpleBigQueryWriter(bigQuery, retry, retryWait, recordConverter,
+          config.getBoolean(config.SANITIZE_FIELD_NAME_CONFIG));
     }
   }
 
@@ -271,7 +258,6 @@ public class BigQuerySinkTask extends SinkTask {
   }
 
   private GCSToBQWriter getGcsWriter() {
-    BigQuery bigQuery = getBigQuery();
     int retry = config.getInt(config.BIGQUERY_RETRY_CONFIG);
     long retryWait = config.getLong(config.BIGQUERY_RETRY_WAIT_CONFIG);
     return new GCSToBQWriter(getGcs(),
@@ -294,10 +280,11 @@ public class BigQuerySinkTask extends SinkTask {
       );
     }
 
+    bigQuery = getBigQuery();
+    recordConverter = getConverter();
     bigQueryWriter = getBigQueryWriter();
     gcsToBQWriter = getGcsWriter();
     topicsToBaseTableIds = TopicToTableResolver.getTopicsToTables(config);
-    recordConverter = getConverter();
     executor = new KCBQThreadPoolExecutor(config, new LinkedBlockingQueue<>());
     topicPartitionManager = new TopicPartitionManager();
     useMessageTimeDatePartitioning =
@@ -320,7 +307,7 @@ public class BigQuerySinkTask extends SinkTask {
       BucketInfo bucketInfo = BucketInfo.of(bucketName);
       bucket = gcs.create(bucketInfo);
     }
-    GCSToBQLoadRunnable loadRunnable = new GCSToBQLoadRunnable(getBigQuery(), bucket);
+    GCSToBQLoadRunnable loadRunnable = new GCSToBQLoadRunnable(bigQuery, bucket);
 
     int intervalSec = config.getInt(BigQuerySinkConfig.BATCH_LOAD_INTERVAL_SEC_CONFIG);
     gcsLoadExecutor.scheduleAtFixedRate(loadRunnable, intervalSec, intervalSec, TimeUnit.SECONDS);

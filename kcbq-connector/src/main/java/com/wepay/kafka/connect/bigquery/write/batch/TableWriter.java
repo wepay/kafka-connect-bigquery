@@ -46,7 +46,7 @@ public class TableWriter implements Runnable {
 
   private final BigQueryWriter writer;
   private final PartitionedTableId table;
-  private final List<RowToInsert> rows;
+  private final List<SinkRecord> rows;
   private final String topic;
 
   /**
@@ -57,7 +57,7 @@ public class TableWriter implements Runnable {
    */
   public TableWriter(BigQueryWriter writer,
                      PartitionedTableId table,
-                     List<RowToInsert> rows,
+                     List<SinkRecord> rows,
                      String topic) {
     this.writer = writer;
     this.table = table;
@@ -74,7 +74,7 @@ public class TableWriter implements Runnable {
 
     try {
       while (currentIndex < rows.size()) {
-        List<RowToInsert> currentBatch =
+        List<SinkRecord> currentBatch =
             rows.subList(currentIndex, Math.min(currentIndex + currentBatchSize, rows.size()));
         try {
           writer.writeRows(table, currentBatch, topic);
@@ -149,7 +149,7 @@ public class TableWriter implements Runnable {
     private final PartitionedTableId table;
     private final String topic;
 
-    private List<RowToInsert> rows;
+    private List<SinkRecord> rows;
 
     private RecordConverter<Map<String, Object>> recordConverter;
 
@@ -174,7 +174,7 @@ public class TableWriter implements Runnable {
      * Add a record to the builder.
      * @param rowToInsert the row to add
      */
-    public void addRow(RowToInsert rowToInsert) {
+    public void addRow(SinkRecord rowToInsert) {
       rows.add(rowToInsert);
     }
 

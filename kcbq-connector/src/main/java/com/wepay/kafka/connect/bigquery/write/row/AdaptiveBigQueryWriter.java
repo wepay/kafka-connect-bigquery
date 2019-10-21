@@ -25,10 +25,12 @@ import com.google.cloud.bigquery.InsertAllRequest;
 import com.google.cloud.bigquery.InsertAllResponse;
 
 import com.wepay.kafka.connect.bigquery.SchemaManager;
+import com.wepay.kafka.connect.bigquery.convert.RecordConverter;
 import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
 
 import com.wepay.kafka.connect.bigquery.utils.PartitionedTableId;
 
+import org.apache.kafka.connect.sink.SinkRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,8 +59,10 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
   public AdaptiveBigQueryWriter(BigQuery bigQuery,
                                 SchemaManager schemaManager,
                                 int retry,
-                                long retryWait) {
-    super(retry, retryWait);
+                                long retryWait,
+                                RecordConverter<Map<String, Object>> recordConverter,
+                                boolean sanitizeData) {
+    super(retry, retryWait, recordConverter, sanitizeData);
     this.bigQuery = bigQuery;
     this.schemaManager = schemaManager;
   }
@@ -78,7 +82,7 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
   @Override
   public Map<Long, List<BigQueryError>> performWriteRequest(
       PartitionedTableId tableId,
-      List<InsertAllRequest.RowToInsert> rows,
+      List<SinkRecord> rows,
       String topic) {
     InsertAllResponse writeResponse = null;
     InsertAllRequest request = null;
@@ -127,6 +131,10 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
     return new HashMap<>();
   }
 
+  /* TODO (Apoorv) : Use current sink records batch in future to update schema from key/value
+   *  schema in connect record. Sink records has to be used to determine schema when schema
+   *  registry cannot be used i.e. json records, protobuf records.
+   */
   private void attemptSchemaUpdate(PartitionedTableId tableId, String topic) {
     try {
       schemaManager.updateSchema(tableId.getBaseTableId(), topic);

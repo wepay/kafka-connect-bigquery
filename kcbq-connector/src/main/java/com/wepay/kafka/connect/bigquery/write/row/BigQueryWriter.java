@@ -22,9 +22,15 @@ import com.google.cloud.bigquery.BigQueryError;
 import com.google.cloud.bigquery.BigQueryException;
 import com.google.cloud.bigquery.InsertAllRequest;
 
+import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
+import com.wepay.kafka.connect.bigquery.convert.RecordConverter;
 import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
+import com.wepay.kafka.connect.bigquery.utils.FieldNameSanitizer;
 import com.wepay.kafka.connect.bigquery.utils.PartitionedTableId;
 
+import java.util.stream.Collectors;
+import org.apache.kafka.connect.connector.ConnectRecord;
+import org.apache.kafka.connect.sink.SinkRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,8 +58,10 @@ public abstract class BigQueryWriter {
 
   private static final Random random = new Random();
 
-  private int retries;
-  private long retryWaitMs;
+  private final int retries;
+  private final long retryWaitMs;
+  private final RecordConverter<Map<String, Object>> recordConverter;
+  private final boolean sanitizeData;
 
   /**
    * @param retries the number of times to retry a request if BQ returns an internal service error
@@ -61,9 +69,12 @@ public abstract class BigQueryWriter {
    * @param retryWaitMs the amount of time to wait in between reattempting a request if BQ returns
    *                    an internal service error or a service unavailable error.
    */
-  public BigQueryWriter(int retries, long retryWaitMs) {
+  public BigQueryWriter(int retries, long retryWaitMs,
+      RecordConverter<Map<String, Object>> recordConverter, boolean sanitizeData) {
     this.retries = retries;
     this.retryWaitMs = retryWaitMs;
+    this.recordConverter = recordConverter;
+    this.sanitizeData = sanitizeData;
   }
 
   /**
@@ -76,7 +87,7 @@ public abstract class BigQueryWriter {
    */
   protected abstract Map<Long, List<BigQueryError>> performWriteRequest(
       PartitionedTableId tableId,
-      List<InsertAllRequest.RowToInsert> rows,
+      List<SinkRecord> rows,
       String topic)
       throws BigQueryException, BigQueryConnectException;
 
@@ -87,8 +98,9 @@ public abstract class BigQueryWriter {
    * @return the InsertAllRequest.
    */
   protected InsertAllRequest createInsertAllRequest(PartitionedTableId tableId,
-                                                    List<InsertAllRequest.RowToInsert> rows) {
-    return InsertAllRequest.newBuilder(tableId.getFullTableId(), rows)
+                                                    List<SinkRecord> rows) {
+    return InsertAllRequest.newBuilder(tableId.getFullTableId(),
+        rows.stream().map(r -> getRecordRow(r)).collect(Collectors.toList()))
         .setIgnoreUnknownValues(false)
         .setSkipInvalidRows(false)
         .build();
@@ -101,7 +113,7 @@ public abstract class BigQueryWriter {
    * @throws InterruptedException if interrupted.
    */
   public void writeRows(PartitionedTableId table,
-                        List<InsertAllRequest.RowToInsert> rows,
+                        List<SinkRecord> rows,
                         String topic)
       throws BigQueryConnectException, BigQueryException, InterruptedException {
     logger.debug("writing {} row{} to table {}", rows.size(), rows.size() != 1 ? "s" : "", table);
@@ -170,7 +182,7 @@ public abstract class BigQueryWriter {
    * @param failedRowsMap A map from failed row index to the BigQueryError.
    * @return isPartialFailure.
    */
-  private boolean isPartialFailure(List<InsertAllRequest.RowToInsert> rows,
+  private boolean isPartialFailure(List<SinkRecord> rows,
                                    Map<Long, List<BigQueryError>> failedRowsMap) {
     return failedRowsMap.size() < rows.size();
   }
@@ -181,11 +193,11 @@ public abstract class BigQueryWriter {
    * @param failRowsSet A set of failed row index.
    * @return A list of failed rows.
    */
-  private List<InsertAllRequest.RowToInsert> getFailedRows(List<InsertAllRequest.RowToInsert> rows,
+  private List<SinkRecord> getFailedRows(List<SinkRecord> rows,
                                                            Set<Long> failRowsSet,
                                                            String topic,
                                                            PartitionedTableId table) {
-    List<InsertAllRequest.RowToInsert> failRows = new ArrayList<>();
+    List<SinkRecord> failRows = new ArrayList<>();
     for (int index = 0; index < rows.size(); index++) {
       if (failRowsSet.contains((long)index)) {
         failRows.add(rows.get(index));
@@ -202,5 +214,21 @@ public abstract class BigQueryWriter {
   private void waitRandomTime() throws InterruptedException {
     // wait
     Thread.sleep(retryWaitMs + random.nextInt(WAIT_MAX_JITTER));
+  }
+
+  private RowToInsert getRecordRow(SinkRecord record) {
+    Map<String,Object> convertedRecord = this.recordConverter.convertRecord(record);
+    if (this.sanitizeData) {
+      convertedRecord = FieldNameSanitizer.replaceInvalidKeys(convertedRecord);
+    }
+
+    return RowToInsert.of(getRowId(record), convertedRecord);
+  }
+
+  private String getRowId(SinkRecord record) {
+    return String.format("%s-%d-%d",
+        record.topic(),
+        record.kafkaPartition(),
+        record.kafkaOffset());
   }
 }

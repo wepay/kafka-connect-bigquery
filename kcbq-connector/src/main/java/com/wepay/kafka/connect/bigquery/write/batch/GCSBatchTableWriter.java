@@ -23,9 +23,12 @@ import com.google.cloud.bigquery.TableId;
 
 import com.wepay.kafka.connect.bigquery.convert.RecordConverter;
 
+import com.wepay.kafka.connect.bigquery.utils.FieldNameSanitizer;
 import com.wepay.kafka.connect.bigquery.write.row.GCSToBQWriter;
+import java.util.stream.Collectors;
 import org.apache.kafka.connect.errors.ConnectException;
 
+import org.apache.kafka.connect.sink.SinkRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -90,9 +93,10 @@ public class GCSBatchTableWriter implements Runnable {
 
     private final TableId tableId;
 
-    private List<RowToInsert> rows;
+    private List<SinkRecord> rows;
     private final RecordConverter<Map<String, Object>> recordConverter;
     private final GCSToBQWriter writer;
+    private final boolean sanitizeData;
 
     /**
      * Create a {@link GCSBatchTableWriter.Builder}.
@@ -107,7 +111,8 @@ public class GCSBatchTableWriter implements Runnable {
                    TableId tableId,
                    String gcsBucketName,
                    String gcsBlobName,
-                   RecordConverter<Map<String, Object>> recordConverter) {
+                   RecordConverter<Map<String, Object>> recordConverter,
+                   boolean sanitizeData) {
 
       this.bucketName = gcsBucketName;
       this.blobName = gcsBlobName;
@@ -117,6 +122,7 @@ public class GCSBatchTableWriter implements Runnable {
       this.rows = new ArrayList<>();
       this.recordConverter = recordConverter;
       this.writer = writer;
+      this.sanitizeData = sanitizeData;
     }
 
     public Builder setBlobName(String blobName) {
@@ -124,16 +130,29 @@ public class GCSBatchTableWriter implements Runnable {
       return this;
     }
 
-    /**
-     * Adds a record to the builder.
-     * @param rowToInsert the row to add
-     */
-    public void addRow(RowToInsert rowToInsert) {
+    public void addRow(SinkRecord rowToInsert) {
       rows.add(rowToInsert);
     }
 
+    private RowToInsert getRecordRow(SinkRecord record) {
+      Map<String,Object> convertedRecord = this.recordConverter.convertRecord(record);
+      if (this.sanitizeData) {
+        convertedRecord = FieldNameSanitizer.replaceInvalidKeys(convertedRecord);
+      }
+
+      return RowToInsert.of(getRowId(record), convertedRecord);
+    }
+
+    private String getRowId(SinkRecord record) {
+      return String.format("%s-%d-%d",
+          record.topic(),
+          record.kafkaPartition(),
+          record.kafkaOffset());
+    }
+
     public GCSBatchTableWriter build() {
-      return new GCSBatchTableWriter(rows, writer, tableId, bucketName, blobName);
+      return new GCSBatchTableWriter(rows.stream().map(r -> getRecordRow(r))
+          .collect(Collectors.toList()), writer, tableId, bucketName, blobName);
     }
   }
 }

@@ -24,8 +24,11 @@ import com.google.cloud.bigquery.InsertAllRequest;
 import com.google.cloud.bigquery.InsertAllResponse;
 
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkTaskConfig;
+import com.wepay.kafka.connect.bigquery.convert.RecordConverter;
 import com.wepay.kafka.connect.bigquery.utils.PartitionedTableId;
 
+import org.apache.kafka.connect.connector.ConnectRecord;
+import org.apache.kafka.connect.sink.SinkRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,8 +50,9 @@ public class SimpleBigQueryWriter extends BigQueryWriter {
    * @param retry How many retries to make in the event of a 500/503 error.
    * @param retryWait How long to wait in between retries.
    */
-  public SimpleBigQueryWriter(BigQuery bigQuery, int retry, long retryWait) {
-    super(retry, retryWait);
+  public SimpleBigQueryWriter(BigQuery bigQuery, int retry, long retryWait,
+      RecordConverter<Map<String, Object>> recordConverter, boolean sanitizeData) {
+    super(retry, retryWait, recordConverter, sanitizeData);
     this.bigQuery = bigQuery;
   }
 
@@ -59,7 +63,7 @@ public class SimpleBigQueryWriter extends BigQueryWriter {
    */
   @Override
   public Map<Long, List<BigQueryError>> performWriteRequest(PartitionedTableId tableId,
-                                                            List<InsertAllRequest.RowToInsert> rows,
+                                                            List<SinkRecord> rows,
                                                             String topic) {
     InsertAllRequest request = createInsertAllRequest(tableId, rows);
     InsertAllResponse writeResponse = bigQuery.insertAll(request);
