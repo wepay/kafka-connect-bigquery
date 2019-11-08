@@ -78,7 +78,7 @@ public class BigQuerySinkTask extends SinkTask {
   private RecordConverter<Map<String, Object>> recordConverter;
   private Map<String, TableId> topicsToBaseTableIds;
   private boolean useMessageTimeDatePartitioning;
-
+  private boolean useSchemaAsTable;
   private TopicPartitionManager topicPartitionManager;
 
   private KCBQThreadPoolExecutor executor;
@@ -133,7 +133,11 @@ public class BigQuerySinkTask extends SinkTask {
     }
 
     TableId baseTableId = topicsToBaseTableIds.get(record.topic());
-
+    // we replace the table name with record value schema name
+    if(useSchemaAsTable) {
+      String tableName = sanitizeTableName(record.valueSchema().name());
+      baseTableId =  TableId.of(baseTableId.getDataset(),tableName);
+    }
     PartitionedTableId.Builder builder = new PartitionedTableId.Builder(baseTableId);
     if (useMessageTimeDatePartitioning) {
       if (record.timestampType() == TimestampType.NO_TIMESTAMP_TYPE) {
@@ -302,6 +306,7 @@ public class BigQuerySinkTask extends SinkTask {
     topicPartitionManager = new TopicPartitionManager();
     useMessageTimeDatePartitioning =
         config.getBoolean(config.BIGQUERY_MESSAGE_TIME_PARTITIONING_CONFIG);
+    useSchemaAsTable =  config.getBoolean(config.USE_SCHEMA_AS_TABLE_CONFIG);
     if (hasGCSBQTask) {
       startGCSToBQLoadTask();
     }
@@ -392,5 +397,8 @@ public class BigQuerySinkTask extends SinkTask {
       Set<TopicPartition> assignment = context.assignment();
       context.resume(assignment.toArray(new TopicPartition[assignment.size()]));
     }
+  }
+  private  String sanitizeTableName(String tableName) {
+    return tableName.replaceAll("[^a-zA-Z0-9_]", "_");
   }
 }

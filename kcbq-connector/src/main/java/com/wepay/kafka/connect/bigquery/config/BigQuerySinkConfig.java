@@ -205,6 +205,16 @@ public class BigQuerySinkConfig extends AbstractConfig {
       "If true, no fields in any produced BigQuery schema will be REQUIRED. All "
       + "non-nullable avro fields will be translated as NULLABLE (or REPEATED, if arrays).";
 
+  public static final String USE_SCHEMA_AS_TABLE_CONFIG =
+          "useSchemaAsTable";
+  private static final ConfigDef.Type USE_SCHEMA_AS_TABLE_CONFIG_TYPE =
+          ConfigDef.Type.BOOLEAN;
+  public static final Boolean USE_SCHEMA_AS_TABLE_CONFIG_DEFAULT =                   false;
+  private static final ConfigDef.Importance USE_SCHEMA_AS_TABLE_CONFIG_IMPORTANCE =
+          ConfigDef.Importance.LOW;
+  private static final String USE_SCHEMA_AS_TABLE_CONFIG_DOC =
+          "Whether or not to use the schema name as table name ."
+                  + "Major for the topic which has multi schemas and the Avro producer has a config as value.subject.name.strategy=useRecordNameStrategy";
   static {
     config = new ConfigDef()
         .define(
@@ -314,7 +324,12 @@ public class BigQuerySinkConfig extends AbstractConfig {
             CONVERT_DOUBLE_SPECIAL_VALUES_DEFAULT,
             CONVERT_DOUBLE_SPECIAL_VALUES_IMPORTANCE,
             CONVERT_DOUBLE_SPECIAL_VALUES_DOC
-         );
+         ).define(
+                 USE_SCHEMA_AS_TABLE_CONFIG,
+                    USE_SCHEMA_AS_TABLE_CONFIG_TYPE,
+                    USE_SCHEMA_AS_TABLE_CONFIG_DEFAULT,
+                    USE_SCHEMA_AS_TABLE_CONFIG_IMPORTANCE,
+                    USE_SCHEMA_AS_TABLE_CONFIG_DOC);;
   }
 
   @SuppressWarnings("unchecked")

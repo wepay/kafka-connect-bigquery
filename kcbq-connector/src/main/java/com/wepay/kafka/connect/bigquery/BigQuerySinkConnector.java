@@ -155,8 +155,9 @@ public class BigQuerySinkConnector extends SinkConnector {
           err
       );
     }
-
-    ensureExistingTables();
+    //when we use schema name as table name, we do not need to ensureExistingTables any more
+    if(config.getBoolean(config.USE_SCHEMA_AS_TABLE_CONFIG)==false)
+      ensureExistingTables();
   }
 
   @Override
