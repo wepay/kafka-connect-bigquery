@@ -29,6 +29,7 @@ import com.wepay.kafka.connect.bigquery.convert.SchemaConverter;
 import com.wepay.kafka.connect.bigquery.convert.kafkadata.KafkaDataBQRecordConverter;
 import com.wepay.kafka.connect.bigquery.convert.kafkadata.KafkaDataBQSchemaConverter;
 
+import org.apache.commons.codec.binary.StringUtils;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
@@ -205,6 +206,16 @@ public class BigQuerySinkConfig extends AbstractConfig {
       "If true, no fields in any produced BigQuery schema will be REQUIRED. All "
       + "non-nullable avro fields will be translated as NULLABLE (or REPEATED, if arrays).";
 
+  public static final String TIMESTAMP_PARTITION_FIELD_NAME_CONFIG = "timestampPartitionFieldName";
+  private static final ConfigDef.Type TIMESTAMP_PARTITION_FIELD_NAME_TYPE = ConfigDef.Type.STRING;
+  private static final String TIMESTAMP_PARTITION_FIELD_NAME_DEFAULT = "";
+  private static final ConfigDef.Importance TIMESTAMP_PARTITION_FIELD_NAME_IMPORTANCE =
+      ConfigDef.Importance.LOW;
+  private static final String TIMESTAMP_PARTITION_FIELD_NAME_DOC =
+      "The name of the field in the value that contains the timestamp to partition by in BigQuery"
+          + " and enable timestamp partitioning for each table. Leave this configuration blank,"
+          + " to enable ingestion time partitioning for each table.";
+
   static {
     config = new ConfigDef()
         .define(
@@ -314,7 +325,13 @@ public class BigQuerySinkConfig extends AbstractConfig {
             CONVERT_DOUBLE_SPECIAL_VALUES_DEFAULT,
             CONVERT_DOUBLE_SPECIAL_VALUES_IMPORTANCE,
             CONVERT_DOUBLE_SPECIAL_VALUES_DOC
-         );
+         ).define(
+            TIMESTAMP_PARTITION_FIELD_NAME_CONFIG,
+            TIMESTAMP_PARTITION_FIELD_NAME_TYPE,
+            TIMESTAMP_PARTITION_FIELD_NAME_DEFAULT,
+            TIMESTAMP_PARTITION_FIELD_NAME_IMPORTANCE,
+            TIMESTAMP_PARTITION_FIELD_NAME_DOC
+        );
   }
 
   @SuppressWarnings("unchecked")
@@ -564,6 +581,25 @@ public class BigQuerySinkConfig extends AbstractConfig {
     schemaRetriever.configure(originalsStrings());
 
     return schemaRetriever;
+  }
+
+  /**
+   * Returns the field name to use for timestamp partitioning.
+
+   * @return String that represents the field name.
+   */
+  public String getTimestampPartitionFieldName() {
+    return getString(TIMESTAMP_PARTITION_FIELD_NAME_CONFIG);
+  }
+
+  /**
+   * Returns whether timestamp partitioning is enabled - false, if ingestion-time partitioning.
+   * is enabled.
+   *
+   * @return boolean whether to use timestamp partitioning, false for ingestion-time.
+   */
+  public boolean useTimestampPartitioning() {
+    return getTimestampPartitionFieldName() != null && !getTimestampPartitionFieldName().isEmpty();
   }
 
   /**

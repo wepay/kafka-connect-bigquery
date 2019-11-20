@@ -102,7 +102,10 @@ public class BigQuerySinkConnector extends SinkConnector {
     }
     SchemaRetriever schemaRetriever = config.getSchemaRetriever();
     SchemaConverter<com.google.cloud.bigquery.Schema> schemaConverter = config.getSchemaConverter();
-    return new SchemaManager(schemaRetriever, schemaConverter, bigQuery);
+    return new SchemaManager(schemaRetriever,
+        schemaConverter,
+        bigQuery,
+        config.getTimestampPartitionFieldName());
   }
 
   private void ensureExistingTables(

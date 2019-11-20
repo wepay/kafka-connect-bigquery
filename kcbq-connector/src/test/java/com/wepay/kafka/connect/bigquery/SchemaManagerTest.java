@@ -52,7 +52,8 @@ public class SchemaManagerTest {
 
     SchemaManager schemaManager = new SchemaManager(mockSchemaRetriever,
                                                     mockSchemaConverter,
-                                                    mockBigQuery);
+                                                    mockBigQuery,
+                                                    "");
 
     Schema mockKafkaSchema = mock(Schema.class);
     // we would prefer to mock this class, but it is final.

@@ -16,7 +16,7 @@ project.ext {
     apacheHttpClientVersion = '4.5.6'
     avroVersion = '1.8.1'
     debeziumVersion = '0.6.1'
-    googleCloudVersion = '1.79.0'
+    googleCloudVersion = '1.101.0'
     googleAuthVersion = '0.9.0'
     googleCloudGsonVersion = '2.8.5'
     ioConfluentVersion = '5.1.1'

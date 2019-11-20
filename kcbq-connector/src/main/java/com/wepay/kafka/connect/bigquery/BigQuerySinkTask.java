@@ -155,6 +155,12 @@ public class BigQuerySinkTask extends SinkTask {
       convertedRecord = FieldNameSanitizer.replaceInvalidKeys(convertedRecord);
     }
 
+    if (config.useTimestampPartitioning()) {
+      if (!convertedRecord.containsKey(config.getTimestampPartitionFieldName())) {
+        logger.warn("Record does not contain the timestamp partitioning field name");
+      }
+    }
+
     return RowToInsert.of(getRowId(record), convertedRecord);
   }
 
@@ -241,7 +247,10 @@ public class BigQuerySinkTask extends SinkTask {
     schemaRetriever = config.getSchemaRetriever();
     SchemaConverter<com.google.cloud.bigquery.Schema> schemaConverter =
         config.getSchemaConverter();
-    return new SchemaManager(schemaRetriever, schemaConverter, bigQuery);
+    return new SchemaManager(schemaRetriever,
+        schemaConverter,
+        bigQuery,
+        config.getTimestampPartitionFieldName());
   }
 
   private BigQueryWriter getBigQueryWriter() {

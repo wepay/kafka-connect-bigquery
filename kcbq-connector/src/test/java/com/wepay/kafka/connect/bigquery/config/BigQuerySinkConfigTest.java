@@ -19,6 +19,7 @@ package com.wepay.kafka.connect.bigquery.config;
 
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -93,6 +94,27 @@ public class BigQuerySinkConfigTest {
     BigQuerySinkConfig testConfig = new BigQuerySinkConfig(configProperties);
 
     assertTrue(testConfig.getRecordConverter() instanceof KafkaDataBQRecordConverter);
+  }
+
+  @Test
+  public void testEmptyTimestampPartitionFieldName() {
+    Map<String, String> configProperties = propertiesFactory.getProperties();
+
+    BigQuerySinkConfig testConfig = new BigQuerySinkConfig(configProperties);
+
+    assertFalse(testConfig.useTimestampPartitioning());
+    assertTrue(testConfig.getTimestampPartitionFieldName().isEmpty());
+  }
+
+  @Test
+  public void testTimestampPartitionFieldName() {
+    Map<String, String> configProperties = propertiesFactory.getProperties();
+    configProperties.put(BigQuerySinkConfig.TIMESTAMP_PARTITION_FIELD_NAME_CONFIG, "name");
+
+    BigQuerySinkConfig testConfig = new BigQuerySinkConfig(configProperties);
+
+    assertTrue(testConfig.useTimestampPartitioning());
+    assertEquals("name", testConfig.getTimestampPartitionFieldName());
   }
 
   @Test(expected = ConfigException.class)
