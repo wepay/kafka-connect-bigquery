@@ -41,7 +41,9 @@ public class SchemaManager {
     this.schemaRetriever = schemaRetriever;
     this.schemaConverter = schemaConverter;
     this.bigQuery = bigQuery;
-    this.timestampPartitionFieldName = timestampPartitionFieldName;
+    this.timestampPartitionFieldName = timestampPartitionFieldName == null
+        ? ""
+        : timestampPartitionFieldName;
   }
 
   /**
@@ -73,7 +75,7 @@ public class SchemaManager {
         schemaConverter.convertSchema(kafkaConnectSchema);
 
     TimePartitioning timePartitioning = TimePartitioning.of(Type.DAY);
-    if (timestampPartitionFieldName != null || !timestampPartitionFieldName.isEmpty()) {
+    if (!timestampPartitionFieldName.isEmpty()) {
       // timestamp based partitioning vs ingestion time partitioning
       timePartitioning = timePartitioning.toBuilder().setField(timestampPartitionFieldName).build();
     }

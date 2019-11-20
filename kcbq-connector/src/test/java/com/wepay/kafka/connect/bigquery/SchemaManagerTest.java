@@ -24,6 +24,7 @@ import static org.mockito.Mockito.when;
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.LegacySQLTypeName;
+import com.google.cloud.bigquery.StandardTableDefinition;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableInfo;
 
@@ -67,5 +68,80 @@ public class SchemaManagerTest {
 
     Assert.assertEquals("Kafka doc does not match BigQuery table description",
                         testDoc, tableInfo.getDescription());
+
+    Assert.assertNull("Timestamp partition field name is not null",
+        ((StandardTableDefinition) tableInfo.getDefinition()).getTimePartitioning().getField());
+  }
+
+  @Test
+  public void testTimestampPartitionSet() {
+    final String testTableName = "testTable";
+    final String testDatasetName = "testDataset";
+    final String testDoc = "test doc";
+    final String testField = "testFieldName";
+    final TableId tableId = TableId.of(testDatasetName, testTableName);
+
+    SchemaRetriever mockSchemaRetriever = mock(SchemaRetriever.class);
+    @SuppressWarnings("unchecked")
+    SchemaConverter<com.google.cloud.bigquery.Schema> mockSchemaConverter =
+        (SchemaConverter<com.google.cloud.bigquery.Schema>) mock(SchemaConverter.class);
+    BigQuery mockBigQuery = mock(BigQuery.class);
+
+    SchemaManager schemaManager = new SchemaManager(mockSchemaRetriever,
+        mockSchemaConverter,
+        mockBigQuery,
+        testField);
+
+    Schema mockKafkaSchema = mock(Schema.class);
+    // we would prefer to mock this class, but it is final.
+    com.google.cloud.bigquery.Schema fakeBigQuerySchema =
+        com.google.cloud.bigquery.Schema.of(Field.of("mock field", LegacySQLTypeName.STRING));
+
+    when(mockSchemaConverter.convertSchema(mockKafkaSchema)).thenReturn(fakeBigQuerySchema);
+    when(mockKafkaSchema.doc()).thenReturn(testDoc);
+
+    TableInfo tableInfo = schemaManager.constructTableInfo(tableId, mockKafkaSchema);
+
+    Assert.assertEquals("Kafka doc does not match BigQuery table description",
+        testDoc, tableInfo.getDescription());
+
+    Assert.assertEquals( "The field name does not match the field name of time partition",
+        testField,
+        ((StandardTableDefinition) tableInfo.getDefinition()).getTimePartitioning().getField());
+  }
+
+  @Test
+  public void testNullTimestampPartitionName() {
+    final String testTableName = "testTable";
+    final String testDatasetName = "testDataset";
+    final String testDoc = "test doc";
+    final TableId tableId = TableId.of(testDatasetName, testTableName);
+
+    SchemaRetriever mockSchemaRetriever = mock(SchemaRetriever.class);
+    @SuppressWarnings("unchecked")
+    SchemaConverter<com.google.cloud.bigquery.Schema> mockSchemaConverter =
+        (SchemaConverter<com.google.cloud.bigquery.Schema>) mock(SchemaConverter.class);
+    BigQuery mockBigQuery = mock(BigQuery.class);
+
+    SchemaManager schemaManager = new SchemaManager(mockSchemaRetriever,
+        mockSchemaConverter,
+        mockBigQuery,
+        null);
+
+    Schema mockKafkaSchema = mock(Schema.class);
+    // we would prefer to mock this class, but it is final.
+    com.google.cloud.bigquery.Schema fakeBigQuerySchema =
+        com.google.cloud.bigquery.Schema.of(Field.of("mock field", LegacySQLTypeName.STRING));
+
+    when(mockSchemaConverter.convertSchema(mockKafkaSchema)).thenReturn(fakeBigQuerySchema);
+    when(mockKafkaSchema.doc()).thenReturn(testDoc);
+
+    TableInfo tableInfo = schemaManager.constructTableInfo(tableId, mockKafkaSchema);
+
+    Assert.assertEquals("Kafka doc does not match BigQuery table description",
+        testDoc, tableInfo.getDescription());
+
+    Assert.assertNull("Timestamp partition field name is not null",
+        ((StandardTableDefinition) tableInfo.getDefinition()).getTimePartitioning().getField());
   }
 }
