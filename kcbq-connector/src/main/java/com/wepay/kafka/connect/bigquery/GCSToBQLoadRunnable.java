@@ -271,11 +271,22 @@ public class GCSToBQLoadRunnable implements Runnable {
     logger.info("Attempting to delete {} blobs", numberOfBlobs);
 
     try {
+      // Issue a batch delete api call
       List<Boolean> resultList = bucket.getStorage().delete(blobIdsToDelete);
-      deletableBlobIds.removeAll(blobIdsToDelete);
 
-      failedDeletes = resultList.stream().filter((b) -> b == false).count();
+      // Filter the blobs we couldn't delete from the list of deletable blobs
+      for (i = 0; i < blobIdsToDelete.length; i++) {
+        if (!resultList[i]) {
+          // This blob was not successful, remove it from the list.
+          failedDeletes++;
+          blobIdsToDelete.remove(i);
+        }
+      }
+
+      // Calculate number of successful deletes, remove the successful deletes from
+      // the deletableBlobIds.
       successfulDeletes = numberOfBlobs - failedDeletes;
+      deletableBlobIds.removeAll(blobIdsToDelete);
 
       logger.info("Successfully deleted {} blobs; failed to delete {} blobs",
                   successfulDeletes,
