@@ -263,19 +263,26 @@ public class GCSToBQLoadRunnable implements Runnable {
    */
   private void deleteBlobs() {
     List<BlobId> blobIdsToDelete = new ArrayList<>();
-    logger.info("Attempting to delete {} blobs", deletableBlobIds.size());
-    for (BlobId blobId : deletableBlobIds) {
-      try {
-        bucket.getStorage().delete(blobId);
-        blobIdsToDelete.add(blobId);
-      } catch (StorageException ex) {
-        logger.warn("Failed to delete blob: {}/{}", blobId.getBucket(), blobId.getName());
-      }
+    blobIdsToDelete.addAll(deletableBlobIds);
+    int numberOfBlobs = blobIdsToDelete.size();
+    long failedDeletes = 0;
+    long successfulDeletes = 0;
+
+    logger.info("Attempting to delete {} blobs", numberOfBlobs);
+
+    try {
+      List<Boolean> resultList = bucket.getStorage().delete(blobIdsToDelete);
+      deletableBlobIds.removeAll(blobIdsToDelete);
+
+      failedDeletes = resultList.stream().filter((b) -> b == false).count();
+      successfulDeletes = numberOfBlobs - failedDeletes;
+
+      logger.info("Successfully deleted {} blobs; failed to delete {} blobs",
+                  successfulDeletes,
+                  failedDeletes);
+    } catch (StorageException ex) {
+      logger.warn("Storage exception while attempting to delete blobs", ex);
     }
-    deletableBlobIds.removeAll(blobIdsToDelete);
-    logger.info("Successfully deleted {} blobs; failed to delete {} blobs",
-                blobIdsToDelete.size(),
-                deletableBlobIds.size());
   }
 
   @Override
