@@ -268,6 +268,11 @@ public class GCSToBQLoadRunnable implements Runnable {
     long failedDeletes = 0;
     long successfulDeletes = 0;
 
+    if (numberOfBlobs == 0) {
+      logger.info("No blobs to delete");
+      return;
+    }
+
     logger.info("Attempting to delete {} blobs", numberOfBlobs);
 
     try {
