@@ -283,8 +283,11 @@ public class GCSToBQLoadRunnable implements Runnable {
       for (int i = 0; i < numberOfBlobs; i++) {
         if (!resultList.get(i)) {
           // This blob was not successful, remove it from the list.
+          // Adjust the target index by the number of failed deletes we've
+          // already seen since we're mutating the list as we go.
+          int targetIndex = i - failedDeletes;
+          blobIdsToDelete.remove(targetIndex);
           failedDeletes++;
-          blobIdsToDelete.remove(i);
         }
       }
 
