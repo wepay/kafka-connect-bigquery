@@ -21,17 +21,13 @@ package com.wepay.kafka.connect.bigquery;
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.TableId;
 
-import com.wepay.kafka.connect.bigquery.api.SchemaRetriever;
-
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig;
-import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConnectorConfig;
-
-import com.wepay.kafka.connect.bigquery.convert.SchemaConverter;
 
 import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
 import com.wepay.kafka.connect.bigquery.exception.SinkConfigConnectException;
 
 import com.wepay.kafka.connect.bigquery.utils.TopicToTableResolver;
+import com.wepay.kafka.connect.bigquery.api.TopicAndRecordName;
 import com.wepay.kafka.connect.bigquery.utils.Version;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -43,10 +39,7 @@ import org.apache.kafka.connect.sink.SinkConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * A {@link SinkConnector} used to delegate BigQuery data writes to
@@ -56,17 +49,11 @@ public class BigQuerySinkConnector extends SinkConnector {
   private final BigQuery testBigQuery;
   private final SchemaManager testSchemaManager;
 
-  public static final String  GCS_BQ_TASK_CONFIG_KEY = "GCSBQTask";
+  static final String GCS_BQ_TASK_CONFIG_KEY = "GCSBQTask";
 
   public BigQuerySinkConnector() {
     testBigQuery = null;
     testSchemaManager = null;
-  }
-
-  // For testing purposes only; will never be called by the Kafka Connect framework
-  BigQuerySinkConnector(BigQuery bigQuery) {
-    this.testBigQuery = bigQuery;
-    this.testSchemaManager = null;
   }
 
   // For testing purposes only; will never be called by the Kafka Connect framework
@@ -75,7 +62,7 @@ public class BigQuerySinkConnector extends SinkConnector {
     this.testSchemaManager = schemaManager;
   }
 
-  private BigQuerySinkConnectorConfig config;
+  private BigQuerySinkConfig config;
   private Map<String, String> configProperties;
 
   private static final Logger logger = LoggerFactory.getLogger(BigQuerySinkConnector.class);
@@ -83,16 +70,16 @@ public class BigQuerySinkConnector extends SinkConnector {
   @Override
   public ConfigDef config() {
     logger.trace("connector.config()");
-    return config.getConfig();
+    return BigQuerySinkConfig.getConfig();
   }
 
   private BigQuery getBigQuery() {
     if (testBigQuery != null) {
       return testBigQuery;
     }
-    String projectName = config.getString(config.PROJECT_CONFIG);
-    String key = config.getString(config.KEYFILE_CONFIG);
-    String keySource = config.getString(config.KEY_SOURCE_CONFIG);
+    String projectName = config.getString(BigQuerySinkConfig.PROJECT_CONFIG);
+    String key = config.getString(BigQuerySinkConfig.KEYFILE_CONFIG);
+    String keySource = config.getString(BigQuerySinkConfig.KEY_SOURCE_CONFIG);
     return new BigQueryHelper().setKeySource(keySource).connect(projectName, key);
   }
 
@@ -100,33 +87,30 @@ public class BigQuerySinkConnector extends SinkConnector {
     if (testSchemaManager != null) {
       return testSchemaManager;
     }
-    SchemaRetriever schemaRetriever = config.getSchemaRetriever();
-    SchemaConverter<com.google.cloud.bigquery.Schema> schemaConverter = config.getSchemaConverter();
-    return new SchemaManager(schemaRetriever, schemaConverter, bigQuery);
+    return new SchemaManager(bigQuery, config);
   }
 
   private void ensureExistingTables(
       BigQuery bigQuery,
       SchemaManager schemaManager,
-      Map<String, TableId> topicsToTableIds) {
-    for (Map.Entry<String, TableId> topicToTableId : topicsToTableIds.entrySet()) {
-      String topic = topicToTableId.getKey();
+      Map<TopicAndRecordName, TableId> topicsToTableIds) {
+    for (Map.Entry<TopicAndRecordName, TableId> topicToTableId : topicsToTableIds.entrySet()) {
       TableId tableId = topicToTableId.getValue();
       if (bigQuery.getTable(tableId) == null) {
         logger.info("Table {} does not exist; attempting to create", tableId);
-        schemaManager.createTable(tableId, topic);
+        schemaManager.createTable(tableId, topicToTableId.getKey());
       }
     }
   }
 
   private void ensureExistingTables(
       BigQuery bigQuery,
-      Map<String, TableId> topicsToTableIds) {
+      Map<TopicAndRecordName, TableId> topicsToTableIds) {
     for (TableId tableId : topicsToTableIds.values()) {
       if (bigQuery.getTable(tableId) == null) {
         logger.warn(
             "You may want to enable auto table creation by setting {}=true in the properties file",
-            config.TABLE_CREATE_CONFIG);
+            BigQuerySinkConfig.TABLE_CREATE_CONFIG);
         throw new BigQueryConnectException("Table '" + tableId + "' does not exist");
       }
     }
@@ -134,9 +118,15 @@ public class BigQuerySinkConnector extends SinkConnector {
 
   private void ensureExistingTables() {
     BigQuery bigQuery = getBigQuery();
-    Map<String, TableId> topicsToTableIds = TopicToTableResolver.getTopicsToTables(config);
-    if (config.getBoolean(config.TABLE_CREATE_CONFIG)) {
-      SchemaManager schemaManager = getSchemaManager(bigQuery);
+    Map<TopicAndRecordName, TableId> topicsToTableIds;
+    SchemaManager schemaManager = getSchemaManager(bigQuery);
+    if (config.getBoolean(BigQuerySinkConfig.SUPPORT_MULTI_SCHEMA_TOPICS_CONFIG)) {
+      topicsToTableIds = TopicToTableResolver.getTopicsToTables(config, schemaManager.discoverSchemas());
+    } else {
+      topicsToTableIds = TopicToTableResolver.getTopicsToTables(config);
+    }
+
+    if (config.getBoolean(BigQuerySinkConfig.TABLE_CREATE_CONFIG)) {
       ensureExistingTables(bigQuery, schemaManager, topicsToTableIds);
     } else {
       ensureExistingTables(bigQuery, topicsToTableIds);
@@ -148,7 +138,7 @@ public class BigQuerySinkConnector extends SinkConnector {
     logger.trace("connector.start()");
     try {
       configProperties = properties;
-      config = new BigQuerySinkConnectorConfig(properties);
+      config = new BigQuerySinkConfig(properties);
     } catch (ConfigException err) {
       throw new SinkConfigConnectException(
           "Couldn't start BigQuerySinkConnector due to configuration error",

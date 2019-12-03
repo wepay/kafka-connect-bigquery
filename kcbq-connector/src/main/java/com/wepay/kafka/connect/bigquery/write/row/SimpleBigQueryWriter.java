@@ -23,6 +23,7 @@ import com.google.cloud.bigquery.BigQueryError;
 import com.google.cloud.bigquery.InsertAllRequest;
 import com.google.cloud.bigquery.InsertAllResponse;
 
+import com.wepay.kafka.connect.bigquery.api.TopicAndRecordName;
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkTaskConfig;
 import com.wepay.kafka.connect.bigquery.utils.PartitionedTableId;
 
@@ -55,12 +56,12 @@ public class SimpleBigQueryWriter extends BigQueryWriter {
   /**
    * Sends the request to BigQuery, and return a map of insertErrors in case of partial failure.
    * Throws an exception if any other errors occur as a result of doing so.
-   * @see BigQueryWriter#performWriteRequest(PartitionedTableId, List, String)
+   * @see BigQueryWriter#performWriteRequest(PartitionedTableId, List, TopicAndRecordName)
    */
   @Override
   public Map<Long, List<BigQueryError>> performWriteRequest(PartitionedTableId tableId,
                                                             List<InsertAllRequest.RowToInsert> rows,
-                                                            String topic) {
+                                                            TopicAndRecordName topicAndRecordName) {
     InsertAllRequest request = createInsertAllRequest(tableId, rows);
     InsertAllResponse writeResponse = bigQuery.insertAll(request);
     if (writeResponse.hasErrors()) {

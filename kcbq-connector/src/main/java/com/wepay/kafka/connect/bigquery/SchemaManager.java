@@ -7,12 +7,18 @@ import com.google.cloud.bigquery.TableInfo;
 import com.google.cloud.bigquery.TimePartitioning;
 
 import com.wepay.kafka.connect.bigquery.api.SchemaRetriever;
+import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig;
 import com.wepay.kafka.connect.bigquery.convert.SchemaConverter;
 
-import com.wepay.kafka.connect.bigquery.write.row.AdaptiveBigQueryWriter;
+import com.wepay.kafka.connect.bigquery.api.TopicAndRecordName;
 import org.apache.kafka.connect.data.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Class for managing Schemas of BigQuery tables (creating and updating).
@@ -23,39 +29,38 @@ public class SchemaManager {
   private final SchemaRetriever schemaRetriever;
   private final SchemaConverter<com.google.cloud.bigquery.Schema> schemaConverter;
   private final BigQuery bigQuery;
+  private final BigQuerySinkConfig config;
 
   /**
-   * @param schemaRetriever Used to determine the Kafka Connect Schema that should be used for a
-   *                        given table.
-   * @param schemaConverter Used to convert Kafka Connect Schemas into BigQuery format.
    * @param bigQuery Used to communicate create/update requests to BigQuery.
+   * @param config BigQuery sink configuration.
    */
   public SchemaManager(
-      SchemaRetriever schemaRetriever,
-      SchemaConverter<com.google.cloud.bigquery.Schema> schemaConverter,
-      BigQuery bigQuery) {
-    this.schemaRetriever = schemaRetriever;
-    this.schemaConverter = schemaConverter;
+      BigQuery bigQuery,
+      BigQuerySinkConfig config) {
+    this.schemaRetriever = config.getSchemaRetriever();
+    this.schemaConverter = config.getSchemaConverter();
     this.bigQuery = bigQuery;
+    this.config = config;
   }
 
   /**
    * Create a new table in BigQuery.
    * @param table The BigQuery table to create.
-   * @param topic The Kafka topic used to determine the schema.
+   * @param topicAndRecordName The Kafka topic and an optional record name used to determine the schema.
    */
-  public void createTable(TableId table, String topic) {
-    Schema kafkaConnectSchema = schemaRetriever.retrieveSchema(table, topic);
+  public void createTable(TableId table, TopicAndRecordName topicAndRecordName) {
+    Schema kafkaConnectSchema = schemaRetriever.retrieveSchema(table, topicAndRecordName);
     bigQuery.create(constructTableInfo(table, kafkaConnectSchema));
   }
 
   /**
    * Update an existing table in BigQuery.
    * @param table The BigQuery table to update.
-   * @param topic The Kafka topic used to determine the schema.
+   * @param topicAndRecordName The Kafka topic and an optional record name used to determine the schema.
    */
-  public void updateSchema(TableId table, String topic) {
-    Schema kafkaConnectSchema = schemaRetriever.retrieveSchema(table, topic);
+  public void updateSchema(TableId table, TopicAndRecordName topicAndRecordName) {
+    Schema kafkaConnectSchema = schemaRetriever.retrieveSchema(table, topicAndRecordName);
     TableInfo tableInfo = constructTableInfo(table, kafkaConnectSchema);
     logger.info("Attempting to update table `{}` with schema {}",
         table, tableInfo.getDefinition().getSchema());
@@ -76,5 +81,15 @@ public class SchemaManager {
       tableInfoBuilder.setDescription(kafkaConnectSchema.doc());
     }
     return tableInfoBuilder.build();
+  }
+
+  public Map<TopicAndRecordName, Schema> discoverSchemas() {
+    List<String> topics = config.getList(BigQuerySinkConfig.TOPICS_CONFIG);
+    Map<Pattern, String> recordAliases =
+        config
+            .getSinglePatterns(BigQuerySinkConfig.RECORD_ALIASES_CONFIG)
+            .stream()
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    return schemaRetriever.retrieveSchemas(topics, recordAliases);
   }
 }

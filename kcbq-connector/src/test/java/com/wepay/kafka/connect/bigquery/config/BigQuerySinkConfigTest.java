@@ -207,4 +207,14 @@ public class BigQuerySinkConfigTest {
 
     new BigQuerySinkConfig(badConfigProperties);
   }
+
+  @Test(expected = ConfigException.class)
+  public void testAutoTableCreateWithoutRetriever() {
+    Map<String, String> badConfigProperties = propertiesFactory.getProperties();
+    badConfigProperties.remove(BigQuerySinkConfig.SCHEMA_RETRIEVER_CONFIG);
+    badConfigProperties.put(BigQuerySinkConfig.TABLE_CREATE_CONFIG, "true");
+
+    new BigQuerySinkConfig(badConfigProperties);
+  }
+
 }

@@ -32,6 +32,7 @@ import com.google.cloud.bigquery.InsertAllResponse;
 import com.google.cloud.storage.Storage;
 
 import com.wepay.kafka.connect.bigquery.BigQuerySinkTask;
+import com.wepay.kafka.connect.bigquery.SchemaManager;
 import com.wepay.kafka.connect.bigquery.SinkTaskPropertiesFactory;
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig;
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkTaskConfig;
@@ -85,7 +86,7 @@ public class BigQueryWriterTest {
     SinkTaskContext sinkTaskContext = mock(SinkTaskContext.class);
 
     Storage storage = mock(Storage.class);
-    BigQuerySinkTask testTask = new BigQuerySinkTask(bigQuery, null, storage);
+    BigQuerySinkTask testTask = new BigQuerySinkTask(bigQuery, null, mock(SchemaManager.class), storage);
     testTask.initialize(sinkTaskContext);
     testTask.start(properties);
     testTask.put(
@@ -133,7 +134,7 @@ public class BigQueryWriterTest {
     SinkTaskContext sinkTaskContext = mock(SinkTaskContext.class);
 
     Storage storage = mock(Storage.class);
-    BigQuerySinkTask testTask = new BigQuerySinkTask(bigQuery, null, storage);
+    BigQuerySinkTask testTask = new BigQuerySinkTask(bigQuery, null, mock(SchemaManager.class), storage);
     testTask.initialize(sinkTaskContext);
     testTask.start(properties);
     testTask.put(sinkRecordList);
@@ -182,7 +183,7 @@ public class BigQueryWriterTest {
     SinkTaskContext sinkTaskContext = mock(SinkTaskContext.class);
 
     Storage storage = mock(Storage.class);
-    BigQuerySinkTask testTask = new BigQuerySinkTask(bigQuery, null, storage);
+    BigQuerySinkTask testTask = new BigQuerySinkTask(bigQuery, null, mock(SchemaManager.class), storage);
     testTask.initialize(sinkTaskContext);
     testTask.start(properties);
     testTask.put(sinkRecordList);

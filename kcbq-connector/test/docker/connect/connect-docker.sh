@@ -17,8 +17,17 @@
 tar -C /usr/local/share/kafka/plugins/kafka-connect-bigquery/ -xf /usr/local/share/kafka/plugins/kafka-connect-bigquery/kcbq.tar
 
 connect-standalone \
-    /etc/kafka-connect-bigquery/standalone.properties \
-    /etc/kafka-connect-bigquery/connector.properties &
+    /etc/kafka-connect-bigquery/standalone-single-schema.properties \
+    /etc/kafka-connect-bigquery/connector-single-schema.properties &
+SINGLE_PID=$!
 
 sleep 60
-kill $!
+kill $SINGLE_PID
+
+connect-standalone \
+    /etc/kafka-connect-bigquery/standalone-multi-schema.properties \
+    /etc/kafka-connect-bigquery/connector-multi-schema.properties &
+MULTI_PID=$!
+
+sleep 60
+kill $MULTI_PID

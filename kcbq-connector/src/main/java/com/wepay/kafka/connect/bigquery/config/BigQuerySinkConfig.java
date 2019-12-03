@@ -34,6 +34,8 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
 
 import org.apache.kafka.connect.sink.SinkConnector;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -52,6 +54,7 @@ import java.util.regex.Pattern;
  */
 public class BigQuerySinkConfig extends AbstractConfig {
   private static final ConfigDef config;
+  private static final Logger logger = LoggerFactory.getLogger(BigQuerySinkConfig.class);
   private static final Validator validator = new Validator();
 
   // Values taken from https://github.com/apache/kafka/blob/1.1.1/connect/runtime/src/main/java/org/apache/kafka/connect/runtime/SinkConnectorConfig.java#L33
@@ -64,6 +67,13 @@ public class BigQuerySinkConfig extends AbstractConfig {
   private static final String TOPICS_DOC =
       "List of topics to consume, separated by commas";
   private static final String TOPICS_DISPLAY =                   "Topics";
+
+  public static final String TABLE_CREATE_CONFIG =                     "autoCreateTables";
+  private static final ConfigDef.Type TABLE_CREATE_TYPE =              ConfigDef.Type.BOOLEAN;
+  private static final boolean TABLE_CREATE_DEFAULT =                  false;
+  private static final ConfigDef.Importance TABLE_CREATE_IMPORTANCE =  ConfigDef.Importance.HIGH;
+  private static final String TABLE_CREATE_DOC =
+      "Automatically create BigQuery tables if they don't already exist";
 
   public static final String ENABLE_BATCH_CONFIG =                         "enableBatchLoad";
   private static final ConfigDef.Type ENABLE_BATCH_TYPE =                  ConfigDef.Type.LIST;
@@ -101,11 +111,28 @@ public class BigQuerySinkConfig extends AbstractConfig {
   private static final ConfigDef.Type TOPICS_TO_TABLES_TYPE =              ConfigDef.Type.LIST;
   private static final ConfigDef.Importance TOPICS_TO_TABLES_IMPORTANCE =
       ConfigDef.Importance.MEDIUM;
-  public static final Object TOPICS_TO_TABLES_DEFAULT =                    null;
+  private static final Object TOPICS_TO_TABLES_DEFAULT =                    null;
   private static final String TOPICS_TO_TABLES_DOC =
       "A list of mappings from topic regexes to table names. Note the regex must include "
       + "capture groups that are referenced in the format string using placeholders (i.e. $1) "
       + "(form of <topic regex>=<format string>)";
+
+  public static final String RECORD_ALIASES_CONFIG =                         "recordAliases";
+  private static final ConfigDef.Type RECORD_ALIASES_TYPE =                  ConfigDef.Type.LIST;
+  private static final ConfigDef.Importance RECORD_ALIASES_IMPORTANCE =      ConfigDef.Importance.MEDIUM;
+  private static final Object RECORD_ALIASES_DEFAULT =                        null;
+  private static final String RECORD_ALIASES_DOC =
+      "A list of mappings from record name regexes to table name postfixes. Note the regex must include "
+      + "capture groups that are referenced in the format string using placeholders (i.e. $1) "
+      + "(form of <topic regex>=<format string>)";
+
+  public static final String SUPPORT_MULTI_SCHEMA_TOPICS_CONFIG =                    "supportMultiSchemaTopics";
+  private static final ConfigDef.Type SUPPORT_MULTI_SCHEMA_TOPICS_TYPE =              ConfigDef.Type.BOOLEAN;
+  private static final ConfigDef.Importance SUPPORT_MULTI_SCHEMA_TOPICS_IMPORTANCE =  ConfigDef.Importance.MEDIUM;
+  private static final Object SUPPORT_MULTI_SCHEMA_TOPICS_DEFAULT =                    false;
+  private static final String SUPPORT_MULTI_SCHEMA_TOPICS_DOC =
+      "Whether to support multi schema topics by appending record names to table names;"
+      + " if not enabled table names will be created using topic names only";
 
   public static final String PROJECT_CONFIG =                     "project";
   private static final ConfigDef.Type PROJECT_TYPE =              ConfigDef.Type.STRING;
@@ -132,14 +159,14 @@ public class BigQuerySinkConfig extends AbstractConfig {
 
   public static final String KEYFILE_CONFIG =                     "keyfile";
   private static final ConfigDef.Type KEYFILE_TYPE =              ConfigDef.Type.STRING;
-  public static final String KEYFILE_DEFAULT =                    null;
+  private static final String KEYFILE_DEFAULT =                    null;
   private static final ConfigDef.Importance KEYFILE_IMPORTANCE =  ConfigDef.Importance.MEDIUM;
   private static final String KEYFILE_DOC =
       "The file containing a JSON key with BigQuery service account credentials";
 
   public static final String KEY_SOURCE_CONFIG =                "keySource";
   private static final ConfigDef.Type KEY_SOURCE_TYPE =         ConfigDef.Type.STRING;
-  public static final String KEY_SOURCE_DEFAULT =               "FILE";
+  private static final String KEY_SOURCE_DEFAULT =               "FILE";
   private static final ConfigDef.Validator KEY_SOURCE_VALIDATOR =
           ConfigDef.ValidString.in("FILE", "JSON");
   private static final ConfigDef.Importance KEY_SOURCE_IMPORTANCE = ConfigDef.Importance.MEDIUM;
@@ -148,7 +175,7 @@ public class BigQuerySinkConfig extends AbstractConfig {
 
   public static final String SANITIZE_TOPICS_CONFIG =                     "sanitizeTopics";
   private static final ConfigDef.Type SANITIZE_TOPICS_TYPE =              ConfigDef.Type.BOOLEAN;
-  public static final Boolean SANITIZE_TOPICS_DEFAULT =                   false;
+  private static final Boolean SANITIZE_TOPICS_DEFAULT =                   false;
   private static final ConfigDef.Importance SANITIZE_TOPICS_IMPORTANCE =
       ConfigDef.Importance.MEDIUM;
   private static final String SANITIZE_TOPICS_DOC =
@@ -157,7 +184,7 @@ public class BigQuerySinkConfig extends AbstractConfig {
 
   public static final String SANITIZE_FIELD_NAME_CONFIG =                     "sanitizeFieldNames";
   private static final ConfigDef.Type SANITIZE_FIELD_NAME_TYPE =              ConfigDef.Type.BOOLEAN;
-  public static final Boolean SANITIZE_FIELD_NAME_DEFAULT =                   false;
+  private static final Boolean SANITIZE_FIELD_NAME_DEFAULT =                   false;
   private static final ConfigDef.Importance SANITIZE_FIELD_NAME_IMPORTANCE =
           ConfigDef.Importance.MEDIUM;
   private static final String SANITIZE_FIELD_NAME_DOC =
@@ -169,17 +196,17 @@ public class BigQuerySinkConfig extends AbstractConfig {
                   + "and might cause key duplication error.";
 
   public static final String INCLUDE_KAFKA_DATA_CONFIG =                   "includeKafkaData";
-  public static final ConfigDef.Type INCLUDE_KAFKA_DATA_TYPE =             ConfigDef.Type.BOOLEAN;
-  public static final Boolean INCLUDE_KAFKA_DATA_DEFAULT =                 false;
-  public static final ConfigDef.Importance INCLUDE_KAFKA_DATA_IMPORTANCE =
+  private static final ConfigDef.Type INCLUDE_KAFKA_DATA_TYPE =             ConfigDef.Type.BOOLEAN;
+  private static final Boolean INCLUDE_KAFKA_DATA_DEFAULT =                 false;
+  private static final ConfigDef.Importance INCLUDE_KAFKA_DATA_IMPORTANCE =
       ConfigDef.Importance.LOW;
-  public static final String INSTANCE_KAFKA_DATA_DOC =
+  private static final String INSTANCE_KAFKA_DATA_DOC =
       "Whether to include an extra block containing the Kafka source topic, offset, "
       + "and partition information in the resulting BigQuery rows.";
 
   public static final String AVRO_DATA_CACHE_SIZE_CONFIG =                 "avroDataCacheSize";
   private static final ConfigDef.Type AVRO_DATA_CACHE_SIZE_TYPE =          ConfigDef.Type.INT;
-  public static final Integer AVRO_DATA_CACHE_SIZE_DEFAULT =               100;
+  private static final Integer AVRO_DATA_CACHE_SIZE_DEFAULT =               100;
   private static final ConfigDef.Validator AVRO_DATA_CACHE_SIZE_VALIDATOR =
       ConfigDef.Range.atLeast(0);
   private static final ConfigDef.Importance AVRO_DATA_CACHE_SIZE_IMPORTANCE =
@@ -188,11 +215,11 @@ public class BigQuerySinkConfig extends AbstractConfig {
       "The size of the cache to use when converting schemas from Avro to Kafka Connect";
 
   public static final String CONVERT_DOUBLE_SPECIAL_VALUES_CONFIG =    "convertDoubleSpecialValues";
-  public static final ConfigDef.Type CONVERT_DOUBLE_SPECIAL_VALUES_TYPE =   ConfigDef.Type.BOOLEAN;
-  public static final Boolean CONVERT_DOUBLE_SPECIAL_VALUES_DEFAULT =       false;
-  public static final ConfigDef.Importance CONVERT_DOUBLE_SPECIAL_VALUES_IMPORTANCE =
+  private static final ConfigDef.Type CONVERT_DOUBLE_SPECIAL_VALUES_TYPE =   ConfigDef.Type.BOOLEAN;
+  private static final Boolean CONVERT_DOUBLE_SPECIAL_VALUES_DEFAULT =       false;
+  private static final ConfigDef.Importance CONVERT_DOUBLE_SPECIAL_VALUES_IMPORTANCE =
       ConfigDef.Importance.LOW;
-  public static final String CONVERT_DOUBLE_SPECIAL_VALUES_DOC =
+  private static final String CONVERT_DOUBLE_SPECIAL_VALUES_DOC =
           "Should +Infinity be converted to Double.MAX_VALUE and -Infinity and NaN be "
           + "converted to Double.MIN_VALUE so they can make it to BigQuery";
 
@@ -216,6 +243,11 @@ public class BigQuerySinkConfig extends AbstractConfig {
             TOPICS_ORDER_IN_GROUP,
             TOPICS_WIDTH,
             TOPICS_DISPLAY)
+        .define(TABLE_CREATE_CONFIG,
+            TABLE_CREATE_TYPE,
+            TABLE_CREATE_DEFAULT,
+            TABLE_CREATE_IMPORTANCE,
+            TABLE_CREATE_DOC)
         .define(
             ENABLE_BATCH_CONFIG,
             ENABLE_BATCH_TYPE,
@@ -246,6 +278,18 @@ public class BigQuerySinkConfig extends AbstractConfig {
             TOPICS_TO_TABLES_DEFAULT,
             TOPICS_TO_TABLES_IMPORTANCE,
             TOPICS_TO_TABLES_DOC
+        ).define(
+            RECORD_ALIASES_CONFIG,
+            RECORD_ALIASES_TYPE,
+            RECORD_ALIASES_DEFAULT,
+            RECORD_ALIASES_IMPORTANCE,
+            RECORD_ALIASES_DOC
+        ).define(
+            SUPPORT_MULTI_SCHEMA_TOPICS_CONFIG,
+            SUPPORT_MULTI_SCHEMA_TOPICS_TYPE,
+            SUPPORT_MULTI_SCHEMA_TOPICS_DEFAULT,
+            SUPPORT_MULTI_SCHEMA_TOPICS_IMPORTANCE,
+            SUPPORT_MULTI_SCHEMA_TOPICS_DOC
         ).define(
             PROJECT_CONFIG,
             PROJECT_TYPE,
@@ -422,6 +466,41 @@ public class BigQuerySinkConfig extends AbstractConfig {
     return patternList;
   }
 
+  public String getSingleMatch(String value,
+                                       String valueProperty,
+                                       String patternProperty) {
+    String match = null;
+    String previousPattern = null;
+
+    List<Map.Entry<Pattern, String>> patterns = getSinglePatterns(patternProperty);
+
+    for (Map.Entry<Pattern, String> pattern : patterns) {
+      Matcher patternMatcher = pattern.getKey().matcher(value);
+      if (patternMatcher.matches()) {
+        if (match != null) {
+          String secondMatch = pattern.getKey().toString();
+          throw new ConfigException("Value '" + value
+              + "' for property '" + valueProperty
+              + "' matches " + patternProperty
+              + " regexes for both '" + previousPattern
+              + "' and '" + secondMatch + "'"
+          );
+        }
+        String formatString = pattern.getValue();
+        try {
+          match = patternMatcher.replaceAll(formatString);
+          previousPattern = pattern.getKey().toString();
+        } catch (IndexOutOfBoundsException err) {
+          throw new ConfigException("Format string '" + formatString
+              + "' is invalid in property '" + patternProperty
+              + "'", err);
+        }
+      }
+    }
+
+    return match;
+  }
+
   private Map<String, String> getSingleMatches(
       List<Map.Entry<Pattern, String>> patterns,
       List<String> values,
@@ -578,6 +657,23 @@ public class BigQuerySinkConfig extends AbstractConfig {
     }
   }
 
+  private void checkAutoCreateTables() {
+    Class<?> schemaRetriever = getClass(BigQuerySinkConfig.SCHEMA_RETRIEVER_CONFIG);
+
+    boolean autoCreateTables = getBoolean(TABLE_CREATE_CONFIG);
+    if (autoCreateTables && schemaRetriever == null) {
+      throw new ConfigException(
+          "Cannot specify automatic table creation without a schema retriever"
+      );
+    }
+
+    if (schemaRetriever == null) {
+      logger.warn(
+          "No schema retriever class provided; auto table creation is impossible"
+      );
+    }
+  }
+
   /**
    * Return the ConfigDef object used to define this config's fields.
    *
@@ -590,10 +686,12 @@ public class BigQuerySinkConfig extends AbstractConfig {
   protected BigQuerySinkConfig(ConfigDef config, Map<String, String> properties) {
     super(config, properties);
     verifyBucketSpecified();
+    checkAutoCreateTables();
   }
 
   public BigQuerySinkConfig(Map<String, String> properties) {
     super(config, properties);
     verifyBucketSpecified();
+    checkAutoCreateTables();
   }
 }

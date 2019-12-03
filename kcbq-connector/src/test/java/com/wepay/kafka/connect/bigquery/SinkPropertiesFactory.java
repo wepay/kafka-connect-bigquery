@@ -43,6 +43,8 @@ public class SinkPropertiesFactory {
     properties.put(BigQuerySinkConfig.SANITIZE_TOPICS_CONFIG, "false");
     properties.put(BigQuerySinkConfig.AVRO_DATA_CACHE_SIZE_CONFIG, "10");
 
+    properties.put(BigQuerySinkConfig.TABLE_CREATE_CONFIG, "false");
+
     return properties;
   }
 
@@ -55,17 +57,19 @@ public class SinkPropertiesFactory {
   public void testProperties(BigQuerySinkConfig config) {
     config.getTopicsToDatasets();
 
-    config.getMap(config.DATASETS_CONFIG);
-    config.getMap(config.TOPICS_TO_TABLES_CONFIG);
+    config.getMap(BigQuerySinkConfig.DATASETS_CONFIG);
+    config.getMap(BigQuerySinkConfig.TOPICS_TO_TABLES_CONFIG);
 
-    config.getList(config.TOPICS_CONFIG);
-    config.getList(config.TOPICS_TO_TABLES_CONFIG);
-    config.getList(config.DATASETS_CONFIG);
+    config.getList(BigQuerySinkConfig.TOPICS_CONFIG);
+    config.getList(BigQuerySinkConfig.TOPICS_TO_TABLES_CONFIG);
+    config.getList(BigQuerySinkConfig.DATASETS_CONFIG);
 
-    config.getString(config.KEYFILE_CONFIG);
-    config.getString(config.PROJECT_CONFIG);
+    config.getString(BigQuerySinkConfig.KEYFILE_CONFIG);
+    config.getString(BigQuerySinkConfig.PROJECT_CONFIG);
 
-    config.getBoolean(config.SANITIZE_TOPICS_CONFIG);
-    config.getInt(config.AVRO_DATA_CACHE_SIZE_CONFIG);
+    config.getBoolean(BigQuerySinkConfig.SANITIZE_TOPICS_CONFIG);
+    config.getInt(BigQuerySinkConfig.AVRO_DATA_CACHE_SIZE_CONFIG);
+
+    config.getBoolean(BigQuerySinkConfig.TABLE_CREATE_CONFIG);
   }
 }

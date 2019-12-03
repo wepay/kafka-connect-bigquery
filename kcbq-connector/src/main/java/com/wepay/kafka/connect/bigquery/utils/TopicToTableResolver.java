@@ -19,17 +19,15 @@ package com.wepay.kafka.connect.bigquery.utils;
 
 
 import com.google.cloud.bigquery.TableId;
-
+import com.google.common.collect.Maps;
+import com.wepay.kafka.connect.bigquery.api.TopicAndRecordName;
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig;
-import org.apache.kafka.common.config.ConfigException;
+import org.apache.kafka.connect.data.Schema;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.Optional;
 
 /**
  * A utility class that will resolve topic names to table names based on format strings using regex
@@ -43,13 +41,19 @@ public class TopicToTableResolver {
    * @param config Config that contains properties used to generate the map
    * @return A Map associating Kafka topic names to BigQuery table names.
    */
-  public static Map<String, TableId> getTopicsToTables(BigQuerySinkConfig config) {
+  public static Map<TopicAndRecordName, TableId> getTopicsToTables(BigQuerySinkConfig config) {
+    // Based only on the config we cannot determine what record type is used in which topic.
+    // It will be eventually discovered by handling new messages.
+    if (config.getBoolean(BigQuerySinkConfig.SUPPORT_MULTI_SCHEMA_TOPICS_CONFIG)) {
+      return Maps.newHashMap();
+    }
+
     Map<String, String> topicsToDatasets = config.getTopicsToDatasets();
 
     List<String> topics = config.getList(BigQuerySinkConfig.TOPICS_CONFIG);
     Boolean sanitize = config.getBoolean(BigQuerySinkConfig.SANITIZE_TOPICS_CONFIG);
 
-    Map<String, TableId> matches = new HashMap<>();
+    Map<TopicAndRecordName, TableId> matches = new HashMap<>();
     for (String value : topics) {
       String match = getTopicToTableSingleMatch(config, value);
       if (match == null) {
@@ -61,59 +65,51 @@ public class TopicToTableResolver {
       }
 
       String dataset = topicsToDatasets.get(value);
-      matches.put(value, TableId.of(dataset, match));
+      matches.put(TopicAndRecordName.from(value), TableId.of(dataset, match));
     }
 
     return matches;
+  }
+
+  public static Map<TopicAndRecordName, TableId> getTopicsToTables(BigQuerySinkConfig config, Map<TopicAndRecordName, Schema> schemasByTopic) {
+    Map<TopicAndRecordName, TableId> topicToTableIds = Maps.newHashMap();
+    schemasByTopic.forEach((key, value) -> updateTopicToTable(config, key, topicToTableIds));
+    return topicToTableIds;
   }
 
   /**
    * Update Map detailing BigQuery table for respective topic should write to.
    *
    * @param config Config that contains properties used to generate the map.
-   * @param topicName The name of respective topic to map with table.
+   * @param topicAndRecordName The name of respective topic and an optional record name to map with table.
    * @param topicToTable Map containing data for topic to respective table.
    */
-  public static void updateTopicToTable(BigQuerySinkConfig config, String topicName,
-      Map<String, TableId> topicToTable) {
+  public static void updateTopicToTable(BigQuerySinkConfig config, TopicAndRecordName topicAndRecordName,
+                                                      Map<TopicAndRecordName, TableId> topicToTable) {
     // Though the methods getTopicsToTable and updateTopicToTable are similar but code is not merged
     // as they slightly operate in different way. Former fetches complete topicsToDatasets map and
     // act on same while latter only fetches single match for dataset as required by topicName.
     Boolean sanitize = config.getBoolean(BigQuerySinkConfig.SANITIZE_TOPICS_CONFIG);
-    String match = getTopicToTableSingleMatch(config, topicName);
+    Boolean supportMultiSchemaTopics = config.getBoolean(BigQuerySinkConfig.SUPPORT_MULTI_SCHEMA_TOPICS_CONFIG);
+    String match = Optional.ofNullable(getTopicToTableSingleMatch(config, topicAndRecordName.getTopic()))
+        .orElse(topicAndRecordName.getTopic());
 
-    if (match == null) {
-      match = topicName;
+    if (supportMultiSchemaTopics) {
+      String recordName = topicAndRecordName.getRecordName()
+          .map(rn -> getRecordToTableSingleMatch(config, rn))
+          .map(recordMatch -> "_" + recordMatch)
+          .orElse("");
+      match = match + recordName;
     }
 
     if (sanitize) {
       match = FieldNameSanitizer.sanitizeName(match);
     }
 
-    String dataset = config.getTopicToDataset(topicName);
+    String dataset = config.getTopicToDataset(topicAndRecordName.getTopic());
     // Do not check for dataset being null as TableId construction shall take care of same in below
     // line.
-    topicToTable.put(topicName, TableId.of(dataset, match));
-  }
-
-  /**
-   * Return a Map detailing which topic each base table corresponds to. If sanitization has been
-   * enabled, there is a possibility that there are multiple possible schemas a table could
-   * correspond to. In that case, each table must only be written to by one topic, or an exception
-   * is thrown.
-   *
-   * @param config Config that contains properties used to generate the map
-   * @return The resulting Map from TableId to topic name.
-   */
-  public static Map<TableId, String> getBaseTablesToTopics(BigQuerySinkConfig config) {
-    Map<String, TableId> topicsToTableIds = getTopicsToTables(config);
-    Map<TableId, String> tableIdsToTopics = new HashMap<>();
-    for (Map.Entry<String, TableId> topicToTableId : topicsToTableIds.entrySet()) {
-      if (tableIdsToTopics.put(topicToTableId.getValue(), topicToTableId.getKey()) != null) {
-        throw new ConfigException("Cannot have multiple topics writing to the same table");
-      }
-    }
-    return tableIdsToTopics;
+    topicToTable.put(topicAndRecordName, TableId.of(dataset, match));
   }
 
   /**
@@ -124,36 +120,19 @@ public class TopicToTableResolver {
    * @return A String resulting match of table for topic name.
    */
   private static String getTopicToTableSingleMatch(BigQuerySinkConfig config, String topicName) {
-    String match = null;
-    String previousPattern = null;
-
-    List<Map.Entry<Pattern, String>> patterns = config.getSinglePatterns(
-        BigQuerySinkConfig.TOPICS_TO_TABLES_CONFIG);
-
-    for (Map.Entry<Pattern, String> pattern : patterns) {
-      Matcher patternMatcher = pattern.getKey().matcher(topicName);
-      if (patternMatcher.matches()) {
-        if (match != null) {
-          String secondMatch = pattern.getKey().toString();
-          throw new ConfigException("Value '" + topicName
-              + "' for property '" + BigQuerySinkConfig.TOPICS_CONFIG
-              + "' matches " + BigQuerySinkConfig.TOPICS_TO_TABLES_CONFIG
-              + " regexes for both '" + previousPattern
-              + "' and '" + secondMatch + "'"
-          );
-        }
-        String formatString = pattern.getValue();
-        try {
-          match = patternMatcher.replaceAll(formatString);
-          previousPattern = pattern.getKey().toString();
-        } catch (IndexOutOfBoundsException err) {
-          throw new ConfigException("Format string '" + formatString
-              + "' is invalid in property '" + BigQuerySinkConfig.TOPICS_TO_TABLES_CONFIG
-              + "'", err);
-        }
-      }
-    }
-
-    return match;
+    return config.getSingleMatch(topicName, BigQuerySinkConfig.TOPICS_CONFIG, BigQuerySinkConfig.TOPICS_TO_TABLES_CONFIG);
   }
+
+  /**
+   * Return a String specifying alias corresponding to record name.
+   *
+   * @param config     Config that contains properties for configured patterns.
+   * @param recordName The record name for which match is to be found.
+   * @return A String resulting match of alias for record name or just the record name if no matching alias was found.
+   */
+  private static String getRecordToTableSingleMatch(BigQuerySinkConfig config, String recordName) {
+    return Optional.ofNullable(config.getSingleMatch(recordName, "record name", BigQuerySinkConfig.RECORD_ALIASES_CONFIG))
+        .orElse(recordName);
+  }
+
 }

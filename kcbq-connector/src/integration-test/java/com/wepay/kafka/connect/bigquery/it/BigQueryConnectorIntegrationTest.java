@@ -54,11 +54,11 @@ import java.util.List;
 import java.util.Properties;
 
 public class BigQueryConnectorIntegrationTest {
-  public static final String TEST_PROPERTIES_FILENAME = "/test.properties";
-  public static final String KEYFILE_PROPERTY = "keyfile";
-  public static final String PROJECT_PROPERTY = "project";
-  public static final String DATASET_PROPERTY = "dataset";
-  public static final String KEY_SOURCE_PROPERTY = "keySource";
+  private static final String TEST_PROPERTIES_FILENAME = "/test.properties";
+  private static final String KEYFILE_PROPERTY = "keyfile";
+  private static final String PROJECT_PROPERTY = "project";
+  private static final String DATASET_PROPERTY = "dataset";
+  private static final String KEY_SOURCE_PROPERTY = "keySource";
 
   private static String keyfile;
   private static String project;
@@ -202,6 +202,15 @@ public class BigQueryConnectorIntegrationTest {
 
   @Test
   public void testNull() {
+    testNull("kcbq_test_nulls");
+  }
+
+  @Test
+  public void testNullMulti() {
+    testNull("kcbq_test_multi_myrecord");
+  }
+
+  private void testNull(String tableName) {
     List<List<Object>> expectedRows = new ArrayList<>();
 
     // {"row":1,"f1":"Required string","f2":null,"f3":{"int":42},"f4":{"boolean":false}}
@@ -213,11 +222,20 @@ public class BigQueryConnectorIntegrationTest {
     // {"row":4,"f1":"Required string","f2":{"string":"Optional string"},"f3":null,"f4":null}
     expectedRows.add(Arrays.asList(4L, "Required string", "Optional string", null, null));
 
-    testRows(expectedRows, readAllRows("kcbq_test_nulls"));
+    testRows(expectedRows, readAllRows(tableName));
   }
 
   @Test
   public void testMatryoshka() {
+    testMatryoshka("kcbq_test_matryoshka_dolls");
+  }
+
+  @Test
+  public void testMatryoshkaMulti() {
+    testMatryoshka("kcbq_test_multi_matryoshka_dolls");
+  }
+
+  private void testMatryoshka(String tableName) {
     List<List<Object>> expectedRows = new ArrayList<>();
 
     /* { "row": 1,
@@ -248,11 +266,20 @@ public class BigQueryConnectorIntegrationTest {
         )
     ));
 
-    testRows(expectedRows, readAllRows("kcbq_test_matryoshka_dolls"));
+    testRows(expectedRows, readAllRows(tableName));
   }
 
   @Test
   public void testPrimitives() {
+    testPrimitives("kcbq_test_primitives");
+  }
+
+  @Test
+  public void testPrimitivesMulti() {
+    testPrimitives("kcbq_test_multi_com_wepay_kafka_connect_bigquery_primitives");
+  }
+
+  private void testPrimitives(String tableName) {
     List<List<Object>> expectedRows = new ArrayList<>();
 
     /* { "row": 1,
@@ -277,11 +304,20 @@ public class BigQueryConnectorIntegrationTest {
         boxByteArray(new byte[] { 0x0, 0xf, 0x1E, 0x2D, 0x3C, 0x4B, 0x5A, 0x69, 0x78 })
     ));
 
-    testRows(expectedRows, readAllRows("kcbq_test_primitives"));
+    testRows(expectedRows, readAllRows(tableName));
   }
 
   @Test
   public void testLogicalTypes() {
+    testLogicalTypes("kcbq_test_logical_types");
+  }
+
+  @Test
+  public void testLogicalTypesMulti() {
+    testLogicalTypes("kcbq_test_multi_com_wepay_kafka_connect_bigquery_logicals");
+  }
+
+  private void testLogicalTypes(String tableName) {
     List<List<Object>> expectedRows = new ArrayList<>();
 
     // {"row": 1, "timestamp-test": 0, "date-test": 0}
@@ -291,11 +327,20 @@ public class BigQueryConnectorIntegrationTest {
     // {"row": 3, "timestamp-test": 1468275102000, "date-test": 16993}
     expectedRows.add(Arrays.asList(3L, 1468275102000000L, 1468195200000L));
 
-    testRows(expectedRows, readAllRows("kcbq_test_logical_types"));
+    testRows(expectedRows, readAllRows(tableName));
   }
 
   @Test
   public void testGCSLoad() {
+    testGCSLoad("kcbq_test_gcs_load");
+  }
+
+  @Test
+  public void testGCSLoadMulti() {
+    testGCSLoad("kcbq_test_multi_gcs_load_aliased");
+  }
+
+  private void testGCSLoad(String tableName) {
     List<List<Object>> expectedRows = new ArrayList<>();
 
     /* {"row":1,
@@ -362,7 +407,7 @@ public class BigQueryConnectorIntegrationTest {
         boxByteArray(new byte[] { 0x0, 0xf, 0x1E, 0x2D, 0x3C, 0x4B, 0x5A, 0x69, 0x78 })
     ));
 
-    testRows(expectedRows, readAllRows("kcbq_test_gcs_load"));
+    testRows(expectedRows, readAllRows(tableName));
   }
 
   private void testRows(

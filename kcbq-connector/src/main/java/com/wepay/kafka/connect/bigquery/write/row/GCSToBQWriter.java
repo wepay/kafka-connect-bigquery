@@ -28,14 +28,12 @@ import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageException;
 import com.google.gson.Gson;
 
-import com.wepay.kafka.connect.bigquery.exception.GCSConnectException;
-
 import org.apache.kafka.connect.errors.ConnectException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -102,7 +100,6 @@ public class GCSToBQWriter {
          BlobInfo.newBuilder(blobId).setContentType("text/json").setMetadata(metadata).build();
 
     // Check if the table specified exists
-    // This error shouldn't be thrown. All tables should be created by the connector at startup
     if (bigQuery.getTable(tableId) == null) {
       throw new ConnectException(
           String.format("Table with TableId %s does not exist.", tableId.getTable()));
@@ -139,9 +136,7 @@ public class GCSToBQWriter {
     }
     String serializedTableId =
         sb.append(tableId.getDataset()).append(".").append(tableId.getTable()).toString();
-    Map<String, String> metadata =
-        Collections.singletonMap(GCS_METADATA_TABLE_KEY, serializedTableId);
-    return metadata;
+    return Collections.singletonMap(GCS_METADATA_TABLE_KEY, serializedTableId);
   }
 
   /**
@@ -149,12 +144,7 @@ public class GCSToBQWriter {
    * @return The blob uploaded to GCS
    */
   private Blob uploadRowsToGcs(List<RowToInsert> rows, BlobInfo blobInfo) {
-    try {
-      Blob resultBlob = uploadBlobToGcs(toJson(rows).getBytes("UTF-8"), blobInfo);
-      return resultBlob;
-    } catch (UnsupportedEncodingException uee) {
-      throw new GCSConnectException("Failed to upload blob to GCS", uee);
-    }
+    return uploadBlobToGcs(toJson(rows).getBytes(StandardCharsets.UTF_8), blobInfo);
   }
 
   private Blob uploadBlobToGcs(byte[] blobContent, BlobInfo blobInfo) {
@@ -168,7 +158,7 @@ public class GCSToBQWriter {
    *         list
    */
   private String toJson(List<RowToInsert> rows) {
-    StringBuilder jsonRecordsBuilder = new StringBuilder("");
+    StringBuilder jsonRecordsBuilder = new StringBuilder();
     for (RowToInsert row : rows) {
       Map<String, Object> record = row.getContent();
       jsonRecordsBuilder.append(gson.toJson(record));
