@@ -23,6 +23,8 @@ import com.google.common.collect.Maps;
 import com.wepay.kafka.connect.bigquery.api.TopicAndRecordName;
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig;
 import org.apache.kafka.connect.data.Schema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.List;
@@ -34,6 +36,8 @@ import java.util.Optional;
  * capture groups.
  */
 public class TopicToTableResolver {
+
+  private static final Logger logger = LoggerFactory.getLogger(TopicToTableResolver.class);
 
   /**
    * Return a Map detailing which BigQuery table each topic should write to.
@@ -106,7 +110,12 @@ public class TopicToTableResolver {
       match = FieldNameSanitizer.sanitizeName(match);
     }
 
-    String dataset = config.getTopicToDataset(topicAndRecordName.getTopic());
+    String subject = topicAndRecordName.getTopic();
+    if (supportMultiSchemaTopics && topicAndRecordName.getRecordName().isPresent()) {
+      subject = topicAndRecordName.toSubject();
+    }
+    String dataset = config.getTopicToDataset(subject);
+    logger.debug("Resolved dataset for {} = {}", subject, dataset);
     // Do not check for dataset being null as TableId construction shall take care of same in below
     // line.
     topicToTable.put(topicAndRecordName, TableId.of(dataset, match));

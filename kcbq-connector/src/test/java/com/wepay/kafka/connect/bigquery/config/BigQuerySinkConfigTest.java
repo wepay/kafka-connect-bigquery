@@ -76,6 +76,34 @@ public class BigQuerySinkConfigTest {
   }
 
   @Test
+  public void testDefaultDataset() {
+    Map<String, String> configProperties = propertiesFactory.getProperties();
+
+    configProperties.put(
+        BigQuerySinkConfig.DATASETS_CONFIG,
+        "(tracking-.*)|(.*-tracking)=tracking,.*event.*=events"
+    );
+    configProperties.put(
+        BigQuerySinkConfig.TOPICS_CONFIG,
+        "clicks-tracking,misc-event_stuff,not-covered-in-datasets"
+    );
+    configProperties.put(
+        BigQuerySinkConfig.DEFAULT_DATASET_CONFIG,
+        "other"
+    );
+
+    Map<String, String> expectedTopicsToDatasets = new HashMap<>();
+    expectedTopicsToDatasets.put("clicks-tracking", "tracking");
+    expectedTopicsToDatasets.put("misc-event_stuff", "events");
+    expectedTopicsToDatasets.put("not-covered-in-datasets", "other");
+
+    Map<String, String> testTopicsToDatasets =
+        new BigQuerySinkConfig(configProperties).getTopicsToDatasets();
+
+    assertEquals(expectedTopicsToDatasets, testTopicsToDatasets);
+  }
+
+  @Test
   public void testGetSchemaConverter() {
     Map<String, String> configProperties = propertiesFactory.getProperties();
     configProperties.put(BigQuerySinkConfig.INCLUDE_KAFKA_DATA_CONFIG, "true");

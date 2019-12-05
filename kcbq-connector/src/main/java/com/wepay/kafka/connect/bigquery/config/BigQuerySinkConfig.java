@@ -149,6 +149,13 @@ public class BigQuerySinkConfig extends AbstractConfig {
       "Names for the datasets kafka topics will write to "
       + "(form of <topic regex>=<dataset>)";
 
+  public static final String DEFAULT_DATASET_CONFIG =                     "defaultDataset";
+  private static final ConfigDef.Type DEFAULT_DATASET_TYPE =              ConfigDef.Type.STRING;
+  private static final Object DEFAULT_DATASET_DEFAULT =                   null;
+  private static final ConfigDef.Importance DEFAULT_DATASET_IMPORTANCE =  ConfigDef.Importance.MEDIUM;
+  private static final String DEFAULT_DATASET_DOC =
+      "Name of the dataset to be used when none of datasets match the topic/subject";
+
   public static final String SCHEMA_RETRIEVER_CONFIG =         "schemaRetriever";
   private static final ConfigDef.Type SCHEMA_RETRIEVER_TYPE =  ConfigDef.Type.CLASS;
   private static final Class<?> SCHEMA_RETRIEVER_DEFAULT =     null;
@@ -302,6 +309,12 @@ public class BigQuerySinkConfig extends AbstractConfig {
             DATASETS_VALIDATOR,
             DATASETS_IMPORTANCE,
             DATASETS_DOC
+        ).define(
+            DEFAULT_DATASET_CONFIG,
+            DEFAULT_DATASET_TYPE,
+            DEFAULT_DATASET_DEFAULT,
+            DEFAULT_DATASET_IMPORTANCE,
+            DEFAULT_DATASET_DOC
         ).define(
             SCHEMA_RETRIEVER_CONFIG,
             SCHEMA_RETRIEVER_TYPE,
@@ -505,7 +518,8 @@ public class BigQuerySinkConfig extends AbstractConfig {
       List<Map.Entry<Pattern, String>> patterns,
       List<String> values,
       String valueProperty,
-      String patternProperty) {
+      String patternProperty,
+      String defaultValue) {
     Map<String, String> matches = new HashMap<>();
     for (String value : values) {
       String match = null;
@@ -526,12 +540,15 @@ public class BigQuerySinkConfig extends AbstractConfig {
         }
       }
       if (match == null) {
-        throw new ConfigException(
-            "Value '" + value
-            + "' for property '" + valueProperty
-            + "' failed to match any of the provided " + patternProperty
-            + " regexes"
-        );
+        if (defaultValue == null) {
+          throw new ConfigException(
+              "Value '" + value
+                  + "' for property '" + valueProperty
+                  + "' failed to match any of the provided " + patternProperty
+                  + " regexes"
+          );
+        }
+        match = defaultValue;
       }
       matches.put(value, match);
     }
@@ -541,17 +558,18 @@ public class BigQuerySinkConfig extends AbstractConfig {
   /**
    * Return a String detailing which BigQuery dataset topic should write to.
    *
-   * @param topicName The name of the topic for which dataset needs to be fetched.
+   * @param topicWithOptionalRecordName The name of the topic and an optional record name for which dataset needs to be fetched.
    * @return A String associating Kafka topic name to BigQuery dataset.
    */
-  public String getTopicToDataset(String topicName) {
+  public String getTopicToDataset(String topicWithOptionalRecordName) {
     // Do not check for missing key in map as default empty map shall be returned.
     return getSingleMatches(
         getSinglePatterns(DATASETS_CONFIG),
-        Collections.singletonList(topicName),
+        Collections.singletonList(topicWithOptionalRecordName),
         TOPICS_CONFIG,
-        DATASETS_CONFIG
-    ).get(topicName);
+        DATASETS_CONFIG,
+        getString(DEFAULT_DATASET_CONFIG)
+    ).get(topicWithOptionalRecordName);
   }
 
 
@@ -565,7 +583,8 @@ public class BigQuerySinkConfig extends AbstractConfig {
         getSinglePatterns(DATASETS_CONFIG),
         getList(TOPICS_CONFIG),
         TOPICS_CONFIG,
-        DATASETS_CONFIG
+        DATASETS_CONFIG,
+        getString(DEFAULT_DATASET_CONFIG)
     );
   }
 
