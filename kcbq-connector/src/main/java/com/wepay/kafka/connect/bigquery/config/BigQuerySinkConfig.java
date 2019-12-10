@@ -54,11 +54,16 @@ public class BigQuerySinkConfig extends AbstractConfig {
   private static final ConfigDef config;
   private static final Validator validator = new Validator();
 
+  // Values taken from https://github.com/apache/kafka/blob/1.1.1/connect/runtime/src/main/java/org/apache/kafka/connect/runtime/SinkConnectorConfig.java#L33
   public static final String TOPICS_CONFIG =                     SinkConnector.TOPICS_CONFIG;
   private static final ConfigDef.Type TOPICS_TYPE =              ConfigDef.Type.LIST;
   private static final ConfigDef.Importance TOPICS_IMPORTANCE =  ConfigDef.Importance.HIGH;
+  private static final String TOPICS_GROUP =                     "Common";
+  private static final int TOPICS_ORDER_IN_GROUP =               4;
+  private static final ConfigDef.Width TOPICS_WIDTH =            ConfigDef.Width.LONG;
   private static final String TOPICS_DOC =
-      "A list of Kafka topics to read from";
+      "List of topics to consume, separated by commas";
+  private static final String TOPICS_DISPLAY =                   "Topics";
 
   public static final String ENABLE_BATCH_CONFIG =                         "enableBatchLoad";
   private static final ConfigDef.Type ENABLE_BATCH_TYPE =                  ConfigDef.Type.LIST;
@@ -83,6 +88,14 @@ public class BigQuerySinkConfig extends AbstractConfig {
   private static final String GCS_BUCKET_NAME_DOC =
       "The name of the bucket in which gcs blobs used to batch load to BigQuery "
       + "should be located. Only relevant if enableBatchLoad is configured.";
+
+  public static final String GCS_FOLDER_NAME_CONFIG =                     "gcsFolderName";
+  private static final ConfigDef.Type GCS_FOLDER_NAME_TYPE =              ConfigDef.Type.STRING;
+  private static final Object GCS_FOLDER_NAME_DEFAULT =                   "";
+  private static final ConfigDef.Importance GCS_FOLDER_NAME_IMPORTANCE =  ConfigDef.Importance.MEDIUM;
+  private static final String GCS_FOLDER_NAME_DOC =
+          "The name of the folder under the bucket in which gcs blobs used to batch load to BigQuery "
+                  + "should be located. Only relevant if enableBatchLoad is configured.";
 
   public static final String TOPICS_TO_TABLES_CONFIG =                     "topicsToTables";
   private static final ConfigDef.Type TOPICS_TO_TABLES_TYPE =              ConfigDef.Type.LIST;
@@ -124,6 +137,15 @@ public class BigQuerySinkConfig extends AbstractConfig {
   private static final String KEYFILE_DOC =
       "The file containing a JSON key with BigQuery service account credentials";
 
+  public static final String KEY_SOURCE_CONFIG =                "keySource";
+  private static final ConfigDef.Type KEY_SOURCE_TYPE =         ConfigDef.Type.STRING;
+  public static final String KEY_SOURCE_DEFAULT =               "FILE";
+  private static final ConfigDef.Validator KEY_SOURCE_VALIDATOR =
+          ConfigDef.ValidString.in("FILE", "JSON");
+  private static final ConfigDef.Importance KEY_SOURCE_IMPORTANCE = ConfigDef.Importance.MEDIUM;
+  private static final String KEY_SOURCE_DOC =
+          "Determines whether the keyfile config is the path to the credentials json, or the json itself";
+
   public static final String SANITIZE_TOPICS_CONFIG =                     "sanitizeTopics";
   private static final ConfigDef.Type SANITIZE_TOPICS_TYPE =              ConfigDef.Type.BOOLEAN;
   public static final Boolean SANITIZE_TOPICS_DEFAULT =                   false;
@@ -132,6 +154,19 @@ public class BigQuerySinkConfig extends AbstractConfig {
   private static final String SANITIZE_TOPICS_DOC =
       "Whether to automatically sanitize topic names before using them as table names;"
       + " if not enabled topic names will be used directly as table names";
+
+  public static final String SANITIZE_FIELD_NAME_CONFIG =                     "sanitizeFieldNames";
+  private static final ConfigDef.Type SANITIZE_FIELD_NAME_TYPE =              ConfigDef.Type.BOOLEAN;
+  public static final Boolean SANITIZE_FIELD_NAME_DEFAULT =                   false;
+  private static final ConfigDef.Importance SANITIZE_FIELD_NAME_IMPORTANCE =
+          ConfigDef.Importance.MEDIUM;
+  private static final String SANITIZE_FIELD_NAME_DOC =
+          "Whether to automatically sanitize field names before using them as field names in big query. "
+                  + "Big query specifies that field name can only contain letters, numbers, and "
+                  + "underscores. The sanitizer will replace the invalid symbols with underscore. "
+                  + "If the field name starts with a digit, the sanitizer will add an underscore in "
+                  + "front of field name. Note: field a.b and a_b will have same value after sanitizing, "
+                  + "and might cause key duplication error.";
 
   public static final String INCLUDE_KAFKA_DATA_CONFIG =                   "includeKafkaData";
   public static final ConfigDef.Type INCLUDE_KAFKA_DATA_TYPE =             ConfigDef.Type.BOOLEAN;
@@ -176,8 +211,12 @@ public class BigQuerySinkConfig extends AbstractConfig {
             TOPICS_CONFIG,
             TOPICS_TYPE,
             TOPICS_IMPORTANCE,
-            TOPICS_DOC
-        ).define(
+            TOPICS_DOC,
+            TOPICS_GROUP,
+            TOPICS_ORDER_IN_GROUP,
+            TOPICS_WIDTH,
+            TOPICS_DISPLAY)
+        .define(
             ENABLE_BATCH_CONFIG,
             ENABLE_BATCH_TYPE,
             ENABLE_BATCH_DEFAULT,
@@ -195,6 +234,12 @@ public class BigQuerySinkConfig extends AbstractConfig {
             GCS_BUCKET_NAME_DEFAULT,
             GCS_BUCKET_NAME_IMPORTANCE,
             GCS_BUCKET_NAME_DOC
+        ).define(
+            GCS_FOLDER_NAME_CONFIG,
+            GCS_FOLDER_NAME_TYPE,
+            GCS_FOLDER_NAME_DEFAULT,
+            GCS_FOLDER_NAME_IMPORTANCE,
+            GCS_FOLDER_NAME_DOC
         ).define(
             TOPICS_TO_TABLES_CONFIG,
             TOPICS_TO_TABLES_TYPE,
@@ -226,11 +271,24 @@ public class BigQuerySinkConfig extends AbstractConfig {
             KEYFILE_IMPORTANCE,
             KEYFILE_DOC
         ).define(
+            KEY_SOURCE_CONFIG,
+            KEY_SOURCE_TYPE,
+            KEY_SOURCE_DEFAULT,
+            KEY_SOURCE_VALIDATOR,
+            KEY_SOURCE_IMPORTANCE,
+            KEY_SOURCE_DOC
+        ).define(
             SANITIZE_TOPICS_CONFIG,
             SANITIZE_TOPICS_TYPE,
             SANITIZE_TOPICS_DEFAULT,
             SANITIZE_TOPICS_IMPORTANCE,
             SANITIZE_TOPICS_DOC
+        ).define(
+            SANITIZE_FIELD_NAME_CONFIG,
+            SANITIZE_FIELD_NAME_TYPE,
+            SANITIZE_FIELD_NAME_DEFAULT,
+            SANITIZE_FIELD_NAME_IMPORTANCE,
+            SANITIZE_FIELD_NAME_DOC
         ).define(
             INCLUDE_KAFKA_DATA_CONFIG,
             INCLUDE_KAFKA_DATA_TYPE,
@@ -399,6 +457,22 @@ public class BigQuerySinkConfig extends AbstractConfig {
       matches.put(value, match);
     }
     return matches;
+  }
+
+  /**
+   * Return a String detailing which BigQuery dataset topic should write to.
+   *
+   * @param topicName The name of the topic for which dataset needs to be fetched.
+   * @return A String associating Kafka topic name to BigQuery dataset.
+   */
+  public String getTopicToDataset(String topicName) {
+    // Do not check for missing key in map as default empty map shall be returned.
+    return getSingleMatches(
+        getSinglePatterns(DATASETS_CONFIG),
+        Collections.singletonList(topicName),
+        TOPICS_CONFIG,
+        DATASETS_CONFIG
+    ).get(topicName);
   }
 
 

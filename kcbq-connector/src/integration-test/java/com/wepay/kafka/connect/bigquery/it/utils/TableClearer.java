@@ -21,33 +21,45 @@ package com.wepay.kafka.connect.bigquery.it.utils;
 import com.google.cloud.bigquery.BigQuery;
 
 import com.wepay.kafka.connect.bigquery.BigQueryHelper;
+import com.wepay.kafka.connect.bigquery.utils.FieldNameSanitizer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class TableClearer {
   private static final Logger logger = LoggerFactory.getLogger(TableClearer.class);
+  private static String keySource;
+
 
   /**
    * Clears tables in the given project and dataset, using a provided JSON service account key.
    */
   public static void main(String[] args) {
-    if (args.length < 4) {
+    if (args.length < 5) {
       usage();
     }
-    BigQuery bigQuery = new BigQueryHelper().connect(args[1], args[0]);
-    for (int i = 3; i < args.length; i++) {
-      if (bigQuery.delete(args[2], args[i])) {
-        logger.info("Table {} in dataset {} deleted successfully", args[i], args[2]);
+    int tablesStart = 3;
+    if (args.length == 5) {
+      keySource = args[3];
+      tablesStart = 4;
+    }
+    BigQuery bigQuery = new BigQueryHelper().setKeySource(keySource).connect(args[1], args[0]);
+    for (int i = tablesStart; i < args.length; i++) {
+      // May be consider using sanitizeTopics property value in future to decide table name
+      // sanitization but as currently we always run test cases with sanitizeTopics value as true
+      // hence sanitize table name prior delete. This is required else it makes test cases flaky.
+      String table = FieldNameSanitizer.sanitizeName(args[i]);
+      if (bigQuery.delete(args[2], table)) {
+        logger.info("Table {} in dataset {} deleted successfully", table, args[2]);
       } else {
-        logger.info("Table {} in dataset {} does not exist", args[i], args[2]);
+        logger.info("Table {} in dataset {} does not exist", table, args[2]);
       }
     }
   }
 
   private static void usage() {
     System.err.println(
-        "usage: TableClearer <key_file> <project_name> <dataset_name> <table> [<table> ...]"
+        "usage: TableClearer <key_file> <project_name> <dataset_name> <key_source> <table> [<table> ...]"
     );
     System.exit(1);
   }
