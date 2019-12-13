@@ -158,6 +158,38 @@ public class BigQuerySinkTaskTest {
 
   @Captor ArgumentCaptor<InsertAllRequest> captor;
 
+  // Make sure Kafka connect can insert a record to specified table without partition decoration
+  // when BIGQUERY_EXPLICIT_PARTITIONING_CONFIG = false
+  @Test
+  public void testPutWhenNoExplicitPartitioning() {
+    final String topic = "test-topic";
+
+    Map<String, String> properties = propertiesFactory.getProperties();
+    properties.put(BigQuerySinkConfig.TOPICS_CONFIG, topic);
+    properties.put(BigQuerySinkConfig.DATASETS_CONFIG, ".*=scratch");
+    properties.put(BigQuerySinkTaskConfig.BIGQUERY_EXPLICIT_PARTITIONING_CONFIG, "false");
+
+    BigQuery bigQuery = mock(BigQuery.class);
+    Storage storage = mock(Storage.class);
+    SinkTaskContext sinkTaskContext = mock(SinkTaskContext.class);
+    InsertAllResponse insertAllResponse = mock(InsertAllResponse.class);
+
+    when(bigQuery.insertAll(anyObject())).thenReturn(insertAllResponse);
+    when(insertAllResponse.hasErrors()).thenReturn(false);
+
+    BigQuerySinkTask testTask = new BigQuerySinkTask(bigQuery, null, storage);
+    testTask.initialize(sinkTaskContext);
+    testTask.start(properties);
+
+    testTask.put(Collections.singletonList(spoofSinkRecord(topic, "value", "message text",
+            TimestampType.CREATE_TIME, 1509007584334L)));
+    testTask.flush(Collections.emptyMap());
+    ArgumentCaptor<InsertAllRequest> argument = ArgumentCaptor.forClass(InsertAllRequest.class);
+
+    verify(bigQuery, times(1)).insertAll(argument.capture());
+    assertEquals("test-topic", argument.getValue().getTable().getTable());
+  }
+
   @Test
   public void testPutWhenPartitioningOnMessageTime() {
     final String topic = "test-topic";

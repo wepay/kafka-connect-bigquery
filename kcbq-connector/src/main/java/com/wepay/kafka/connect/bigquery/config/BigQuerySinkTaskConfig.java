@@ -94,6 +94,14 @@ public class BigQuerySinkTaskConfig extends BigQuerySinkConfig {
       "Whether or not to use the message time when inserting records. "
       + "Default uses the connector processing time.";
 
+  public static final String BIGQUERY_EXPLICIT_PARTITIONING_CONFIG = "bigQueryExplicitPartitioning";
+  private static final ConfigDef.Type BIGQUERY_EXPLICIT_PARTITIONING_CONFIG_TYPE = ConfigDef.Type.BOOLEAN;
+  public static final Boolean BIGQUERY_EXPLICIT_PARTITIONING_DEFAULT =  true;
+  private static final ConfigDef.Importance BIGQUERY_EXPLICIT_PARTITIONING_IMPORTANCE = ConfigDef.Importance.MEDIUM;
+  private static final String BIGQUERY_EXPLICIT_PARTITIONING_DOC =
+          "Whether or not to explicitly specify partition when inserting records. "
+          + "Default specify the partition.";
+
   static {
     config = BigQuerySinkConfig.getConfig()
         .define(
@@ -136,6 +144,12 @@ public class BigQuerySinkTaskConfig extends BigQuerySinkConfig {
             BIGQUERY_MESSAGE_TIME_PARTITIONING_DEFAULT,
             BIGQUERY_MESSAGE_TIME_PARTITIONING_IMPORTANCE,
             BIGQUERY_MESSAGE_TIME_PARTITIONING_DOC
+        ).define(
+            BIGQUERY_EXPLICIT_PARTITIONING_CONFIG,
+            BIGQUERY_EXPLICIT_PARTITIONING_CONFIG_TYPE,
+            BIGQUERY_EXPLICIT_PARTITIONING_DEFAULT,
+            BIGQUERY_EXPLICIT_PARTITIONING_IMPORTANCE,
+            BIGQUERY_EXPLICIT_PARTITIONING_DOC
         );
   }
 
