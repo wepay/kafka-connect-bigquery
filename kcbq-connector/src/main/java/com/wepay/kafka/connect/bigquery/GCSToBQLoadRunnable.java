@@ -265,8 +265,8 @@ public class GCSToBQLoadRunnable implements Runnable {
     List<BlobId> blobIdsToDelete = new ArrayList<>();
     blobIdsToDelete.addAll(deletableBlobIds);
     int numberOfBlobs = blobIdsToDelete.size();
-    long failedDeletes = 0;
-    long successfulDeletes = 0;
+    int failedDeletes = 0;
+    int successfulDeletes = 0;
 
     if (numberOfBlobs == 0) {
       logger.info("No blobs to delete");
