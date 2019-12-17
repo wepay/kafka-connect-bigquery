@@ -195,7 +195,7 @@ public class BigQuerySinkTaskTest {
     Map<String, String> properties = propertiesFactory.getProperties();
     properties.put(BigQuerySinkConfig.TOPICS_CONFIG, topic);
     properties.put(BigQuerySinkConfig.DATASETS_CONFIG, ".*=scratch");
-    properties.put(BigQuerySinkTaskConfig.BIGQUERY_INGESTION_TIME_PARTITIONING_CONFIG, "true");
+    properties.put(BigQuerySinkTaskConfig.BIGQUERY_PARTITION_DECORATOR_CONFIG, "true");
     properties.put(BigQuerySinkTaskConfig.BIGQUERY_MESSAGE_TIME_PARTITIONING_CONFIG, "true");
     
     BigQuery bigQuery = mock(BigQuery.class);
@@ -226,7 +226,7 @@ public class BigQuerySinkTaskTest {
     Map<String, String> properties = propertiesFactory.getProperties();
     properties.put(BigQuerySinkConfig.TOPICS_CONFIG, topic);
     properties.put(BigQuerySinkConfig.DATASETS_CONFIG, ".*=scratch");
-    properties.put(BigQuerySinkTaskConfig.BIGQUERY_INGESTION_TIME_PARTITIONING_CONFIG, "false");
+    properties.put(BigQuerySinkTaskConfig.BIGQUERY_PARTITION_DECORATOR_CONFIG, "false");
     
     BigQuery bigQuery = mock(BigQuery.class);
     Storage storage = mock(Storage.class);

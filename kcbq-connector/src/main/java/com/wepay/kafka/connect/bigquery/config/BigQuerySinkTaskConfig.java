@@ -94,17 +94,17 @@ public class BigQuerySinkTaskConfig extends BigQuerySinkConfig {
       "Whether or not to use the message time when inserting records. "
       + "Default uses the connector processing time.";
   
-  public static final String BIGQUERY_INGESTION_TIME_PARTITIONING_CONFIG =
-          "bigQueryIngestionTimePartitioning";
-  private static final ConfigDef.Type BIGQUERY_INGESTION_TIME_PARTITIONING_CONFIG_TYPE =
+  public static final String BIGQUERY_PARTITION_DECORATOR_CONFIG =
+          "bigQueryPartitionDecorator";
+  private static final ConfigDef.Type BIGQUERY_PARTITION_DECORATOR_CONFIG_TYPE =
       ConfigDef.Type.BOOLEAN;
-  //This has been set to true to preserve the existing behavior. However, we can set it to false if field based partitioning is used in BigQuery
-  public static final Boolean BIGQUERY_INGESTION_TIME_PARTITIONING_DEFAULT =                 true; 
-  private static final ConfigDef.Importance BIGQUERY_INGESTION_TIME_PARTITIONING_IMPORTANCE =
+  //This has been set to true to preserve the existing behaviour. However, we can set it to false if field based partitioning is used in BigQuery
+  public static final Boolean BIGQUERY_PARTITION_DECORATOR_DEFAULT =                 true; 
+  private static final ConfigDef.Importance BIGQUERY_PARTITION_DECORATOR_IMPORTANCE =
       ConfigDef.Importance.HIGH;
-  private static final String BIGQUERY_INGESTION_TIME_PARTITIONING_DOC =
-      "Whether or not to use the ingestion time when inserting records. "
-      + "Default is false. Setting this to true appends date to table name (e.g. table$yyyyMMdd depending on the configuration set for bigQueryMessageTimePartitioning)";
+  private static final String BIGQUERY_PARTITION_DECORATOR_DOC =
+      "Whether or not to append partition decorator to BigQuery table name when inserting records. "
+      + "Default is false. Setting this to true appends partition decorator to table name (e.g. table$yyyyMMdd depending on the configuration set for bigQueryPartitionDecorator)";
 
   static {
     config = BigQuerySinkConfig.getConfig()
@@ -149,11 +149,11 @@ public class BigQuerySinkTaskConfig extends BigQuerySinkConfig {
             BIGQUERY_MESSAGE_TIME_PARTITIONING_IMPORTANCE,
             BIGQUERY_MESSAGE_TIME_PARTITIONING_DOC
         ).define(
-            BIGQUERY_INGESTION_TIME_PARTITIONING_CONFIG,
-            BIGQUERY_INGESTION_TIME_PARTITIONING_CONFIG_TYPE,
-            BIGQUERY_INGESTION_TIME_PARTITIONING_DEFAULT,
-            BIGQUERY_INGESTION_TIME_PARTITIONING_IMPORTANCE,
-            BIGQUERY_INGESTION_TIME_PARTITIONING_DOC
+            BIGQUERY_PARTITION_DECORATOR_CONFIG,
+            BIGQUERY_PARTITION_DECORATOR_CONFIG_TYPE,
+            BIGQUERY_PARTITION_DECORATOR_DEFAULT,
+            BIGQUERY_PARTITION_DECORATOR_IMPORTANCE,
+            BIGQUERY_PARTITION_DECORATOR_DOC
         );
   }
 
