@@ -1,0 +1,27 @@
+bin/
+build/
+*.class
+*.jar
+*.tar
+
+.gradle
+
+# Intellij
+.idea
+*.iml
+*.iws
+*.ipr
+.DS_STORE
+
+# Eclipse
+.classpath
+.project
+.settings
+.metadata
+
+key.json
+
+test.conf
+kcbq-connector/src/integration-test/resources/test.properties
+kcbq-connector/test/docker/connect/properties/
+kcbq-connector/out/
