@@ -3,6 +3,7 @@ package com.wepay.kafka.connect.bigquery.retrieve;
 import com.google.cloud.bigquery.TableId;
 
 import com.google.common.collect.Maps;
+import com.wepay.kafka.connect.bigquery.api.KafkaSchemaRecordType;
 import com.wepay.kafka.connect.bigquery.api.SchemaRetriever;
 
 import com.wepay.kafka.connect.bigquery.api.TopicAndRecordName;
@@ -46,7 +47,7 @@ public class MemorySchemaRetriever implements SchemaRetriever {
   }
 
   @Override
-  public Schema retrieveSchema(TableId table, TopicAndRecordName topicAndRecordName) {
+  public Schema retrieveSchema(TableId table, TopicAndRecordName topicAndRecordName, KafkaSchemaRecordType schemaType) {
     String tableName = table.getTable();
     Schema schema = schemaCache.get(getCacheKey(tableName, topicAndRecordName));
     if (schema != null) {

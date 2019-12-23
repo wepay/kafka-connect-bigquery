@@ -2,6 +2,7 @@ package com.wepay.kafka.connect.bigquery.schemaregistry.schemaretriever;
 
 import com.google.cloud.bigquery.TableId;
 
+import com.wepay.kafka.connect.bigquery.api.KafkaSchemaRecordType;
 import com.wepay.kafka.connect.bigquery.api.SchemaRetriever;
 
 import com.wepay.kafka.connect.bigquery.api.TopicAndRecordName;
@@ -64,15 +65,15 @@ public class SchemaRegistrySchemaRetriever implements SchemaRetriever {
   }
 
   @Override
-  public Schema retrieveSchema(TableId table, TopicAndRecordName topicAndRecordName) throws ConnectException {
-    return retrieveSchema(topicAndRecordName);
+  public Schema retrieveSchema(TableId table, TopicAndRecordName topicAndRecordName, KafkaSchemaRecordType schemaType) throws ConnectException {
+    return retrieveSchema(topicAndRecordName, schemaType);
   }
 
   @Override
   public Map<TopicAndRecordName, Schema> retrieveSchemas(List<String> topics, Map<Pattern, String> recordAliases) throws ConnectException {
     Map<String, TopicAndRecordName> matchingSubjects = getSubjects(topics, recordAliases);
     return matchingSubjects.values().stream()
-        .map(topicAndRecordName -> new AbstractMap.SimpleEntry<>(topicAndRecordName, retrieveSchema(topicAndRecordName)))
+        .map(topicAndRecordName -> new AbstractMap.SimpleEntry<>(topicAndRecordName, retrieveSchema(topicAndRecordName, KafkaSchemaRecordType.VALUE)))
         .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue));
   }
 
@@ -84,10 +85,10 @@ public class SchemaRegistrySchemaRetriever implements SchemaRetriever {
     return regex.matcher(recordName).matches();
   }
 
-  private Schema retrieveSchema(TopicAndRecordName topicAndRecordName) throws ConnectException {
+  private Schema retrieveSchema(TopicAndRecordName topicAndRecordName, KafkaSchemaRecordType schemaType) throws ConnectException {
     String topic = topicAndRecordName.getTopic();
-    String subject = topicAndRecordName.toSubject();
-    logger.debug("Retrieving schema information for topic {} with subject {}", topic, subject);
+    String subject = topicAndRecordName.toSubject(schemaType);
+    logger.debug("Retrieving schema information for topic {} with subject {} and schema type {}", topic, subject, schemaType);
     try {
       SchemaMetadata latestSchemaMetadata = schemaRegistryClient.getLatestSchemaMetadata(subject);
       org.apache.avro.Schema avroSchema = new Parser().parse(latestSchemaMetadata.getSchema());
@@ -130,6 +131,5 @@ public class SchemaRegistrySchemaRetriever implements SchemaRetriever {
       return TopicAndRecordName.from(topic);
     }
     return TopicAndRecordName.from(topic, recordName);
-
   }
 }

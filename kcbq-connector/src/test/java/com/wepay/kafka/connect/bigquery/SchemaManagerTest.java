@@ -36,6 +36,8 @@ import org.apache.kafka.connect.data.Schema;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Optional;
+
 public class SchemaManagerTest {
 
   @Test
@@ -52,6 +54,8 @@ public class SchemaManagerTest {
         (SchemaConverter<com.google.cloud.bigquery.Schema>) mock(SchemaConverter.class);
     when(mockConfig.getSchemaConverter()).thenReturn(mockSchemaConverter);
     when(mockConfig.getSchemaRetriever()).thenReturn(mockSchemaRetriever);
+    when(mockConfig.getKafkaDataFieldName()).thenReturn(Optional.of("kafkaData"));
+    when(mockConfig.getKafkaKeyFieldName()).thenReturn(Optional.of("kafkaKey"));
 
     BigQuery mockBigQuery = mock(BigQuery.class);
 
@@ -65,7 +69,7 @@ public class SchemaManagerTest {
     when(mockSchemaConverter.convertSchema(mockKafkaSchema)).thenReturn(fakeBigQuerySchema);
     when(mockKafkaSchema.doc()).thenReturn(testDoc);
 
-    TableInfo tableInfo = schemaManager.constructTableInfo(tableId, mockKafkaSchema);
+    TableInfo tableInfo = schemaManager.constructTableInfo(tableId, mockKafkaSchema, mockKafkaSchema);
 
     Assert.assertEquals("Kafka doc does not match BigQuery table description",
                         testDoc, tableInfo.getDescription());

@@ -1,16 +1,19 @@
 package com.wepay.kafka.connect.bigquery;
 
 import com.google.cloud.bigquery.BigQuery;
+import com.google.cloud.bigquery.Field;
+import com.google.cloud.bigquery.LegacySQLTypeName;
 import com.google.cloud.bigquery.StandardTableDefinition;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableInfo;
 import com.google.cloud.bigquery.TimePartitioning;
-
+import com.wepay.kafka.connect.bigquery.api.KafkaSchemaRecordType;
 import com.wepay.kafka.connect.bigquery.api.SchemaRetriever;
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig;
 import com.wepay.kafka.connect.bigquery.convert.SchemaConverter;
 
 import com.wepay.kafka.connect.bigquery.api.TopicAndRecordName;
+import com.wepay.kafka.connect.bigquery.convert.KafkaDataBuilder;
 import org.apache.kafka.connect.data.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +22,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.Optional;
 
 /**
  * Class for managing Schemas of BigQuery tables (creating and updating).
@@ -30,6 +35,8 @@ public class SchemaManager {
   private final SchemaConverter<com.google.cloud.bigquery.Schema> schemaConverter;
   private final BigQuery bigQuery;
   private final BigQuerySinkConfig config;
+  private final Optional<String> kafkaKeyFieldName;
+  private final Optional<String> kafkaDataFieldName;
 
   /**
    * @param bigQuery Used to communicate create/update requests to BigQuery.
@@ -42,6 +49,8 @@ public class SchemaManager {
     this.schemaConverter = config.getSchemaConverter();
     this.bigQuery = bigQuery;
     this.config = config;
+    this.kafkaKeyFieldName = config.getKafkaKeyFieldName();
+    this.kafkaDataFieldName = config.getKafkaDataFieldName();
   }
 
   /**
@@ -50,8 +59,9 @@ public class SchemaManager {
    * @param topicAndRecordName The Kafka topic and an optional record name used to determine the schema.
    */
   public void createTable(TableId table, TopicAndRecordName topicAndRecordName) {
-    Schema kafkaConnectSchema = schemaRetriever.retrieveSchema(table, topicAndRecordName);
-    bigQuery.create(constructTableInfo(table, kafkaConnectSchema));
+    Schema kafkaValueSchema = schemaRetriever.retrieveSchema(table, topicAndRecordName, KafkaSchemaRecordType.VALUE);
+    Schema kafkaKeySchema = kafkaKeyFieldName.isPresent() ? schemaRetriever.retrieveSchema(table, topicAndRecordName, KafkaSchemaRecordType.KEY) : null;
+    bigQuery.create(constructTableInfo(table, kafkaKeySchema, kafkaValueSchema));
   }
 
   /**
@@ -60,25 +70,25 @@ public class SchemaManager {
    * @param topicAndRecordName The Kafka topic and an optional record name used to determine the schema.
    */
   public void updateSchema(TableId table, TopicAndRecordName topicAndRecordName) {
-    Schema kafkaConnectSchema = schemaRetriever.retrieveSchema(table, topicAndRecordName);
-    TableInfo tableInfo = constructTableInfo(table, kafkaConnectSchema);
+    Schema kafkaValueSchema = schemaRetriever.retrieveSchema(table, topicAndRecordName, KafkaSchemaRecordType.VALUE);
+    Schema kafkaKeySchema = kafkaKeyFieldName.isPresent() ? schemaRetriever.retrieveSchema(table, topicAndRecordName, KafkaSchemaRecordType.KEY) : null;
+    TableInfo tableInfo = constructTableInfo(table, kafkaKeySchema, kafkaValueSchema);
     logger.info("Attempting to update table `{}` with schema {}",
         table, tableInfo.getDefinition().getSchema());
     bigQuery.update(tableInfo);
   }
 
   // package private for testing.
-  TableInfo constructTableInfo(TableId table, Schema kafkaConnectSchema) {
-    com.google.cloud.bigquery.Schema bigQuerySchema =
-        schemaConverter.convertSchema(kafkaConnectSchema);
+  TableInfo constructTableInfo(TableId table, Schema kafkaKeySchema, Schema kafkaValueSchema) {
+    com.google.cloud.bigquery.Schema bigQuerySchema = getBigQuerySchema(kafkaKeySchema, kafkaValueSchema);
     StandardTableDefinition tableDefinition = StandardTableDefinition.newBuilder()
         .setSchema(bigQuerySchema)
         .setTimePartitioning(TimePartitioning.of(TimePartitioning.Type.DAY))
         .build();
     TableInfo.Builder tableInfoBuilder =
         TableInfo.newBuilder(table, tableDefinition);
-    if (kafkaConnectSchema.doc() != null) {
-      tableInfoBuilder.setDescription(kafkaConnectSchema.doc());
+    if (kafkaValueSchema.doc() != null) {
+      tableInfoBuilder.setDescription(kafkaValueSchema.doc());
     }
     return tableInfoBuilder.build();
   }
@@ -91,5 +101,21 @@ public class SchemaManager {
             .stream()
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     return schemaRetriever.retrieveSchemas(topics, recordAliases);
+  }
+
+  private com.google.cloud.bigquery.Schema getBigQuerySchema(Schema kafkaKeySchema, Schema kafkaValueSchema) {
+      com.google.cloud.bigquery.Schema valueSchema = schemaConverter.convertSchema(kafkaValueSchema);
+      List<Field> allFields = new ArrayList<>(valueSchema.getFields());
+      if (kafkaKeyFieldName.isPresent()) {
+          com.google.cloud.bigquery.Schema keySchema = schemaConverter.convertSchema(kafkaKeySchema);
+          Field kafkaKeyField = Field.newBuilder(kafkaKeyFieldName.get(), LegacySQLTypeName.RECORD, keySchema.getFields())
+                  .setMode(Field.Mode.NULLABLE).build();
+          allFields.add(kafkaKeyField);
+      }
+      if (kafkaDataFieldName.isPresent()) {
+          Field kafkaDataField = KafkaDataBuilder.buildKafkaDataField(kafkaDataFieldName.get());
+          allFields.add(kafkaDataField);
+      }
+      return com.google.cloud.bigquery.Schema.of(allFields);
   }
 }

@@ -34,10 +34,10 @@ public class TopicAndRecordName {
     return Optional.ofNullable(this.recordName);
   }
 
-  public String toSubject() {
+  public String toSubject(KafkaSchemaRecordType schemaType) {
     String subject = topic;
     if (recordName == null) {
-      subject += "-value";
+      subject += "-" + schemaType.toString();
     } else {
       subject += "-" + recordName;
     }

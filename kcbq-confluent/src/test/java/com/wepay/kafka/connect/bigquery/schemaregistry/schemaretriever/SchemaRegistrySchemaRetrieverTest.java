@@ -14,6 +14,7 @@ import com.google.cloud.bigquery.TableId;
 import com.google.common.collect.Sets;
 
 import com.wepay.kafka.connect.bigquery.api.TopicAndRecordName;
+import com.wepay.kafka.connect.bigquery.api.KafkaSchemaRecordType;
 import io.confluent.connect.avro.AvroData;
 
 import io.confluent.kafka.schemaregistry.client.SchemaMetadata;
@@ -37,12 +38,14 @@ public class SchemaRegistrySchemaRetrieverTest {
   @Test
   public void testRetrieveSchema() throws Exception {
     final TableId table = TableId.of("test", "kafka_topic");
+    final String testTopic = "kafka-topic";
     final String testRecordName = "testrecord";
-    final TopicAndRecordName testTopicAndRecordName = TopicAndRecordName.from("kafka-topic", testRecordName);
+    final TopicAndRecordName testTopicAndRecordName = TopicAndRecordName.from(testTopic, testRecordName);
     final SchemaMetadata testSchemaMetadata = testSchemaMetadata(testRecordName);
 
     SchemaRegistryClient schemaRegistryClient = mock(SchemaRegistryClient.class);
-    when(schemaRegistryClient.getLatestSchemaMetadata(testTopicAndRecordName.toSubject())).thenReturn(testSchemaMetadata);
+    when(schemaRegistryClient.getLatestSchemaMetadata(testTopicAndRecordName.toSubject(KafkaSchemaRecordType.VALUE))).thenReturn(testSchemaMetadata);
+    when(schemaRegistryClient.getLatestSchemaMetadata(testTopicAndRecordName.toSubject(KafkaSchemaRecordType.KEY))).thenReturn(testSchemaMetadata);
 
     SchemaRegistrySchemaRetriever testSchemaRetriever = new SchemaRegistrySchemaRetriever(
         schemaRegistryClient,
@@ -51,7 +54,8 @@ public class SchemaRegistrySchemaRetrieverTest {
 
     Schema expectedKafkaConnectSchema = schemaFor(testRecordName);
 
-    assertEquals(expectedKafkaConnectSchema, testSchemaRetriever.retrieveSchema(table, testTopicAndRecordName));
+    assertEquals(expectedKafkaConnectSchema, testSchemaRetriever.retrieveSchema(table, testTopicAndRecordName, KafkaSchemaRecordType.VALUE));
+    assertEquals(expectedKafkaConnectSchema, testSchemaRetriever.retrieveSchema(table, testTopicAndRecordName, KafkaSchemaRecordType.KEY));
   }
 
   @Test

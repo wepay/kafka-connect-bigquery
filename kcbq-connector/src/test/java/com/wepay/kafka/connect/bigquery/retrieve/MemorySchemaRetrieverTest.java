@@ -3,6 +3,7 @@ package com.wepay.kafka.connect.bigquery.retrieve;
 import com.google.cloud.bigquery.TableId;
 
 import com.google.common.collect.Maps;
+import com.wepay.kafka.connect.bigquery.api.KafkaSchemaRecordType;
 import com.wepay.kafka.connect.bigquery.api.SchemaRetriever;
 
 import com.wepay.kafka.connect.bigquery.api.TopicAndRecordName;
@@ -32,7 +33,7 @@ public class MemorySchemaRetrieverTest {
     final TableId tableId = getTableId("testTable", "testDataset");
     SchemaRetriever retriever = new MemorySchemaRetriever();
     retriever.configure(new HashMap<>());
-    Assert.assertEquals(retriever.retrieveSchema(tableId, topic), SchemaBuilder.struct().build());
+    Assert.assertEquals(retriever.retrieveSchema(tableId, topic, KafkaSchemaRecordType.VALUE), SchemaBuilder.struct().build());
   }
 
   @Test
@@ -45,7 +46,7 @@ public class MemorySchemaRetrieverTest {
     Schema expectedSchema = Schema.OPTIONAL_FLOAT32_SCHEMA;
     retriever.setLastSeenSchema(tableId, topic, expectedSchema);
 
-    Assert.assertEquals(retriever.retrieveSchema(tableId, topic), expectedSchema);
+    Assert.assertEquals(retriever.retrieveSchema(tableId, topic, KafkaSchemaRecordType.KEY), expectedSchema);
   }
 
   @Test
@@ -63,8 +64,8 @@ public class MemorySchemaRetrieverTest {
     retriever.setLastSeenSchema(intTableId, intSchemaTopic, expectedIntSchema);
 
     Assert.assertEquals(
-        retriever.retrieveSchema(floatTableId, floatSchemaTopic), expectedFloatSchema);
-    Assert.assertEquals(retriever.retrieveSchema(intTableId, intSchemaTopic), expectedIntSchema);
+        retriever.retrieveSchema(floatTableId, floatSchemaTopic, KafkaSchemaRecordType.KEY), expectedFloatSchema);
+    Assert.assertEquals(retriever.retrieveSchema(intTableId, intSchemaTopic, KafkaSchemaRecordType.KEY), expectedIntSchema);
   }
 
   @Test
@@ -104,6 +105,6 @@ public class MemorySchemaRetrieverTest {
     retriever.setLastSeenSchema(tableId, intSchemaTopic, firstSchema);
     retriever.setLastSeenSchema(tableId, intSchemaTopic, secondSchema);
 
-    Assert.assertEquals(retriever.retrieveSchema(tableId, intSchemaTopic), secondSchema);
+    Assert.assertEquals(retriever.retrieveSchema(tableId, intSchemaTopic, KafkaSchemaRecordType.VALUE), secondSchema);
   }
 }
