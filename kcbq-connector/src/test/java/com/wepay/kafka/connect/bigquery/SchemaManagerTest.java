@@ -28,6 +28,7 @@ import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableInfo;
 
 import com.wepay.kafka.connect.bigquery.api.SchemaRetriever;
+import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig;
 import com.wepay.kafka.connect.bigquery.convert.SchemaConverter;
 
 import org.apache.kafka.connect.data.Schema;
@@ -46,20 +47,19 @@ public class SchemaManagerTest {
     final String testDoc = "test doc";
     final TableId tableId = TableId.of(testDatasetName, testTableName);
 
+    BigQuerySinkConfig mockConfig = mock(BigQuerySinkConfig.class);
     SchemaRetriever mockSchemaRetriever = mock(SchemaRetriever.class);
     @SuppressWarnings("unchecked")
     SchemaConverter<com.google.cloud.bigquery.Schema> mockSchemaConverter =
         (SchemaConverter<com.google.cloud.bigquery.Schema>) mock(SchemaConverter.class);
+    when(mockConfig.getSchemaConverter()).thenReturn(mockSchemaConverter);
+    when(mockConfig.getSchemaRetriever()).thenReturn(mockSchemaRetriever);
+    when(mockConfig.getKafkaDataFieldName()).thenReturn(Optional.of("kafkaData"));
+    when(mockConfig.getKafkaKeyFieldName()).thenReturn(Optional.of("kafkaKey"));
+
     BigQuery mockBigQuery = mock(BigQuery.class);
 
-    Optional<String> kafkaKeyFieldName = Optional.of("kafkaKey");
-    Optional<String> kafkaDataFieldName = Optional.of("kafkaData");
-
-    SchemaManager schemaManager = new SchemaManager(mockSchemaRetriever,
-                                                    mockSchemaConverter,
-                                                    mockBigQuery,
-                                                    kafkaKeyFieldName,
-                                                    kafkaDataFieldName);
+    SchemaManager schemaManager = new SchemaManager(mockBigQuery, mockConfig);
 
     Schema mockKafkaSchema = mock(Schema.class);
     // we would prefer to mock this class, but it is final.

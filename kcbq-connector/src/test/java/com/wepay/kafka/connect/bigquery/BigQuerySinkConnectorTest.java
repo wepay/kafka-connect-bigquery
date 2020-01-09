@@ -41,6 +41,7 @@ import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig;
 import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
 import com.wepay.kafka.connect.bigquery.exception.SinkConfigConnectException;
 
+import com.wepay.kafka.connect.bigquery.api.TopicAndRecordName;
 import org.apache.kafka.connect.data.Schema;
 
 import org.junit.BeforeClass;
@@ -49,6 +50,7 @@ import org.junit.Test;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 public class BigQuerySinkConnectorTest {
   private static SinkConnectorPropertiesFactory propertiesFactory;
@@ -61,13 +63,19 @@ public class BigQuerySinkConnectorTest {
     }
 
     @Override
-    public Schema retrieveSchema(TableId table, String topic, KafkaSchemaRecordType schemaType) {
+    public Schema retrieveSchema(TableId table, TopicAndRecordName topicAndRecordName, KafkaSchemaRecordType schemaType) {
       // Shouldn't be called
       return null;
     }
 
     @Override
-    public void setLastSeenSchema(TableId table, String topic, Schema schema) {
+    public Map<TopicAndRecordName, Schema> retrieveSchemas(List<String> topics, Map<Pattern, String> recordAliases) {
+      // Shouldn't be called
+      return null;
+    }
+
+    @Override
+    public void setLastSeenSchema(TableId table, TopicAndRecordName topicAndRecordName, Schema schema) {
     }
   }
 

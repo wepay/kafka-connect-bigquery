@@ -22,6 +22,7 @@ import com.google.cloud.bigquery.BigQueryError;
 import com.google.cloud.bigquery.BigQueryException;
 import com.google.cloud.bigquery.InsertAllRequest;
 
+import com.wepay.kafka.connect.bigquery.api.TopicAndRecordName;
 import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
 import com.wepay.kafka.connect.bigquery.utils.PartitionedTableId;
 
@@ -71,13 +72,13 @@ public abstract class BigQueryWriter {
    * errors that happen as a result.
    * @param tableId The PartitionedTableId.
    * @param rows The rows to write.
-   * @param topic The Kafka topic that the row data came from.
+   * @param topicAndRecordName The Kafka topic that the row data came from.
    * @return map from failed row id to the BigQueryError.
    */
   protected abstract Map<Long, List<BigQueryError>> performWriteRequest(
       PartitionedTableId tableId,
       List<InsertAllRequest.RowToInsert> rows,
-      String topic)
+      TopicAndRecordName topicAndRecordName)
       throws BigQueryException, BigQueryConnectException;
 
   /**
@@ -97,12 +98,12 @@ public abstract class BigQueryWriter {
   /**
    * @param table The BigQuery table to write the rows to.
    * @param rows The rows to write.
-   * @param topic The Kafka topic that the row data came from.
+   * @param topicAndRecordName The Kafka topic that the row data came from.
    * @throws InterruptedException if interrupted.
    */
   public void writeRows(PartitionedTableId table,
                         List<InsertAllRequest.RowToInsert> rows,
-                        String topic)
+                        TopicAndRecordName topicAndRecordName)
       throws BigQueryConnectException, BigQueryException, InterruptedException {
     logger.debug("writing {} row{} to table {}", rows.size(), rows.size() != 1 ? "s" : "", table);
 
@@ -115,7 +116,7 @@ public abstract class BigQueryWriter {
         waitRandomTime();
       }
       try {
-        failedRowsMap = performWriteRequest(table, rows, topic);
+        failedRowsMap = performWriteRequest(table, rows, topicAndRecordName);
         if (failedRowsMap.isEmpty()) {
           // table insertion completed with no reported errors
           return;
@@ -123,7 +124,7 @@ public abstract class BigQueryWriter {
           logger.info("{} rows succeeded, {} rows failed",
               rows.size() - failedRowsMap.size(), failedRowsMap.size());
           // update insert rows and retry in case of partial failure
-          rows = getFailedRows(rows, failedRowsMap.keySet(), topic, table);
+          rows = getFailedRows(rows, failedRowsMap.keySet(), topicAndRecordName, table);
           mostRecentException = new BigQueryConnectException(failedRowsMap);
           retryCount++;
         } else {
@@ -183,7 +184,7 @@ public abstract class BigQueryWriter {
    */
   private List<InsertAllRequest.RowToInsert> getFailedRows(List<InsertAllRequest.RowToInsert> rows,
                                                            Set<Long> failRowsSet,
-                                                           String topic,
+                                                           TopicAndRecordName topicAndRecordName,
                                                            PartitionedTableId table) {
     List<InsertAllRequest.RowToInsert> failRows = new ArrayList<>();
     for (int index = 0; index < rows.size(); index++) {
@@ -191,7 +192,8 @@ public abstract class BigQueryWriter {
         failRows.add(rows.get(index));
       }
     }
-    logger.debug("{} rows from topic {} failed to be written to table {}.", rows.size(), topic, table.getFullTableName());
+    logger.debug("{} rows from topic {} of type {} failed to be written to table {}.",
+        rows.size(), topicAndRecordName.getTopic(), topicAndRecordName.getRecordName().orElse("<UNKNOWN>"), table.getFullTableName());
     return failRows;
   }
 

@@ -21,16 +21,13 @@ package com.wepay.kafka.connect.bigquery;
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.TableId;
 
-import com.wepay.kafka.connect.bigquery.api.SchemaRetriever;
-
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig;
-
-import com.wepay.kafka.connect.bigquery.convert.SchemaConverter;
 
 import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
 import com.wepay.kafka.connect.bigquery.exception.SinkConfigConnectException;
 
 import com.wepay.kafka.connect.bigquery.utils.TopicToTableResolver;
+import com.wepay.kafka.connect.bigquery.api.TopicAndRecordName;
 import com.wepay.kafka.connect.bigquery.utils.Version;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -46,7 +43,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * A {@link SinkConnector} used to delegate BigQuery data writes to
@@ -100,17 +96,14 @@ public class BigQuerySinkConnector extends SinkConnector {
     if (testSchemaManager != null) {
       return testSchemaManager;
     }
-    SchemaRetriever schemaRetriever = config.getSchemaRetriever();
-    SchemaConverter<com.google.cloud.bigquery.Schema> schemaConverter = config.getSchemaConverter();
-    Optional<String> kafkaKeyFieldName = config.getKafkaKeyFieldName();
-    Optional<String> kafkaDataFieldName = config.getKafkaDataFieldName();
-    return new SchemaManager(schemaRetriever, schemaConverter, bigQuery, kafkaKeyFieldName, kafkaDataFieldName);
+    return new SchemaManager(bigQuery, config);
   }
 
-  private void ensureExistingTables() {
-    BigQuery bigQuery = getBigQuery();
-    Map<String, TableId> topicsToTableIds = TopicToTableResolver.getTopicsToTables(config);
-    for (TableId tableId : topicsToTableIds.values()) {
+  private void ensureExistingTables(
+      BigQuery bigQuery,
+      Map<TopicAndRecordName, TableId> topicsToTableIds) {
+    for (Map.Entry<TopicAndRecordName, TableId> topicToTableId : topicsToTableIds.entrySet()) {
+      TableId tableId = topicToTableId.getValue();
       if (bigQuery.getTable(tableId) == null) {
         logger.warn(
           "You may want to enable auto table creation by setting {}=true in the properties file",
@@ -118,6 +111,19 @@ public class BigQuerySinkConnector extends SinkConnector {
         throw new BigQueryConnectException("Table '" + tableId + "' does not exist");
       }
     }
+  }
+
+  private void ensureExistingTables() {
+    BigQuery bigQuery = getBigQuery();
+    Map<TopicAndRecordName, TableId> topicsToTableIds = TopicToTableResolver.getTopicsToTables(config);
+    if (config.getBoolean(BigQuerySinkConfig.SUPPORT_MULTI_SCHEMA_TOPICS_CONFIG)) {
+      SchemaManager schemaManager = getSchemaManager(bigQuery);
+      topicsToTableIds = TopicToTableResolver.getTopicsToTables(config, schemaManager.discoverSchemas());
+    } else {
+      topicsToTableIds = TopicToTableResolver.getTopicsToTables(config);
+    }
+
+    ensureExistingTables(bigQuery, topicsToTableIds);
   }
 
   @Override

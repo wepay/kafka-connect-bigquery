@@ -4,7 +4,9 @@ import com.google.cloud.bigquery.TableId;
 
 import org.apache.kafka.connect.data.Schema;
 
+import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 /**
  * Interface for retrieving the most up-to-date schemas for a given BigQuery table. Used in
@@ -21,17 +23,19 @@ public interface SchemaRetriever {
   /**
    * Retrieve the most current schema for the given topic.
    * @param table The table that will be created.
-   * @param topic The topic to retrieve a schema for.
+   * @param topicAndRecordName The topic and an optional record name to retrieve a schema for.
    * @param schemaType The type of kafka schema, either "value" or "key".
    * @return The Schema for the given table.
    */
-  public Schema retrieveSchema(TableId table, String topic, KafkaSchemaRecordType schemaType);
+  public Schema retrieveSchema(TableId table, TopicAndRecordName topicAndRecordName, KafkaSchemaRecordType schemaType);
+
+  Map<TopicAndRecordName, Schema> retrieveSchemas(List<String> topics, Map<Pattern, String> recordAliases);
 
   /**
    * Set the last seen schema for a given topic
    * @param table The table that will be created.
-   * @param topic The topic to retrieve a schema for.
+   * @param topicAndRecordName The topic and an optional record name to retrieve a schema for.
    * @param schema The last seen Kafka Connect Schema
    */
-  public void setLastSeenSchema(TableId table, String topic, Schema schema);
+  public void setLastSeenSchema(TableId table, TopicAndRecordName topicAndRecordName, Schema schema);
 }

@@ -109,6 +109,23 @@ public class BigQuerySinkConfig extends AbstractConfig {
       + "capture groups that are referenced in the format string using placeholders (i.e. $1) "
       + "(form of <topic regex>=<format string>)";
 
+  public static final String RECORD_ALIASES_CONFIG =                         "recordAliases";
+  private static final ConfigDef.Type RECORD_ALIASES_TYPE =                  ConfigDef.Type.LIST;
+  private static final ConfigDef.Importance RECORD_ALIASES_IMPORTANCE =      ConfigDef.Importance.MEDIUM;
+  private static final Object RECORD_ALIASES_DEFAULT =                        null;
+  private static final String RECORD_ALIASES_DOC =
+      "A list of mappings from record name regexes to table name postfixes. Note the regex must include "
+      + "capture groups that are referenced in the format string using placeholders (i.e. $1) "
+      + "(form of <topic regex>=<format string>)";
+
+  public static final String SUPPORT_MULTI_SCHEMA_TOPICS_CONFIG =                    "supportMultiSchemaTopics";
+  private static final ConfigDef.Type SUPPORT_MULTI_SCHEMA_TOPICS_TYPE =              ConfigDef.Type.BOOLEAN;
+  private static final ConfigDef.Importance SUPPORT_MULTI_SCHEMA_TOPICS_IMPORTANCE =  ConfigDef.Importance.MEDIUM;
+  private static final Object SUPPORT_MULTI_SCHEMA_TOPICS_DEFAULT =                    false;
+  private static final String SUPPORT_MULTI_SCHEMA_TOPICS_DOC =
+      "Whether to support multi schema topics by appending record names to table names;"
+      + " if not enabled table names will be created using topic names only";
+
   public static final String PROJECT_CONFIG =                     "project";
   private static final ConfigDef.Type PROJECT_TYPE =              ConfigDef.Type.STRING;
   private static final ConfigDef.Importance PROJECT_IMPORTANCE =  ConfigDef.Importance.HIGH;
@@ -260,6 +277,18 @@ public class BigQuerySinkConfig extends AbstractConfig {
             TOPICS_TO_TABLES_DEFAULT,
             TOPICS_TO_TABLES_IMPORTANCE,
             TOPICS_TO_TABLES_DOC
+        ).define(
+            RECORD_ALIASES_CONFIG,
+            RECORD_ALIASES_TYPE,
+            RECORD_ALIASES_DEFAULT,
+            RECORD_ALIASES_IMPORTANCE,
+            RECORD_ALIASES_DOC
+        ).define(
+            SUPPORT_MULTI_SCHEMA_TOPICS_CONFIG,
+            SUPPORT_MULTI_SCHEMA_TOPICS_TYPE,
+            SUPPORT_MULTI_SCHEMA_TOPICS_DEFAULT,
+            SUPPORT_MULTI_SCHEMA_TOPICS_IMPORTANCE,
+            SUPPORT_MULTI_SCHEMA_TOPICS_DOC
         ).define(
             PROJECT_CONFIG,
             PROJECT_TYPE,
@@ -446,6 +475,41 @@ public class BigQuerySinkConfig extends AbstractConfig {
       }
     }
     return patternList;
+  }
+
+  public String getSingleMatch(String value,
+                                       String valueProperty,
+                                       String patternProperty) {
+    String match = null;
+    String previousPattern = null;
+
+    List<Map.Entry<Pattern, String>> patterns = getSinglePatterns(patternProperty);
+
+    for (Map.Entry<Pattern, String> pattern : patterns) {
+      Matcher patternMatcher = pattern.getKey().matcher(value);
+      if (patternMatcher.matches()) {
+        if (match != null) {
+          String secondMatch = pattern.getKey().toString();
+          throw new ConfigException("Value '" + value
+              + "' for property '" + valueProperty
+              + "' matches " + patternProperty
+              + " regexes for both '" + previousPattern
+              + "' and '" + secondMatch + "'"
+          );
+        }
+        String formatString = pattern.getValue();
+        try {
+          match = patternMatcher.replaceAll(formatString);
+          previousPattern = pattern.getKey().toString();
+        } catch (IndexOutOfBoundsException err) {
+          throw new ConfigException("Format string '" + formatString
+              + "' is invalid in property '" + patternProperty
+              + "'", err);
+        }
+      }
+    }
+
+    return match;
   }
 
   private Map<String, String> getSingleMatches(

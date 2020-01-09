@@ -21,6 +21,7 @@ package com.wepay.kafka.connect.bigquery.write.batch;
 import com.google.cloud.bigquery.BigQueryException;
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 
+import com.wepay.kafka.connect.bigquery.api.TopicAndRecordName;
 import com.wepay.kafka.connect.bigquery.convert.RecordConverter;
 import com.wepay.kafka.connect.bigquery.utils.PartitionedTableId;
 import com.wepay.kafka.connect.bigquery.write.row.BigQueryWriter;
@@ -47,22 +48,22 @@ public class TableWriter implements Runnable {
   private final BigQueryWriter writer;
   private final PartitionedTableId table;
   private final List<RowToInsert> rows;
-  private final String topic;
+  private final TopicAndRecordName topicAndRecordName;
 
   /**
    * @param writer the {@link BigQueryWriter} to use.
    * @param table the BigQuery table to write to.
    * @param rows the rows to write.
-   * @param topic the kafka source topic of this data.
+   * @param topicAndRecordName the kafka source topic and an optional record name of this data.
    */
-  public TableWriter(BigQueryWriter writer,
+  private TableWriter(BigQueryWriter writer,
                      PartitionedTableId table,
                      List<RowToInsert> rows,
-                     String topic) {
+                     TopicAndRecordName topicAndRecordName) {
     this.writer = writer;
     this.table = table;
     this.rows = rows;
-    this.topic = topic;
+    this.topicAndRecordName = topicAndRecordName;
   }
 
   @Override
@@ -77,7 +78,7 @@ public class TableWriter implements Runnable {
         List<RowToInsert> currentBatch =
             rows.subList(currentIndex, Math.min(currentIndex + currentBatchSize, rows.size()));
         try {
-          writer.writeRows(table, currentBatch, topic);
+          writer.writeRows(table, currentBatch, topicAndRecordName);
           currentIndex += currentBatchSize;
           successCount++;
         } catch (BigQueryException err) {
@@ -141,14 +142,10 @@ public class TableWriter implements Runnable {
     return false;
   }
 
-  public String getTopic() {
-    return topic;
-  }
-
   public static class Builder implements TableWriterBuilder {
     private final BigQueryWriter writer;
     private final PartitionedTableId table;
-    private final String topic;
+    private final TopicAndRecordName topicAndRecordName;
 
     private List<RowToInsert> rows;
 
@@ -157,14 +154,14 @@ public class TableWriter implements Runnable {
     /**
      * @param writer the BigQueryWriter to use
      * @param table the BigQuery table to write to.
-     * @param topic the kafka source topic associated with the given table.
+     * @param topicAndRecordName the kafka source topic and an optional record name associated with the given table.
      * @param recordConverter the record converter used to convert records to rows
      */
-    public Builder(BigQueryWriter writer, PartitionedTableId table, String topic,
+    public Builder(BigQueryWriter writer, PartitionedTableId table, TopicAndRecordName topicAndRecordName,
                    RecordConverter<Map<String, Object>> recordConverter) {
       this.writer = writer;
       this.table = table;
-      this.topic = topic;
+      this.topicAndRecordName = topicAndRecordName;
 
       this.rows = new ArrayList<>();
 
@@ -184,7 +181,7 @@ public class TableWriter implements Runnable {
      * @return a TableWriter containing the given writer, table, topic, and all added rows.
      */
     public TableWriter build() {
-      return new TableWriter(writer, table, rows, topic);
+      return new TableWriter(writer, table, rows, topicAndRecordName);
     }
   }
 }

@@ -1,18 +1,25 @@
 package com.wepay.kafka.connect.bigquery.retrieve;
 
-
 import com.google.cloud.bigquery.TableId;
 
+import com.google.common.collect.Maps;
 import com.wepay.kafka.connect.bigquery.api.KafkaSchemaRecordType;
 import com.wepay.kafka.connect.bigquery.api.SchemaRetriever;
 
+import com.wepay.kafka.connect.bigquery.api.TopicAndRecordName;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 
 public class MemorySchemaRetrieverTest {
@@ -22,7 +29,7 @@ public class MemorySchemaRetrieverTest {
 
   @Test
   public void testRetrieveSchemaWhenNoLastSeenSchemaReturnsEmptyStructSchema() {
-    final String topic = "test-retrieve";
+    final TopicAndRecordName topic = TopicAndRecordName.from("test-retrieve", "test-record");
     final TableId tableId = getTableId("testTable", "testDataset");
     SchemaRetriever retriever = new MemorySchemaRetriever();
     retriever.configure(new HashMap<>());
@@ -31,7 +38,7 @@ public class MemorySchemaRetrieverTest {
 
   @Test
   public void testRetrieveSchemaWhenLastSeenExistsSucceeds() {
-    final String topic = "test-retrieve";
+    final TopicAndRecordName topic = TopicAndRecordName.from("test-retrieve", "test-record");
     final TableId tableId = getTableId("testTable", "testDataset");
     SchemaRetriever retriever = new MemorySchemaRetriever();
     retriever.configure(new HashMap<>());
@@ -44,10 +51,10 @@ public class MemorySchemaRetrieverTest {
 
   @Test
   public void testRetrieveSchemaWithMultipleSchemasSucceeds() {
-    final String floatSchemaTopic = "test-float32";
-    final String intSchemaTopic = "test-int32";
-    final TableId floatTableId = getTableId("testFloatTable", "testFloatDataset");
-    final TableId intTableId = getTableId("testIntTable", "testIntDataset");
+    final TopicAndRecordName floatSchemaTopic = TopicAndRecordName.from("test-float32", "float32-record-name");
+    final TopicAndRecordName intSchemaTopic = TopicAndRecordName.from("test-int32", "int32-record-name");
+    final TableId floatTableId = getTableId("testFloatDataset", "testFloatTable");
+    final TableId intTableId = getTableId("testIntDataset", "testIntTable");
     SchemaRetriever retriever = new MemorySchemaRetriever();
     retriever.configure(new HashMap<>());
 
@@ -62,8 +69,33 @@ public class MemorySchemaRetrieverTest {
   }
 
   @Test
+  public void testRetrieveSchemasSucceeds() {
+    final TopicAndRecordName floatSchemaTopic = TopicAndRecordName.from("test-float32", "float32-record-name");
+    final TopicAndRecordName intSchemaTopic = TopicAndRecordName.from("test-int32", "int32-record-name");
+    final TableId floatTableId = getTableId("testFloatTable", "testFloatDataset");
+    final TableId intTableId = getTableId("testIntTable", "testIntDataset");
+    SchemaRetriever retriever = new MemorySchemaRetriever();
+    retriever.configure(new HashMap<>());
+
+    Schema expectedIntSchema = SchemaBuilder.struct().name("schemaA").build();
+    Schema expectedFloatSchema = SchemaBuilder.struct().optional().name("schemaB").build();
+
+    retriever.setLastSeenSchema(floatTableId, floatSchemaTopic, expectedFloatSchema);
+    retriever.setLastSeenSchema(intTableId, intSchemaTopic, expectedIntSchema);
+
+    Map<TopicAndRecordName, Schema> expectedSchemas = Maps.newHashMap();
+    expectedSchemas.put(floatSchemaTopic, expectedFloatSchema);
+    expectedSchemas.put(intSchemaTopic, expectedIntSchema);
+
+    List<String> topics = Stream.of(floatSchemaTopic.getTopic(), intSchemaTopic.getTopic()).collect(Collectors.toList());
+    Map<Pattern, String> recordAliases = Collections.emptyMap();
+
+    Assert.assertEquals(retriever.retrieveSchemas(topics, recordAliases), expectedSchemas);
+  }
+
+  @Test
   public void testRetrieveSchemaRetrievesLastSeenSchema() {
-    final String intSchemaTopic = "test-int";
+    final TopicAndRecordName intSchemaTopic = TopicAndRecordName.from("test-int32", "int32-record-name");
     final TableId tableId = getTableId("testTable", "testDataset");
     SchemaRetriever retriever = new MemorySchemaRetriever();
     retriever.configure(new HashMap<>());
