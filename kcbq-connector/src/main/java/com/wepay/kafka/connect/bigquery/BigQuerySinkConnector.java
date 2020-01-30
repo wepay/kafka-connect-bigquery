@@ -99,20 +99,6 @@ public class BigQuerySinkConnector extends SinkConnector {
     return new SchemaManager(bigQuery, config);
   }
 
-  private void ensureExistingTables(
-      BigQuery bigQuery,
-      Map<TopicAndRecordName, TableId> topicsToTableIds) {
-    for (Map.Entry<TopicAndRecordName, TableId> topicToTableId : topicsToTableIds.entrySet()) {
-      TableId tableId = topicToTableId.getValue();
-      if (bigQuery.getTable(tableId) == null) {
-        logger.warn(
-          "You may want to enable auto table creation by setting {}=true in the properties file",
-          config.TABLE_CREATE_CONFIG);
-        throw new BigQueryConnectException("Table '" + tableId + "' does not exist");
-      }
-    }
-  }
-
   private void ensureExistingTables() {
     BigQuery bigQuery = getBigQuery();
     Map<TopicAndRecordName, TableId> topicsToTableIds = TopicToTableResolver.getTopicsToTables(config);
@@ -124,6 +110,18 @@ public class BigQuerySinkConnector extends SinkConnector {
     }
 
     ensureExistingTables(bigQuery, topicsToTableIds);
+  }
+
+  private void ensureExistingTables(BigQuery bigQuery, Map<TopicAndRecordName, TableId> topicsToTableIds) {
+    for (Map.Entry<TopicAndRecordName, TableId> topicToTableId : topicsToTableIds.entrySet()) {
+      TableId tableId = topicToTableId.getValue();
+      if (bigQuery.getTable(tableId) == null) {
+        logger.warn(
+            "You may want to enable auto table creation by setting {}=true in the properties file",
+            config.TABLE_CREATE_CONFIG);
+        throw new BigQueryConnectException("Table '" + tableId + "' does not exist");
+      }
+    }
   }
 
   @Override

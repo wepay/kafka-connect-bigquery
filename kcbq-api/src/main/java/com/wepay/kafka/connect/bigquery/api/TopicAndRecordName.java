@@ -5,23 +5,52 @@ import org.apache.kafka.connect.sink.SinkRecord;
 import java.util.Objects;
 import java.util.Optional;
 
+/**
+ * A container class with separate topic and (optional) record names.
+ */
 public class TopicAndRecordName {
   private final String topic;
   private final String recordName;
 
+  /**
+   * Convenience method for creating a new {@link TopicAndRecordName} with empty record name.
+   *
+   * @param topic the topic.
+   * @return a new {@link TopicAndRecordName} with empty record name.
+   */
   public static TopicAndRecordName from(String topic) {
     return new TopicAndRecordName(topic, null);
   }
 
+  /**
+   * Convenience method for creating a new {@link TopicAndRecordName}.
+   *
+   * @param topic the topic.
+   * @param recordName the record name.
+   * @return a new {@link TopicAndRecordName}.
+   */
   public static TopicAndRecordName from(String topic, String recordName) {
     return new TopicAndRecordName(topic, recordName);
   }
 
+  /**
+   * Convenience method for creating a new {@link TopicAndRecordName} from {@link SinkRecord}.
+   *
+   * @param record the record used to extract topic and (optionally) record name.
+   * @param includeRecordName whether or not to include the record name.
+   * @return a new {@link TopicAndRecordName}.
+   */
   public static TopicAndRecordName from(SinkRecord record, boolean includeRecordName) {
     String maybeRecordName = includeRecordName ? record.valueSchema().name() : null;
     return from(record.topic(), maybeRecordName);
   }
 
+  /**
+   * Create a new {@link TopicAndRecordName}.
+   *
+   * @param topic the topic
+   * @param recordName the record name
+   */
   public TopicAndRecordName(String topic, String recordName) {
     this.topic = topic;
     this.recordName = recordName;
@@ -35,10 +64,27 @@ public class TopicAndRecordName {
     return Optional.ofNullable(this.recordName);
   }
 
+  /**
+   * Convert topic and record name into the schema registry subject.
+   * Subjects follow topic-recordName format.
+   *
+   * If recordName is not present, "value" will be used.
+   *
+   * @return corresponding schema registry subject.
+   */
   public String toSubject() {
     return toSubject(KafkaSchemaRecordType.VALUE);
   }
 
+  /**
+   * Convert topic and record name into the schema registry subject.
+   * Subjects follow topic-recordName format.
+   *
+   * If recordName is not present, "value" or "key" will be used, depending on the schema type.
+   *
+   * @param schemaType schema type used to resolve full subject when recordName is absent.
+   * @return corresponding schema registry subject.
+   */
   public String toSubject(KafkaSchemaRecordType schemaType) {
     String subject = topic;
     if (recordName == null) {
@@ -56,7 +102,7 @@ public class TopicAndRecordName {
 
   @Override
   public int hashCode() {
-    return this.topic.hashCode();
+    return Objects.hashCode(this.topic) + Objects.hashCode(this.recordName);
   }
 
   @Override

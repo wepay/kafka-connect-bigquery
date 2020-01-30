@@ -39,7 +39,7 @@ public class TopicToTableResolver {
   /**
    * Return a Map detailing which BigQuery table each topic should write to.
    *
-   * @param config Config that contains properties used to generate the map
+   * @param config Config that contains properties used to generate the map.
    * @return A Map associating Kafka topic names to BigQuery table names.
    */
   public static Map<TopicAndRecordName, TableId> getTopicsToTables(BigQuerySinkConfig config) {
@@ -72,6 +72,13 @@ public class TopicToTableResolver {
     return matches;
   }
 
+  /**
+   * Return a Map detailing which BigQuery table each topic should write to.
+   *
+   * @param config Config that contains properties used to generate the map.
+   * @param schemasByTopic A Map containing data for topic to respective schema.
+   * @return A Map associating Kafka topic names to BigQuery table names.
+   */
   public static Map<TopicAndRecordName, TableId> getTopicsToTables(BigQuerySinkConfig config, Map<TopicAndRecordName, Schema> schemasByTopic) {
     Map<TopicAndRecordName, TableId> topicToTableIds = Maps.newHashMap();
     schemasByTopic.forEach((key, value) -> updateTopicToTable(config, key, topicToTableIds));

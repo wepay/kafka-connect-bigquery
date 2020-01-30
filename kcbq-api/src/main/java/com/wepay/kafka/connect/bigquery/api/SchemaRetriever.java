@@ -18,7 +18,7 @@ public interface SchemaRetriever {
    * {@link org.apache.kafka.connect.sink.SinkConnector#start(Map)} method.
    * @param properties The configuration settings of the connector.
    */
-  public void configure(Map<String, String> properties);
+  void configure(Map<String, String> properties);
 
   /**
    * Retrieve the most current schema for the given topic.
@@ -27,8 +27,14 @@ public interface SchemaRetriever {
    * @param schemaType The type of kafka schema, either "value" or "key".
    * @return The Schema for the given table.
    */
-  public Schema retrieveSchema(TableId table, TopicAndRecordName topicAndRecordName, KafkaSchemaRecordType schemaType);
+  Schema retrieveSchema(TableId table, TopicAndRecordName topicAndRecordName, KafkaSchemaRecordType schemaType);
 
+  /**
+   * Retrieve the most current schemas that match the configured topics and records.
+   * @param topics The list of a supported topics.
+   * @param recordAliases The map containing record name patterns and their aliases.
+   * @return the most current schemas that match the configured topics and records.
+   */
   Map<TopicAndRecordName, Schema> retrieveSchemas(List<String> topics, Map<Pattern, String> recordAliases);
 
   /**
@@ -37,5 +43,5 @@ public interface SchemaRetriever {
    * @param topicAndRecordName The topic and an optional record name to retrieve a schema for.
    * @param schema The last seen Kafka Connect Schema
    */
-  public void setLastSeenSchema(TableId table, TopicAndRecordName topicAndRecordName, Schema schema);
+  void setLastSeenSchema(TableId table, TopicAndRecordName topicAndRecordName, Schema schema);
 }

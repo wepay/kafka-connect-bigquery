@@ -114,9 +114,10 @@ public class BigQuerySinkConfig extends AbstractConfig {
   private static final ConfigDef.Importance RECORD_ALIASES_IMPORTANCE =      ConfigDef.Importance.MEDIUM;
   private static final Object RECORD_ALIASES_DEFAULT =                        null;
   private static final String RECORD_ALIASES_DOC =
-      "A list of mappings from record name regexes to table name postfixes. Note the regex must include "
-      + "capture groups that are referenced in the format string using placeholders (i.e. $1) "
-      + "(form of <topic regex>=<format string>)";
+      "A list of mappings from record name regular expressions (regexes) to their aliases. "
+      + "BigQuery table name will follow the \"<topic_table_name>_<record_alias>\" template. "
+      + "Note the regex must include capture groups that are referenced in the format string "
+      + "using placeholders (i.e. $1) (form of <topic regex>=<format string>)";
 
   public static final String SUPPORT_MULTI_SCHEMA_TOPICS_CONFIG =                    "supportMultiSchemaTopics";
   private static final ConfigDef.Type SUPPORT_MULTI_SCHEMA_TOPICS_TYPE =              ConfigDef.Type.BOOLEAN;

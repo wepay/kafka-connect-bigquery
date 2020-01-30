@@ -40,6 +40,17 @@ public class SchemaManager {
   private final Optional<String> kafkaDataFieldName;
 
   /**
+   * Create a new SchemaManager instance.
+   *
+   * SchemaManager relies on the following {@link BigQuerySinkConfig} properties:
+   * - schemaRetriever Used to determine the Kafka Connect Schema that should be used for a
+   *                   given table.
+   * - schemaConverter Used to convert Kafka Connect Schemas into BigQuery format.
+   * - kafkaKeyFieldName The name of kafka key field to be used in BigQuery.
+   *                     If set to null, Kafka Key Field will not be included in BigQuery.
+   * - kafkaDataFieldName The name of kafka data field to be used in BigQuery.
+   *                      If set to null, Kafka Data Field will not be included in BigQuery.
+   *
    * @param bigQuery Used to communicate create/update requests to BigQuery.
    * @param config BigQuery sink configuration.
    */
