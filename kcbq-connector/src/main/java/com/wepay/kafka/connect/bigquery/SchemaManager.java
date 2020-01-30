@@ -105,16 +105,6 @@ public class SchemaManager {
     return tableInfoBuilder.build();
   }
 
-  public Map<TopicAndRecordName, Schema> discoverSchemas() {
-    List<String> topics = config.getList(BigQuerySinkConfig.TOPICS_CONFIG);
-    Map<Pattern, String> recordAliases =
-        config
-            .getSinglePatterns(BigQuerySinkConfig.RECORD_ALIASES_CONFIG)
-            .stream()
-            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-    return schemaRetriever.retrieveSchemas(topics, recordAliases);
-  }
-
   private com.google.cloud.bigquery.Schema getBigQuerySchema(Schema kafkaKeySchema, Schema kafkaValueSchema) {
       List<Field> allFields = new ArrayList<> ();
       com.google.cloud.bigquery.Schema valueSchema = schemaConverter.convertSchema(kafkaValueSchema);

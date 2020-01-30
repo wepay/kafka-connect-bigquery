@@ -4,9 +4,7 @@ import com.google.cloud.bigquery.TableId;
 
 import org.apache.kafka.connect.data.Schema;
 
-import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
 
 /**
  * Interface for retrieving the most up-to-date schemas for a given BigQuery table. Used in
@@ -28,14 +26,6 @@ public interface SchemaRetriever {
    * @return The Schema for the given table.
    */
   Schema retrieveSchema(TableId table, TopicAndRecordName topicAndRecordName, KafkaSchemaRecordType schemaType);
-
-  /**
-   * Retrieve the most current schemas that match the configured topics and records.
-   * @param topics The list of a supported topics.
-   * @param recordAliases The map containing record name patterns and their aliases.
-   * @return the most current schemas that match the configured topics and records.
-   */
-  Map<TopicAndRecordName, Schema> retrieveSchemas(List<String> topics, Map<Pattern, String> recordAliases);
 
   /**
    * Set the last seen schema for a given topic

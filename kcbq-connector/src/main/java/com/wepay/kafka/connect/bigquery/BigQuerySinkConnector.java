@@ -50,25 +50,16 @@ import java.util.Map;
  */
 public class BigQuerySinkConnector extends SinkConnector {
   private final BigQuery testBigQuery;
-  private final SchemaManager testSchemaManager;
 
   public static final String  GCS_BQ_TASK_CONFIG_KEY = "GCSBQTask";
 
   public BigQuerySinkConnector() {
     testBigQuery = null;
-    testSchemaManager = null;
   }
 
   // For testing purposes only; will never be called by the Kafka Connect framework
   BigQuerySinkConnector(BigQuery bigQuery) {
     this.testBigQuery = bigQuery;
-    this.testSchemaManager = null;
-  }
-
-  // For testing purposes only; will never be called by the Kafka Connect framework
-  BigQuerySinkConnector(BigQuery bigQuery, SchemaManager schemaManager) {
-    this.testBigQuery = bigQuery;
-    this.testSchemaManager = schemaManager;
   }
 
   private BigQuerySinkConfig config;
@@ -92,24 +83,12 @@ public class BigQuerySinkConnector extends SinkConnector {
     return new BigQueryHelper().setKeySource(keySource).connect(projectName, key);
   }
 
-  private SchemaManager getSchemaManager(BigQuery bigQuery) {
-    if (testSchemaManager != null) {
-      return testSchemaManager;
-    }
-    return new SchemaManager(bigQuery, config);
-  }
-
   private void ensureExistingTables() {
-    BigQuery bigQuery = getBigQuery();
-    Map<TopicAndRecordName, TableId> topicsToTableIds = TopicToTableResolver.getTopicsToTables(config);
-    if (config.getBoolean(BigQuerySinkConfig.SUPPORT_MULTI_SCHEMA_TOPICS_CONFIG)) {
-      SchemaManager schemaManager = getSchemaManager(bigQuery);
-      topicsToTableIds = TopicToTableResolver.getTopicsToTables(config, schemaManager.discoverSchemas());
-    } else {
-      topicsToTableIds = TopicToTableResolver.getTopicsToTables(config);
+    if (!config.getBoolean(BigQuerySinkConfig.SUPPORT_MULTI_SCHEMA_TOPICS_CONFIG)) {
+      BigQuery bigQuery = getBigQuery();
+      Map<TopicAndRecordName, TableId> topicsToTableIds = TopicToTableResolver.getTopicsToTables(config);
+      ensureExistingTables(bigQuery, topicsToTableIds);
     }
-
-    ensureExistingTables(bigQuery, topicsToTableIds);
   }
 
   private void ensureExistingTables(BigQuery bigQuery, Map<TopicAndRecordName, TableId> topicsToTableIds) {

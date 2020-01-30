@@ -16,12 +16,8 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.AbstractMap;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 /**
  * Uses the Confluent Schema Registry to fetch the latest schema for a given topic.
@@ -61,15 +57,6 @@ public class MemorySchemaRetriever implements SchemaRetriever {
     // When we receive our first message and try to add it, we'll hit the invalid schema case
     // and update the schema with the schema from the message
     return SchemaBuilder.struct().build();
-  }
-
-  @Override
-  public Map<TopicAndRecordName, Schema> retrieveSchemas(List<String> topics, Map<Pattern, String> recordAliases) {
-    return cacheKeysToTopics
-        .entrySet()
-        .stream()
-        .map(entry -> new AbstractMap.SimpleEntry<>(entry.getValue(), schemaCache.get(entry.getKey())))
-        .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue));
   }
 
   @Override

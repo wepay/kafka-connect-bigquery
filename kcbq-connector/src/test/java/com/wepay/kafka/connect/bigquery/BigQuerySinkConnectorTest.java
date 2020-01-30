@@ -25,8 +25,6 @@ import static org.junit.Assert.assertNotSame;
 import static org.mockito.Matchers.any;
 
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.bigquery.BigQuery;
@@ -38,7 +36,6 @@ import com.wepay.kafka.connect.bigquery.api.SchemaRetriever;
 
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig;
 
-import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
 import com.wepay.kafka.connect.bigquery.exception.SinkConfigConnectException;
 
 import com.wepay.kafka.connect.bigquery.api.TopicAndRecordName;
@@ -50,7 +47,6 @@ import org.junit.Test;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
 
 public class BigQuerySinkConnectorTest {
   private static SinkConnectorPropertiesFactory propertiesFactory;
@@ -64,12 +60,6 @@ public class BigQuerySinkConnectorTest {
 
     @Override
     public Schema retrieveSchema(TableId table, TopicAndRecordName topicAndRecordName, KafkaSchemaRecordType schemaType) {
-      // Shouldn't be called
-      return null;
-    }
-
-    @Override
-    public Map<TopicAndRecordName, Schema> retrieveSchemas(List<String> topics, Map<Pattern, String> recordAliases) {
       // Shouldn't be called
       return null;
     }
@@ -98,8 +88,7 @@ public class BigQuerySinkConnectorTest {
     BigQuery bigQuery = mock(BigQuery.class);
     when(bigQuery.getTable(any(TableId.class))).thenReturn(fakeTable);
 
-    SchemaManager schemaManager = mock(SchemaManager.class);
-    BigQuerySinkConnector testConnector = new BigQuerySinkConnector(bigQuery, schemaManager);
+    BigQuerySinkConnector testConnector = new BigQuerySinkConnector(bigQuery);
 
     testConnector.start(properties);
 
