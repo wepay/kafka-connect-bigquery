@@ -64,10 +64,6 @@ public class SchemaRegistrySchemaRetriever implements SchemaRetriever {
 
   @Override
   public Schema retrieveSchema(TableId table, TopicAndRecordName topicAndRecordName, KafkaSchemaRecordType schemaType) throws ConnectException {
-    return retrieveSchema(topicAndRecordName, schemaType);
-  }
-
-  private Schema retrieveSchema(TopicAndRecordName topicAndRecordName, KafkaSchemaRecordType schemaType) throws ConnectException {
     String topic = topicAndRecordName.getTopic();
     String subject = topicAndRecordName.toSubject(schemaType);
     logger.debug("Retrieving schema information for topic {} with subject {} and schema type {}", topic, subject, schemaType);
