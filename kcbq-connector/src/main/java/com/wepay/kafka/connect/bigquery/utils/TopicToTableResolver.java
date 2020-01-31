@@ -159,8 +159,9 @@ public class TopicToTableResolver {
    * @return A String resulting match of alias for record name or just the record name if no matching alias was found.
    */
   private static String getRecordToTableSingleMatch(BigQuerySinkConfig config, String recordName) {
-    return Optional.ofNullable(config.getSingleMatch(recordName, "record name", BigQuerySinkConfig.RECORD_ALIASES_CONFIG))
-        .orElse(recordName);
+    return Optional.ofNullable(
+        config.getSingleMatch(recordName, "record name", BigQuerySinkConfig.RECORDS_TO_TABLE_POSTFIXES_CONFIG)
+    ).orElse(recordName);
   }
 
 }

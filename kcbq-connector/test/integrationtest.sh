@@ -275,7 +275,7 @@ gcsFolderName=$KCBQ_TEST_FOLDER
 topics=$test_multi_schema_topics
 
 supportMultiSchemaTopics=true
-recordAliases=com.wepay.kafka.connect.bigquery.gcsLoad=gcs_load_aliased,com.wepay.kafka.connect.bigquery.outer_doll=matryoshka_dolls
+recordsToTablePostfixes=com.wepay.kafka.connect.bigquery.gcsLoad=gcs_load_aliased,com.wepay.kafka.connect.bigquery.outer_doll=matryoshka_dolls
 
 EOF
 

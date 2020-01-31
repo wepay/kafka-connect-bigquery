@@ -218,7 +218,7 @@ public class TopicToTableResolverTest {
         "db_debezium_identity_profiles_(.*)=$1,db\\.(.*)\\.(.*)\\.(.*)=$1_$3,new_topic_(.*)=$1"
     );
     configProperties.put(
-        BigQuerySinkConfig.RECORD_ALIASES_CONFIG,
+        BigQuerySinkConfig.RECORDS_TO_TABLE_POSTFIXES_CONFIG,
         "some\\.record\\.(.*)=$1"
     );
     configProperties.put(
@@ -294,7 +294,7 @@ public class TopicToTableResolverTest {
         "new_topic_(.*)=$1"
     );
     configProperties.put(
-        BigQuerySinkConfig.RECORD_ALIASES_CONFIG,
+        BigQuerySinkConfig.RECORDS_TO_TABLE_POSTFIXES_CONFIG,
         "(.*)=$1,some\\.record\\.(.*)=$1"
     );
     configProperties.put(

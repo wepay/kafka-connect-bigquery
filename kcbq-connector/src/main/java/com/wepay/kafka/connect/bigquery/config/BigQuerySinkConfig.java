@@ -109,23 +109,24 @@ public class BigQuerySinkConfig extends AbstractConfig {
       + "capture groups that are referenced in the format string using placeholders (i.e. $1) "
       + "(form of <topic regex>=<format string>)";
 
-  public static final String RECORD_ALIASES_CONFIG =                         "recordAliases";
-  private static final ConfigDef.Type RECORD_ALIASES_TYPE =                  ConfigDef.Type.LIST;
-  private static final ConfigDef.Importance RECORD_ALIASES_IMPORTANCE =      ConfigDef.Importance.MEDIUM;
-  private static final Object RECORD_ALIASES_DEFAULT =                        null;
-  private static final String RECORD_ALIASES_DOC =
-      "A list of mappings from record name regular expressions (regexes) to their aliases. "
+  public static final String SUPPORT_MULTI_SCHEMA_TOPICS_CONFIG =                     "supportMultiSchemaTopics";
+  private static final ConfigDef.Type SUPPORT_MULTI_SCHEMA_TOPICS_TYPE =              ConfigDef.Type.BOOLEAN;
+  private static final ConfigDef.Importance SUPPORT_MULTI_SCHEMA_TOPICS_IMPORTANCE =  ConfigDef.Importance.MEDIUM;
+  private static final Object SUPPORT_MULTI_SCHEMA_TOPICS_DEFAULT =                   false;
+  private static final String SUPPORT_MULTI_SCHEMA_TOPICS_DOC =
+      "Whether to support multi schema topics by appending record names to table names;"
+          + " if not enabled table names will be created using topic names only";
+
+  public static final String RECORDS_TO_TABLE_POSTFIXES_CONFIG =                     "recordsToTablePostfixes";
+  private static final ConfigDef.Type RECORDS_TO_TABLE_POSTFIXES_TYPE =              ConfigDef.Type.LIST;
+  private static final ConfigDef.Importance RECORDS_TO_TABLE_POSTFIXES_IMPORTANCE =  ConfigDef.Importance.MEDIUM;
+  private static final Object RECORDS_TO_TABLE_POSTFIXES_DEFAULT =                   null;
+  private static final String RECORDS_TO_TABLE_POSTFIXES_DOC =
+      "A list of mappings from record name regular expressions (regexes) to their aliases, "
+      + "used when '" + SUPPORT_MULTI_SCHEMA_TOPICS_CONFIG +  "' is enabled. "
       + "BigQuery table name will follow the \"<topic_table_name>_<record_alias>\" template. "
       + "Note the regex must include capture groups that are referenced in the format string "
       + "using placeholders (i.e. $1) (form of <topic regex>=<format string>)";
-
-  public static final String SUPPORT_MULTI_SCHEMA_TOPICS_CONFIG =                    "supportMultiSchemaTopics";
-  private static final ConfigDef.Type SUPPORT_MULTI_SCHEMA_TOPICS_TYPE =              ConfigDef.Type.BOOLEAN;
-  private static final ConfigDef.Importance SUPPORT_MULTI_SCHEMA_TOPICS_IMPORTANCE =  ConfigDef.Importance.MEDIUM;
-  private static final Object SUPPORT_MULTI_SCHEMA_TOPICS_DEFAULT =                    false;
-  private static final String SUPPORT_MULTI_SCHEMA_TOPICS_DOC =
-      "Whether to support multi schema topics by appending record names to table names;"
-      + " if not enabled table names will be created using topic names only";
 
   public static final String PROJECT_CONFIG =                     "project";
   private static final ConfigDef.Type PROJECT_TYPE =              ConfigDef.Type.STRING;
@@ -279,11 +280,11 @@ public class BigQuerySinkConfig extends AbstractConfig {
             TOPICS_TO_TABLES_IMPORTANCE,
             TOPICS_TO_TABLES_DOC
         ).define(
-            RECORD_ALIASES_CONFIG,
-            RECORD_ALIASES_TYPE,
-            RECORD_ALIASES_DEFAULT,
-            RECORD_ALIASES_IMPORTANCE,
-            RECORD_ALIASES_DOC
+            RECORDS_TO_TABLE_POSTFIXES_CONFIG,
+            RECORDS_TO_TABLE_POSTFIXES_TYPE,
+            RECORDS_TO_TABLE_POSTFIXES_DEFAULT,
+            RECORDS_TO_TABLE_POSTFIXES_IMPORTANCE,
+            RECORDS_TO_TABLE_POSTFIXES_DOC
         ).define(
             SUPPORT_MULTI_SCHEMA_TOPICS_CONFIG,
             SUPPORT_MULTI_SCHEMA_TOPICS_TYPE,
