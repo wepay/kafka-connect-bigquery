@@ -104,7 +104,8 @@ public class BigQuerySinkTaskConfig extends BigQuerySinkConfig {
       ConfigDef.Importance.HIGH;
   private static final String BIGQUERY_PARTITION_DECORATOR_DOC =
       "Whether or not to append partition decorator to BigQuery table name when inserting records. "
-      + "Default is false. Setting this to true appends partition decorator to table name (e.g. table$yyyyMMdd depending on the configuration set for bigQueryPartitionDecorator)";
+      + "Default is true. Setting this to true appends partition decorator to table name (e.g. table$yyyyMMdd depending on the configuration set for bigQueryPartitionDecorator). "
+      + "Setting this to false bypasses the logic to append the partition decorator and uses raw table name for inserts.";
 
   static {
     config = BigQuerySinkConfig.getConfig()
