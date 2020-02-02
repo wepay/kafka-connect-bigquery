@@ -286,7 +286,7 @@ public class BigQuerySinkTaskTest {
     when(bigQuery.insertAll(anyObject())).thenReturn(insertAllResponse);
     when(insertAllResponse.hasErrors()).thenReturn(false);
     
-    BigQuerySinkTask testTask = new BigQuerySinkTask(bigQuery, null, storage);
+    BigQuerySinkTask testTask = new BigQuerySinkTask(bigQuery, null, storage, null);
     testTask.initialize(sinkTaskContext);
     testTask.start(properties);
     
@@ -316,7 +316,7 @@ public class BigQuerySinkTaskTest {
     when(bigQuery.insertAll(anyObject())).thenReturn(insertAllResponse);
     when(insertAllResponse.hasErrors()).thenReturn(false);
     
-    BigQuerySinkTask testTask = new BigQuerySinkTask(bigQuery, null, storage);
+    BigQuerySinkTask testTask = new BigQuerySinkTask(bigQuery, null, storage, null);
     testTask.initialize(sinkTaskContext);
     testTask.start(properties);
     
