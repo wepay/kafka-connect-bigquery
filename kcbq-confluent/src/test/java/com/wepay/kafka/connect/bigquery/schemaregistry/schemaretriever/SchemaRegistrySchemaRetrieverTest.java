@@ -26,11 +26,12 @@ public class SchemaRegistrySchemaRetrieverTest {
     final String testTopic = "kafka-topic";
     final String testRecordName = "testrecord";
     final TopicAndRecordName testTopicAndRecordName = TopicAndRecordName.from(testTopic, testRecordName);
+    final String schemaRegistrySubjectName = testTopic + '-' + testRecordName;
     final SchemaMetadata testSchemaMetadata = testSchemaMetadata(testRecordName);
 
     SchemaRegistryClient schemaRegistryClient = mock(SchemaRegistryClient.class);
-    when(schemaRegistryClient.getLatestSchemaMetadata(testTopicAndRecordName.toSubject(KafkaSchemaRecordType.VALUE))).thenReturn(testSchemaMetadata);
-    when(schemaRegistryClient.getLatestSchemaMetadata(testTopicAndRecordName.toSubject(KafkaSchemaRecordType.KEY))).thenReturn(testSchemaMetadata);
+    when(schemaRegistryClient.getLatestSchemaMetadata(schemaRegistrySubjectName)).thenReturn(testSchemaMetadata);
+    when(schemaRegistryClient.getLatestSchemaMetadata(schemaRegistrySubjectName)).thenReturn(testSchemaMetadata);
 
     SchemaRegistrySchemaRetriever testSchemaRetriever = new SchemaRegistrySchemaRetriever(
         schemaRegistryClient,

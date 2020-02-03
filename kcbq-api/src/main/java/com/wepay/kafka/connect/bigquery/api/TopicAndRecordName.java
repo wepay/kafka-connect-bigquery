@@ -64,37 +64,6 @@ public class TopicAndRecordName {
     return Optional.ofNullable(this.recordName);
   }
 
-  /**
-   * Convert topic and record name into the schema registry subject.
-   * Subjects follow topic-recordName format.
-   *
-   * If recordName is not present, "value" will be used.
-   *
-   * @return corresponding schema registry subject.
-   */
-  public String toSubject() {
-    return toSubject(KafkaSchemaRecordType.VALUE);
-  }
-
-  /**
-   * Convert topic and record name into the schema registry subject.
-   * Subjects follow topic-recordName format.
-   *
-   * If recordName is not present, "value" or "key" will be used, depending on the schema type.
-   *
-   * @param schemaType schema type used to resolve full subject when recordName is absent.
-   * @return corresponding schema registry subject.
-   */
-  public String toSubject(KafkaSchemaRecordType schemaType) {
-    String subject = topic;
-    if (recordName == null) {
-      subject += "-" + schemaType.toString();
-    } else {
-      subject += "-" + recordName;
-    }
-    return subject;
-  }
-
   @Override
   public String toString() {
     return topic + "/" + recordName;

@@ -65,7 +65,7 @@ public class SchemaRegistrySchemaRetriever implements SchemaRetriever {
   @Override
   public Schema retrieveSchema(TableId table, TopicAndRecordName topicAndRecordName, KafkaSchemaRecordType schemaType) throws ConnectException {
     String topic = topicAndRecordName.getTopic();
-    String subject = topicAndRecordName.toSubject(schemaType);
+    String subject = getSubject(topicAndRecordName, schemaType);
     logger.debug("Retrieving schema information for topic {} with subject {} and schema type {}", topic, subject, schemaType);
     try {
       SchemaMetadata latestSchemaMetadata = schemaRegistryClient.getLatestSchemaMetadata(subject);
@@ -82,6 +82,21 @@ public class SchemaRegistrySchemaRetriever implements SchemaRetriever {
 
   @Override
   public void setLastSeenSchema(TableId table, TopicAndRecordName topicAndRecordName, Schema schema) {
+  }
+
+  /**
+   * Convert topic and record name into the schema registry subject.
+   * Subjects follow topic-recordName format.
+   *
+   * If recordName is not present, "value" or "key" will be used, depending on the schema type.
+   *
+   * @param schemaType schema type used to resolve full subject when recordName is absent.
+   * @return corresponding schema registry subject.
+   */
+  private String getSubject(TopicAndRecordName topicAndRecordName, KafkaSchemaRecordType schemaType) {
+    String topic = topicAndRecordName.getTopic();
+    String subjectPostfix = topicAndRecordName.getRecordName().orElseGet(schemaType::toString);
+    return topic + "-" + subjectPostfix;
   }
 
 }
