@@ -479,39 +479,30 @@ public class BigQuerySinkConfig extends AbstractConfig {
     return patternList;
   }
 
-  public String getSingleMatch(String value,
-                                       String valueProperty,
-                                       String patternProperty) {
-    String match = null;
-    String previousPattern = null;
-
+  /**
+   * Given a name of a config property that contains a list of [regex]=[string] mappings and the input value
+   * returns the corresponding mapped value with substituted captured RegEx groups as needed.
+   *
+   * Throws {@link ConfigException} when more than one regex matches the input value.
+   *
+   * @param value The input value used to lookup the mappings.
+   * @param valueProperty The human readable name of the property to be used in error messages.
+   * @param patternProperty The name of the config property containing mappings.
+   * @return the corresponding mapped value with substituted captured RegEx groups as needed.
+   */
+  public String getSingleMatch(String value, String valueProperty, String patternProperty) {
     List<Map.Entry<Pattern, String>> patterns = getSinglePatterns(patternProperty);
-
-    for (Map.Entry<Pattern, String> pattern : patterns) {
-      Matcher patternMatcher = pattern.getKey().matcher(value);
-      if (patternMatcher.matches()) {
-        if (match != null) {
-          String secondMatch = pattern.getKey().toString();
-          throw new ConfigException("Value '" + value
-              + "' for property '" + valueProperty
-              + "' matches " + patternProperty
-              + " regexes for both '" + previousPattern
-              + "' and '" + secondMatch + "'"
-          );
-        }
-        String formatString = pattern.getValue();
-        try {
-          match = patternMatcher.replaceAll(formatString);
-          previousPattern = pattern.getKey().toString();
-        } catch (IndexOutOfBoundsException err) {
-          throw new ConfigException("Format string '" + formatString
-              + "' is invalid in property '" + patternProperty
-              + "'", err);
-        }
-      }
+    Map.Entry<Matcher, String> matcherAndValue = getMatchingPattern(patterns, value, valueProperty, patternProperty);
+    if (matcherAndValue == null) {
+      return null;
     }
-
-    return match;
+    try {
+      return matcherAndValue.getKey().replaceAll(matcherAndValue.getValue());
+    } catch (IndexOutOfBoundsException err) {
+      throw new ConfigException("Format string '" + matcherAndValue.getValue()
+          + "' is invalid in property '" + patternProperty
+          + "'", err);
+    }
   }
 
   private Map<String, String> getSingleMatches(
@@ -521,24 +512,11 @@ public class BigQuerySinkConfig extends AbstractConfig {
       String patternProperty) {
     Map<String, String> matches = new HashMap<>();
     for (String value : values) {
-      String match = null;
-      for (Map.Entry<Pattern, String> pattern : patterns) {
-        Matcher patternMatcher = pattern.getKey().matcher(value);
-        if (patternMatcher.matches()) {
-          if (match != null) {
-            String secondMatch = pattern.getValue();
-            throw new ConfigException(
-                "Value '" + value
-                + "' for property '" + valueProperty
-                + "' matches " + patternProperty
-                + " regexes for both '" + match
-                + "' and '" + secondMatch + "'"
-            );
-          }
-          match = pattern.getValue();
-        }
+      Map.Entry<Matcher, String> matcherAndValue = getMatchingPattern(patterns, value, valueProperty, patternProperty);
+      if (matcherAndValue != null) {
+        matches.put(value, matcherAndValue.getValue());
       }
-      if (match == null) {
+      if (matcherAndValue == null) {
         throw new ConfigException(
             "Value '" + value
             + "' for property '" + valueProperty
@@ -546,9 +524,30 @@ public class BigQuerySinkConfig extends AbstractConfig {
             + " regexes"
         );
       }
-      matches.put(value, match);
     }
     return matches;
+  }
+
+  private Map.Entry<Matcher, String> getMatchingPattern(List<Map.Entry<Pattern, String>> patterns, String value,
+                                                        String valueProperty, String patternProperty) {
+    Map.Entry<Matcher, String> matchingPattern = null;
+    for (Map.Entry<Pattern, String> pattern : patterns) {
+      Matcher patternMatcher = pattern.getKey().matcher(value);
+      if (patternMatcher.matches()) {
+        if (matchingPattern != null) {
+          String secondMatch = pattern.getValue();
+          throw new ConfigException(
+              "Value '" + value
+                  + "' for property '" + valueProperty
+                  + "' matches " + patternProperty
+                  + " regexes for both '" + matchingPattern.getValue()
+                  + "' and '" + secondMatch + "'"
+          );
+        }
+        matchingPattern = new AbstractMap.SimpleImmutableEntry<>(patternMatcher, pattern.getValue());
+      }
+    }
+    return matchingPattern;
   }
 
   /**
