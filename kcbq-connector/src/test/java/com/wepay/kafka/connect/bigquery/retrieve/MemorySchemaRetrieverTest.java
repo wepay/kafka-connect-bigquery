@@ -1,11 +1,11 @@
 package com.wepay.kafka.connect.bigquery.retrieve;
 
-
 import com.google.cloud.bigquery.TableId;
 
 import com.wepay.kafka.connect.bigquery.api.KafkaSchemaRecordType;
 import com.wepay.kafka.connect.bigquery.api.SchemaRetriever;
 
+import com.wepay.kafka.connect.bigquery.api.TopicAndRecordName;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
@@ -22,7 +22,7 @@ public class MemorySchemaRetrieverTest {
 
   @Test
   public void testRetrieveSchemaWhenNoLastSeenSchemaReturnsEmptyStructSchema() {
-    final String topic = "test-retrieve";
+    final TopicAndRecordName topic = TopicAndRecordName.from("test-retrieve", "test-record");
     final TableId tableId = getTableId("testTable", "testDataset");
     SchemaRetriever retriever = new MemorySchemaRetriever();
     retriever.configure(new HashMap<>());
@@ -31,7 +31,7 @@ public class MemorySchemaRetrieverTest {
 
   @Test
   public void testRetrieveSchemaWhenLastSeenExistsSucceeds() {
-    final String topic = "test-retrieve";
+    final TopicAndRecordName topic = TopicAndRecordName.from("test-retrieve", "test-record");
     final TableId tableId = getTableId("testTable", "testDataset");
     SchemaRetriever retriever = new MemorySchemaRetriever();
     retriever.configure(new HashMap<>());
@@ -44,10 +44,10 @@ public class MemorySchemaRetrieverTest {
 
   @Test
   public void testRetrieveSchemaWithMultipleSchemasSucceeds() {
-    final String floatSchemaTopic = "test-float32";
-    final String intSchemaTopic = "test-int32";
-    final TableId floatTableId = getTableId("testFloatTable", "testFloatDataset");
-    final TableId intTableId = getTableId("testIntTable", "testIntDataset");
+    final TopicAndRecordName floatSchemaTopic = TopicAndRecordName.from("test-float32", "float32-record-name");
+    final TopicAndRecordName intSchemaTopic = TopicAndRecordName.from("test-int32", "int32-record-name");
+    final TableId floatTableId = getTableId("testFloatDataset", "testFloatTable");
+    final TableId intTableId = getTableId("testIntDataset", "testIntTable");
     SchemaRetriever retriever = new MemorySchemaRetriever();
     retriever.configure(new HashMap<>());
 
@@ -63,7 +63,7 @@ public class MemorySchemaRetrieverTest {
 
   @Test
   public void testRetrieveSchemaRetrievesLastSeenSchema() {
-    final String intSchemaTopic = "test-int";
+    final TopicAndRecordName intSchemaTopic = TopicAndRecordName.from("test-int32", "int32-record-name");
     final TableId tableId = getTableId("testTable", "testDataset");
     SchemaRetriever retriever = new MemorySchemaRetriever();
     retriever.configure(new HashMap<>());

@@ -39,6 +39,7 @@ import com.google.cloud.bigquery.Table;
 import com.google.cloud.storage.Storage;
 
 import com.wepay.kafka.connect.bigquery.api.SchemaRetriever;
+import com.wepay.kafka.connect.bigquery.api.TopicAndRecordName;
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig;
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkTaskConfig;
 import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
@@ -122,7 +123,7 @@ public class BigQuerySinkTaskTest {
     testTask.flush(Collections.emptyMap());
     verify(bigQuery, times(1)).insertAll(any(InsertAllRequest.class));
     verify(schemaRetriever, times(1)).setLastSeenSchema(any(TableId.class),
-        any(String.class), any(Schema.class));
+        any(TopicAndRecordName.class), any(Schema.class));
   }
 
   @Test
@@ -160,8 +161,8 @@ public class BigQuerySinkTaskTest {
     testTask.put(Collections.singletonList(spoofSinkRecord(nonExistingTableTopic)));
     testTask.flush(Collections.emptyMap());
 
-    verify(schemaManager, never()).createTable(existingTable, existingTableTopic);
-    verify(schemaManager).createTable(nonExistingTable, nonExistingTableTopic);
+    verify(schemaManager, never()).createTable(existingTable, TopicAndRecordName.from(existingTableTopic));
+    verify(schemaManager).createTable(nonExistingTable, TopicAndRecordName.from(nonExistingTableTopic));
   }
 
   @Test
@@ -198,8 +199,8 @@ public class BigQuerySinkTaskTest {
     testTask.put(Collections.singletonList(spoofSinkRecord(nonExistingTableTopic)));
     testTask.flush(Collections.emptyMap());
 
-    verify(schemaManager, never()).createTable(existingTable, existingTableTopic);
-    verify(schemaManager, never()).createTable(nonExistingTable, existingTableTopic);
+    verify(schemaManager, never()).createTable(existingTable, TopicAndRecordName.from(existingTableTopic));
+    verify(schemaManager, never()).createTable(nonExistingTable, TopicAndRecordName.from(existingTableTopic));
   }
 
 
@@ -540,9 +541,10 @@ public class BigQuerySinkTaskTest {
   public static SinkRecord spoofSinkRecord(String topic, String field, String value,
                                            TimestampType timestampType, Long timestamp) {
     Schema basicRowSchema = SchemaBuilder
-            .struct()
-            .field(field, Schema.STRING_SCHEMA)
-            .build();
+        .struct()
+        .name("recordName")
+        .field(field, Schema.STRING_SCHEMA)
+        .build();
     Struct basicRowValue = new Struct(basicRowSchema);
     basicRowValue.put(field, value);
     return new SinkRecord(topic, 0, null, null,

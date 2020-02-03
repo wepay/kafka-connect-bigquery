@@ -109,6 +109,25 @@ public class BigQuerySinkConfig extends AbstractConfig {
       + "capture groups that are referenced in the format string using placeholders (i.e. $1) "
       + "(form of <topic regex>=<format string>)";
 
+  public static final String SUPPORT_MULTI_SCHEMA_TOPICS_CONFIG =                     "supportMultiSchemaTopics";
+  private static final ConfigDef.Type SUPPORT_MULTI_SCHEMA_TOPICS_TYPE =              ConfigDef.Type.BOOLEAN;
+  private static final ConfigDef.Importance SUPPORT_MULTI_SCHEMA_TOPICS_IMPORTANCE =  ConfigDef.Importance.MEDIUM;
+  private static final Object SUPPORT_MULTI_SCHEMA_TOPICS_DEFAULT =                   false;
+  private static final String SUPPORT_MULTI_SCHEMA_TOPICS_DOC =
+      "Whether to support multi schema topics by appending record names to table names;"
+          + " if not enabled table names will be created using topic names only";
+
+  public static final String RECORDS_TO_TABLE_POSTFIXES_CONFIG =                     "recordsToTablePostfixes";
+  private static final ConfigDef.Type RECORDS_TO_TABLE_POSTFIXES_TYPE =              ConfigDef.Type.LIST;
+  private static final ConfigDef.Importance RECORDS_TO_TABLE_POSTFIXES_IMPORTANCE =  ConfigDef.Importance.MEDIUM;
+  private static final Object RECORDS_TO_TABLE_POSTFIXES_DEFAULT =                   null;
+  private static final String RECORDS_TO_TABLE_POSTFIXES_DOC =
+      "A list of mappings from record name regular expressions (regexes) to their aliases, "
+      + "used when '" + SUPPORT_MULTI_SCHEMA_TOPICS_CONFIG +  "' is enabled. "
+      + "BigQuery table name will follow the \"<topic_table_name>_<record_alias>\" template. "
+      + "Note the regex must include capture groups that are referenced in the format string "
+      + "using placeholders (i.e. $1) (form of <topic regex>=<format string>)";
+
   public static final String PROJECT_CONFIG =                     "project";
   private static final ConfigDef.Type PROJECT_TYPE =              ConfigDef.Type.STRING;
   private static final ConfigDef.Importance PROJECT_IMPORTANCE =  ConfigDef.Importance.HIGH;
@@ -260,6 +279,18 @@ public class BigQuerySinkConfig extends AbstractConfig {
             TOPICS_TO_TABLES_DEFAULT,
             TOPICS_TO_TABLES_IMPORTANCE,
             TOPICS_TO_TABLES_DOC
+        ).define(
+            RECORDS_TO_TABLE_POSTFIXES_CONFIG,
+            RECORDS_TO_TABLE_POSTFIXES_TYPE,
+            RECORDS_TO_TABLE_POSTFIXES_DEFAULT,
+            RECORDS_TO_TABLE_POSTFIXES_IMPORTANCE,
+            RECORDS_TO_TABLE_POSTFIXES_DOC
+        ).define(
+            SUPPORT_MULTI_SCHEMA_TOPICS_CONFIG,
+            SUPPORT_MULTI_SCHEMA_TOPICS_TYPE,
+            SUPPORT_MULTI_SCHEMA_TOPICS_DEFAULT,
+            SUPPORT_MULTI_SCHEMA_TOPICS_IMPORTANCE,
+            SUPPORT_MULTI_SCHEMA_TOPICS_DOC
         ).define(
             PROJECT_CONFIG,
             PROJECT_TYPE,
@@ -448,6 +479,32 @@ public class BigQuerySinkConfig extends AbstractConfig {
     return patternList;
   }
 
+  /**
+   * Given a name of a config property that contains a list of [regex]=[string] mappings and the input value
+   * returns the corresponding mapped value with substituted captured RegEx groups as needed.
+   *
+   * Throws {@link ConfigException} when more than one regex matches the input value.
+   *
+   * @param value The input value used to lookup the mappings.
+   * @param valueProperty The human readable name of the property to be used in error messages.
+   * @param patternProperty The name of the config property containing mappings.
+   * @return the corresponding mapped value with substituted captured RegEx groups as needed.
+   */
+  public String getSingleMatch(String value, String valueProperty, String patternProperty) {
+    List<Map.Entry<Pattern, String>> patterns = getSinglePatterns(patternProperty);
+    Map.Entry<Matcher, String> matcherAndValue = getMatchingPattern(patterns, value, valueProperty, patternProperty);
+    if (matcherAndValue == null) {
+      return null;
+    }
+    try {
+      return matcherAndValue.getKey().replaceAll(matcherAndValue.getValue());
+    } catch (IndexOutOfBoundsException err) {
+      throw new ConfigException("Format string '" + matcherAndValue.getValue()
+          + "' is invalid in property '" + patternProperty
+          + "'", err);
+    }
+  }
+
   private Map<String, String> getSingleMatches(
       List<Map.Entry<Pattern, String>> patterns,
       List<String> values,
@@ -455,24 +512,11 @@ public class BigQuerySinkConfig extends AbstractConfig {
       String patternProperty) {
     Map<String, String> matches = new HashMap<>();
     for (String value : values) {
-      String match = null;
-      for (Map.Entry<Pattern, String> pattern : patterns) {
-        Matcher patternMatcher = pattern.getKey().matcher(value);
-        if (patternMatcher.matches()) {
-          if (match != null) {
-            String secondMatch = pattern.getValue();
-            throw new ConfigException(
-                "Value '" + value
-                + "' for property '" + valueProperty
-                + "' matches " + patternProperty
-                + " regexes for both '" + match
-                + "' and '" + secondMatch + "'"
-            );
-          }
-          match = pattern.getValue();
-        }
+      Map.Entry<Matcher, String> matcherAndValue = getMatchingPattern(patterns, value, valueProperty, patternProperty);
+      if (matcherAndValue != null) {
+        matches.put(value, matcherAndValue.getValue());
       }
-      if (match == null) {
+      if (matcherAndValue == null) {
         throw new ConfigException(
             "Value '" + value
             + "' for property '" + valueProperty
@@ -480,9 +524,30 @@ public class BigQuerySinkConfig extends AbstractConfig {
             + " regexes"
         );
       }
-      matches.put(value, match);
     }
     return matches;
+  }
+
+  private Map.Entry<Matcher, String> getMatchingPattern(List<Map.Entry<Pattern, String>> patterns, String value,
+                                                        String valueProperty, String patternProperty) {
+    Map.Entry<Matcher, String> matchingPattern = null;
+    for (Map.Entry<Pattern, String> pattern : patterns) {
+      Matcher patternMatcher = pattern.getKey().matcher(value);
+      if (patternMatcher.matches()) {
+        if (matchingPattern != null) {
+          String secondMatch = pattern.getValue();
+          throw new ConfigException(
+              "Value '" + value
+                  + "' for property '" + valueProperty
+                  + "' matches " + patternProperty
+                  + " regexes for both '" + matchingPattern.getValue()
+                  + "' and '" + secondMatch + "'"
+          );
+        }
+        matchingPattern = new AbstractMap.SimpleImmutableEntry<>(patternMatcher, pattern.getValue());
+      }
+    }
+    return matchingPattern;
   }
 
   /**

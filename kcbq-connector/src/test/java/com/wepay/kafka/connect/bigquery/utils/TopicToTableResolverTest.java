@@ -18,17 +18,18 @@ package com.wepay.kafka.connect.bigquery.utils;
  */
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.bigquery.TableId;
 
 import com.wepay.kafka.connect.bigquery.SinkPropertiesFactory;
+import com.wepay.kafka.connect.bigquery.api.TopicAndRecordName;
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig;
 
 import org.apache.kafka.common.config.ConfigException;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -57,14 +58,26 @@ public class TopicToTableResolverTest {
         BigQuerySinkConfig.TOPICS_TO_TABLES_CONFIG,
         "db_debezium_identity_profiles_(.*)=$1,db\\.(.*)\\.(.*)\\.(.*)=$1_$3"
     );
-    Map<String, TableId> expectedTopicsToTables = new HashMap<>();
-    expectedTopicsToTables.put("sanitize-me", TableId.of("scratch", "sanitize_me"));
-    expectedTopicsToTables.put("db_debezium_identity_profiles_info.foo",
+    Map<TopicAndRecordName, TableId> expectedTopicsToTables = new HashMap<>();
+    expectedTopicsToTables.put(TopicAndRecordName.from("sanitize-me"), TableId.of("scratch", "sanitize_me"));
+    expectedTopicsToTables.put(TopicAndRecordName.from("db_debezium_identity_profiles_info.foo"),
         TableId.of("scratch", "info_foo"));
-    expectedTopicsToTables.put("db.core.cluster-0.users", TableId.of("scratch", "core_users"));
+    expectedTopicsToTables.put(TopicAndRecordName.from("db.core.cluster-0.users"), TableId.of("scratch", "core_users"));
 
     BigQuerySinkConfig testConfig = new BigQuerySinkConfig(configProperties);
-    Map<String, TableId> topicsToTableIds = TopicToTableResolver.getTopicsToTables(testConfig);
+    Map<TopicAndRecordName, TableId> topicsToTableIds = TopicToTableResolver.getTopicsToTables(testConfig);
+
+    assertEquals(expectedTopicsToTables, topicsToTableIds);
+  }
+
+  @Test
+  public void testGetTopicsToTablesEmptyMap() {
+    Map<String, String> configProperties = propertiesFactory.getProperties();
+    configProperties.put(BigQuerySinkConfig.SUPPORT_MULTI_SCHEMA_TOPICS_CONFIG, "true");
+    Map<TopicAndRecordName, TableId> expectedTopicsToTables = Collections.emptyMap();
+
+    BigQuerySinkConfig testConfig = new BigQuerySinkConfig(configProperties);
+    Map<TopicAndRecordName, TableId> topicsToTableIds = TopicToTableResolver.getTopicsToTables(testConfig);
 
     assertEquals(expectedTopicsToTables, topicsToTableIds);
   }
@@ -125,19 +138,19 @@ public class TopicToTableResolverTest {
         BigQuerySinkConfig.TOPICS_TO_TABLES_CONFIG,
         "db_debezium_identity_profiles_(.*)=$1,db\\.(.*)\\.(.*)\\.(.*)=$1_$3"
     );
-    Map<String, TableId> topicsToTables = new HashMap<>();
-    topicsToTables.put("sanitize-me", TableId.of("scratch", "sanitize_me"));
-    topicsToTables.put("db_debezium_identity_profiles_info.foo",
+    Map<TopicAndRecordName, TableId> topicsToTables = new HashMap<>();
+    topicsToTables.put(TopicAndRecordName.from("sanitize-me"), TableId.of("scratch", "sanitize_me"));
+    topicsToTables.put(TopicAndRecordName.from("db_debezium_identity_profiles_info.foo"),
         TableId.of("scratch", "info_foo"));
-    topicsToTables.put("db.core.cluster-0.users", TableId.of("scratch", "core_users"));
+    topicsToTables.put(TopicAndRecordName.from("db.core.cluster-0.users"), TableId.of("scratch", "core_users"));
 
-    String testTopicName = "new_topic";
+    TopicAndRecordName testTopicAndRecordName = TopicAndRecordName.from("new_topic", "some.record.Name");
     // Create shallow copy of map, deep copy not needed.
-    Map<String, TableId> expectedTopicsToTables = new HashMap<>(topicsToTables);
-    expectedTopicsToTables.put(testTopicName, TableId.of("scratch", testTopicName));
+    Map<TopicAndRecordName, TableId> expectedTopicsToTables = new HashMap<>(topicsToTables);
+    expectedTopicsToTables.put(testTopicAndRecordName, TableId.of("scratch", testTopicAndRecordName.getTopic()));
 
     BigQuerySinkConfig testConfig = new BigQuerySinkConfig(configProperties);
-    TopicToTableResolver.updateTopicToTable(testConfig, testTopicName, topicsToTables);
+    TopicToTableResolver.updateTopicToTable(testConfig, testTopicAndRecordName, topicsToTables);
 
     assertEquals(expectedTopicsToTables, topicsToTables);
   }
@@ -155,14 +168,14 @@ public class TopicToTableResolverTest {
         "db_debezium_identity_profiles_(.*)=$1,db\\.(.*)\\.(.*)\\.(.*)=$1_$3"
     );
 
-    String testTopicName = "1new.topic";
-    Map<String, TableId> topicsToTables = new HashMap<>();
+    TopicAndRecordName testTopicAndRecordName = TopicAndRecordName.from("1new.topic", "some.record.Name");
+    Map<TopicAndRecordName, TableId> topicsToTables = new HashMap<>();
     // Create shallow copy of map, deep copy not needed.
-    Map<String, TableId> expectedTopicsToTables = new HashMap<>(topicsToTables);
-    expectedTopicsToTables.put(testTopicName, TableId.of("scratch", "_1new_topic"));
+    Map<TopicAndRecordName, TableId> expectedTopicsToTables = new HashMap<>(topicsToTables);
+    expectedTopicsToTables.put(testTopicAndRecordName, TableId.of("scratch", "_1new_topic"));
 
     BigQuerySinkConfig testConfig = new BigQuerySinkConfig(configProperties);
-    TopicToTableResolver.updateTopicToTable(testConfig, testTopicName, topicsToTables);
+    TopicToTableResolver.updateTopicToTable(testConfig, testTopicAndRecordName, topicsToTables);
 
     assertEquals(expectedTopicsToTables, topicsToTables);
   }
@@ -180,14 +193,50 @@ public class TopicToTableResolverTest {
         "db_debezium_identity_profiles_(.*)=$1,db\\.(.*)\\.(.*)\\.(.*)=$1_$3,new_topic_(.*)=$1"
     );
 
-    String testTopicName = "new_topic_abc.def";
-    Map<String, TableId> topicsToTables = new HashMap<>();
+    TopicAndRecordName testTopicAndRecordName = TopicAndRecordName.from("new_topic_abc.def", "some.record.Name");
+    Map<TopicAndRecordName, TableId> topicsToTables = new HashMap<>();
     // Create shallow copy of map, deep copy not needed.
-    Map<String, TableId> expectedTopicsToTables = new HashMap<>(topicsToTables);
-    expectedTopicsToTables.put(testTopicName, TableId.of("scratch", "abc_def"));
+    Map<TopicAndRecordName, TableId> expectedTopicsToTables = new HashMap<>(topicsToTables);
+    expectedTopicsToTables.put(testTopicAndRecordName, TableId.of("scratch", "abc_def"));
 
     BigQuerySinkConfig testConfig = new BigQuerySinkConfig(configProperties);
-    TopicToTableResolver.updateTopicToTable(testConfig, testTopicName, topicsToTables);
+    TopicToTableResolver.updateTopicToTable(testConfig, testTopicAndRecordName, topicsToTables);
+
+    assertEquals(expectedTopicsToTables, topicsToTables);
+  }
+
+  @Test
+  public void testUpdateTopicToTableWithRegexAndMultiSchemaTopicsEnabled() {
+    Map<String, String> configProperties = propertiesFactory.getProperties();
+    configProperties.put(BigQuerySinkConfig.SANITIZE_TOPICS_CONFIG, "true");
+    configProperties.put(
+        BigQuerySinkConfig.DATASETS_CONFIG,
+        ".*=scratch"
+    );
+    configProperties.put(
+        BigQuerySinkConfig.TOPICS_TO_TABLES_CONFIG,
+        "db_debezium_identity_profiles_(.*)=$1,db\\.(.*)\\.(.*)\\.(.*)=$1_$3,new_topic_(.*)=$1"
+    );
+    configProperties.put(
+        BigQuerySinkConfig.RECORDS_TO_TABLE_POSTFIXES_CONFIG,
+        "some\\.record\\.(.*)=$1"
+    );
+    configProperties.put(
+        BigQuerySinkConfig.SUPPORT_MULTI_SCHEMA_TOPICS_CONFIG,
+        "true"
+    );
+
+    TopicAndRecordName testTopicWithMatchingRecordName = TopicAndRecordName.from("new_topic_abc.def", "some.record.RecordName");
+    TopicAndRecordName testTopicWithUnexpectedRecordName = TopicAndRecordName.from("new_topic_abc.def", "unexpected.RecordName");
+    Map<TopicAndRecordName, TableId> topicsToTables = new HashMap<>();
+    // Create shallow copy of map, deep copy not needed.
+    Map<TopicAndRecordName, TableId> expectedTopicsToTables = new HashMap<>(topicsToTables);
+    expectedTopicsToTables.put(testTopicWithMatchingRecordName, TableId.of("scratch", "abc_def_RecordName"));
+    expectedTopicsToTables.put(testTopicWithUnexpectedRecordName, TableId.of("scratch", "abc_def_unexpected_RecordName"));
+
+    BigQuerySinkConfig testConfig = new BigQuerySinkConfig(configProperties);
+    TopicToTableResolver.updateTopicToTable(testConfig, testTopicWithMatchingRecordName, topicsToTables);
+    TopicToTableResolver.updateTopicToTable(testConfig, testTopicWithUnexpectedRecordName, topicsToTables);
 
     assertEquals(expectedTopicsToTables, topicsToTables);
   }
@@ -205,11 +254,11 @@ public class TopicToTableResolverTest {
         ".*=$1"
     );
 
-    String testTopicName = "new_topic_abc.def";
-    Map<String, TableId> topicsToTables = new HashMap<>();
+    TopicAndRecordName testTopicAndRecordName = TopicAndRecordName.from("new_topic_abc.def", "some.record.Name");
+    Map<TopicAndRecordName, TableId> topicsToTables = new HashMap<>();
 
     BigQuerySinkConfig testConfig = new BigQuerySinkConfig(configProperties);
-    TopicToTableResolver.updateTopicToTable(testConfig, testTopicName, topicsToTables);
+    TopicToTableResolver.updateTopicToTable(testConfig, testTopicAndRecordName, topicsToTables);
   }
 
   @Test(expected = ConfigException.class)
@@ -225,25 +274,39 @@ public class TopicToTableResolverTest {
         "(.*)=$1,new_topic_(.*)=$1"
     );
 
-    String testTopicName = "new_topic_abc.def";
-    Map<String, TableId> topicsToTables = new HashMap<>();
+    TopicAndRecordName testTopicAndRecordName = TopicAndRecordName.from("new_topic_abc.def", "some.record.Name");
+    Map<TopicAndRecordName, TableId> topicsToTables = new HashMap<>();
 
     BigQuerySinkConfig testConfig = new BigQuerySinkConfig(configProperties);
-    TopicToTableResolver.updateTopicToTable(testConfig, testTopicName, topicsToTables);
+    TopicToTableResolver.updateTopicToTable(testConfig, testTopicAndRecordName, topicsToTables);
   }
 
-  @Test
-  public void testBaseTablesToTopics() {
+  @Test(expected = ConfigException.class)
+  public void testUpdateTopicToTableWithMultipleRecordNameMatches() {
     Map<String, String> configProperties = propertiesFactory.getProperties();
     configProperties.put(BigQuerySinkConfig.SANITIZE_TOPICS_CONFIG, "true");
-    configProperties.put(BigQuerySinkConfig.DATASETS_CONFIG, ".*=scratch");
-    configProperties.put(BigQuerySinkConfig.TOPICS_CONFIG, "sanitize-me,leave_me_alone");
+    configProperties.put(
+        BigQuerySinkConfig.DATASETS_CONFIG,
+        ".*=scratch"
+    );
+    configProperties.put(
+        BigQuerySinkConfig.TOPICS_TO_TABLES_CONFIG,
+        "new_topic_(.*)=$1"
+    );
+    configProperties.put(
+        BigQuerySinkConfig.RECORDS_TO_TABLE_POSTFIXES_CONFIG,
+        "(.*)=$1,some\\.record\\.(.*)=$1"
+    );
+    configProperties.put(
+        BigQuerySinkConfig.SUPPORT_MULTI_SCHEMA_TOPICS_CONFIG,
+        "true"
+    );
+
+    TopicAndRecordName testTopicAndRecordName = TopicAndRecordName.from("new_topic_abc.def", "some.record.Name");
+    Map<TopicAndRecordName, TableId> topicsToTables = new HashMap<>();
+
     BigQuerySinkConfig testConfig = new BigQuerySinkConfig(configProperties);
-    Map<TableId, String> testTablesToSchemas =
-        TopicToTableResolver.getBaseTablesToTopics(testConfig);
-    Map<TableId, String> expectedTablesToSchemas = new HashMap<>();
-    expectedTablesToSchemas.put(TableId.of("scratch", "sanitize_me"), "sanitize-me");
-    expectedTablesToSchemas.put(TableId.of("scratch", "leave_me_alone"), "leave_me_alone");
-    assertEquals(expectedTablesToSchemas, testTablesToSchemas);
+    TopicToTableResolver.updateTopicToTable(testConfig, testTopicAndRecordName, topicsToTables);
   }
+
 }

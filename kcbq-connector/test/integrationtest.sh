@@ -213,11 +213,17 @@ warn 'Deleting existing BigQuery test tables and existing GCS bucket'
 
 
 test_tables=
-test_topics=
+test_single_schema_topics=
 for file in "$BASE_DIR"/resources/test_schemas/*; do
         test_tables+="${test_tables:+ }kcbq_test_$(basename "${file/-/_}")"
-        test_topics+="${test_topics:+,}kcbq_test_$(basename "$file")"
+        test_single_schema_topics+="${test_single_schema_topics:+,}kcbq_test_$(basename "$file")"
 done
+test_tables+="${test_tables:+ }kcbq_test_multi_gcs_load_aliased"
+test_tables+="${test_tables:+ }kcbq_test_multi_com_wepay_kafka_connect_bigquery_logicals"
+test_tables+="${test_tables:+ }kcbq_test_multi_matryoshka_dolls"
+test_tables+="${test_tables:+ }kcbq_test_multi_myrecord"
+test_tables+="${test_tables:+ }kcbq_test_multi_com_wepay_kafka_connect_bigquery_primitives"
+test_multi_schema_topics="kcbq_test_multi"
 
 "$GRADLEW" -p "$BASE_DIR/.." \
     -Pkcbq_test_keyfile="$KCBQ_TEST_KEYFILE" \
@@ -238,17 +244,38 @@ statusupdate 'Executing Kafka Connect in Docker'
 [[ ! -e "$DOCKER_DIR/connect/properties" ]] && mkdir "$DOCKER_DIR/connect/properties"
 RESOURCES_DIR="$BASE_DIR/resources"
 
-STANDALONE_PROPS="$DOCKER_DIR/connect/properties/standalone.properties"
-cp "$RESOURCES_DIR/standalone-template.properties" "$STANDALONE_PROPS"
+STANDALONE_SINGLE_SCHEMA_PROPS="$DOCKER_DIR/connect/properties/standalone-single-schema.properties"
+cp "$RESOURCES_DIR/standalone-template.properties" "$STANDALONE_SINGLE_SCHEMA_PROPS"
 
-CONNECTOR_PROPS="$DOCKER_DIR/connect/properties/connector.properties"
-cp "$RESOURCES_DIR/connector-template.properties" "$CONNECTOR_PROPS"
-cat << EOF >> $CONNECTOR_PROPS
+STANDALONE_MULTI_SCHEMA_PROPS="$DOCKER_DIR/connect/properties/standalone-multi-schema.properties"
+cp "$STANDALONE_SINGLE_SCHEMA_PROPS" "$STANDALONE_MULTI_SCHEMA_PROPS"
+cat << EOF >> $STANDALONE_MULTI_SCHEMA_PROPS
+value.converter.value.subject.name.strategy=io.confluent.kafka.serializers.subject.TopicRecordNameStrategy
+
+EOF
+
+CONNECTOR_SINGLE_SCHEMA_PROPS="$DOCKER_DIR/connect/properties/connector-single-schema.properties"
+cp "$RESOURCES_DIR/connector-template.properties" "$CONNECTOR_SINGLE_SCHEMA_PROPS"
+cat << EOF >> $CONNECTOR_SINGLE_SCHEMA_PROPS
 project=$KCBQ_TEST_PROJECT
 datasets=.*=$KCBQ_TEST_DATASET
 gcsBucketName=$KCBQ_TEST_BUCKET
 gcsFolderName=$KCBQ_TEST_FOLDER
-topics=$test_topics
+topics=$test_single_schema_topics
+
+EOF
+
+CONNECTOR_MULTI_SCHEMA_PROPS="$DOCKER_DIR/connect/properties/connector-multi-schema.properties"
+cp "$RESOURCES_DIR/connector-template.properties" "$CONNECTOR_MULTI_SCHEMA_PROPS"
+cat << EOF >> $CONNECTOR_MULTI_SCHEMA_PROPS
+project=$KCBQ_TEST_PROJECT
+datasets=.*=$KCBQ_TEST_DATASET
+gcsBucketName=$KCBQ_TEST_BUCKET
+gcsFolderName=$KCBQ_TEST_FOLDER
+topics=$test_multi_schema_topics
+
+supportMultiSchemaTopics=true
+recordsToTablePostfixes=com.wepay.kafka.connect.bigquery.gcsLoad=gcs_load_aliased,com.wepay.kafka.connect.bigquery.outer_doll=matryoshka_dolls
 
 EOF
 

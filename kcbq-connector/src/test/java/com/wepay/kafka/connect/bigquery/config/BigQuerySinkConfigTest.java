@@ -75,6 +75,21 @@ public class BigQuerySinkConfigTest {
     assertEquals(expectedTopicsToDatasets, testTopicsToDatasets);
   }
 
+  @Test()
+  public void testGetSingleMatch() {
+    Map<String, String> configProperties = propertiesFactory.getProperties();
+
+    String configKey = BigQuerySinkConfig.RECORDS_TO_TABLE_POSTFIXES_CONFIG;
+    String configValue = "recordA=A,recordB=B,entity(.*)=$1,(.*)World=$1";
+    configProperties.put(configKey, configValue);
+    BigQuerySinkConfig config = new BigQuerySinkConfig(configProperties);
+    assertEquals("A", config.getSingleMatch("recordA", "test value", configKey));
+    assertEquals("B", config.getSingleMatch("recordB", "test value", configKey));
+    assertEquals("C", config.getSingleMatch("entityC", "test value", configKey));
+    assertEquals("Hello", config.getSingleMatch("entityHello", "test value", configKey));
+    assertEquals("Hello", config.getSingleMatch("HelloWorld", "test value", configKey));
+  }
+
   @Test
   public void testGetSchemaConverter() {
     Map<String, String> configProperties = propertiesFactory.getProperties();
@@ -146,6 +161,17 @@ public class BigQuerySinkConfigTest {
         "tracking-everything-in-the-database"
     );
     new BigQuerySinkConfig(badConfigProperties).getTopicsToDatasets();
+  }
+
+  @Test(expected = ConfigException.class)
+  public void testFailedGetSingleMatch() {
+    Map<String, String> configProperties = propertiesFactory.getProperties();
+
+    String configKey = BigQuerySinkConfig.RECORDS_TO_TABLE_POSTFIXES_CONFIG;
+    String configValue = "Hello(.*)=$1,(.*)World=$1";
+    configProperties.put(configKey, configValue);
+    BigQuerySinkConfig config = new BigQuerySinkConfig(configProperties);
+    config.getSingleMatch("HelloWorld", "test value", configKey);
   }
 
   @Test(expected = ConfigException.class)

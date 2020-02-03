@@ -24,6 +24,9 @@
 
 FROM confluentinc/cp-schema-registry:4.1.2
 
+RUN ["apt-get", "update"]
+RUN ["apt-get", "install", "jq"]
+
 COPY populate-docker.sh /usr/local/bin/
 
 RUN ["chmod", "+x", "/usr/local/bin/populate-docker.sh"]
