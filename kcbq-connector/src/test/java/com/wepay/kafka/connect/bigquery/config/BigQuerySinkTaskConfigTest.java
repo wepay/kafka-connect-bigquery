@@ -65,7 +65,7 @@ public class BigQuerySinkTaskConfigTest {
   }
 
   /**
-   * Test the the default for the field name is not present.
+   * Test the default for the field name is not present.
    */
   @Test
   public void testEmptyTimestampPartitionFieldName() {
