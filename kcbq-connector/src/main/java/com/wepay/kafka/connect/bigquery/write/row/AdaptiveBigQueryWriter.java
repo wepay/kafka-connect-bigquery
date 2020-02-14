@@ -112,6 +112,15 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
           writeResponse = bigQuery.insertAll(request);
         } catch (BigQueryException exception) {
           // no-op, we want to keep retrying the insert
+          if (isTableMissingSchema(exception)) {
+            //Wait form some secs to check if it was created
+            //BQ can take some time while updates the value
+            try {
+              Thread.sleep(10000);
+            } catch (InterruptedException e) {
+
+            }
+          }
         }
       } else {
         return writeResponse.getInsertErrors();

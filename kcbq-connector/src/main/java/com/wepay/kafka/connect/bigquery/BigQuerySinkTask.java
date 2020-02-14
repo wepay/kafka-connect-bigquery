@@ -56,16 +56,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.Optional;
 
 /**
  * A {@link SinkTask} used to translate Kafka Connect {@link SinkRecord SinkRecords} into BigQuery
@@ -80,6 +75,8 @@ public class BigQuerySinkTask extends SinkTask {
   private BigQuerySinkTaskConfig config;
   private RecordConverter<Map<String, Object>> recordConverter;
   private Map<String, TableId> topicsToBaseTableIds;
+  //For auto create tables
+  private Map<TableId, Long> lastSeenTableIds;
   private boolean useMessageTimeDatePartitioning;
   private boolean usePartitionDecorator;
 
@@ -169,9 +166,22 @@ public class BigQuerySinkTask extends SinkTask {
   private void maybeCreateTable(SinkRecord record, TableId baseTableId) {
     BigQuery bigQuery = getBigQuery();
     boolean autoCreateTables = config.getBoolean(config.TABLE_CREATE_CONFIG);
-    if (autoCreateTables && bigQuery.getTable(baseTableId) == null) {
-      getSchemaManager(bigQuery).createTable(baseTableId, record.topic());
-      logger.info("Table {} does not exist, auto-created table for topic {}", baseTableId, record.topic());
+
+    boolean containsLastSeen = lastSeenTableIds.containsKey(baseTableId);
+    if ( containsLastSeen) {
+      long diff = new Date().getTime() - lastSeenTableIds.get(baseTableId);
+      if ( diff > 60000) {
+        containsLastSeen = false;
+        lastSeenTableIds.remove(baseTableId);
+      }
+    }
+
+    if ( !containsLastSeen) {
+      if (autoCreateTables && bigQuery.getTable(baseTableId) == null) {
+        getSchemaManager(bigQuery).createTable(baseTableId, record.topic());
+        logger.info("Table {} does not exist, auto-created table for topic {}", baseTableId, record.topic());
+      }
+      lastSeenTableIds.put(baseTableId, new Date().getTime());
     }
   }
 
@@ -274,7 +284,9 @@ public class BigQuerySinkTask extends SinkTask {
     if (testSchemaManager != null) {
       return testSchemaManager;
     }
-    schemaRetriever = config.getSchemaRetriever();
+    if ( schemaRetriever == null) {
+      schemaRetriever = config.getSchemaRetriever();
+    }
     SchemaConverter<com.google.cloud.bigquery.Schema> schemaConverter =
         config.getSchemaConverter();
     Optional<String> kafkaKeyFieldName = config.getKafkaKeyFieldName();
@@ -335,6 +347,7 @@ public class BigQuerySinkTask extends SinkTask {
     bigQueryWriter = getBigQueryWriter();
     gcsToBQWriter = getGcsWriter();
     topicsToBaseTableIds = TopicToTableResolver.getTopicsToTables(config);
+    lastSeenTableIds = new HashMap<>();
     recordConverter = getConverter();
     executor = new KCBQThreadPoolExecutor(config, new LinkedBlockingQueue<>());
     topicPartitionManager = new TopicPartitionManager();
