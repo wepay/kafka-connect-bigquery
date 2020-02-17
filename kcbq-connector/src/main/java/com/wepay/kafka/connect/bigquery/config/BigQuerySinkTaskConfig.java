@@ -62,6 +62,7 @@ public class BigQuerySinkTaskConfig extends BigQuerySinkConfig {
       + "go over this before topics are paused. All topics will be resumed once a flush is "
       + "requested or the size of the queue drops under half of the maximum size.";
 
+
   public static final String BIGQUERY_RETRY_CONFIG =                    "bigQueryRetry";
   private static final ConfigDef.Type BIGQUERY_RETRY_TYPE =             ConfigDef.Type.INT;
   public static final Integer BIGQUERY_RETRY_DEFAULT =                  0;
@@ -82,6 +83,15 @@ public class BigQuerySinkTaskConfig extends BigQuerySinkConfig {
   private static final String BIGQUERY_RETRY_WAIT_DOC =
       "The minimum amount of time, in milliseconds, to wait between BigQuery backend or quota "
       +  "exceeded error retry attempts.";
+
+  public static final String TABLE_CREATE_CHECK_INTERVAL_SECS_CONFIG =                     "autoCreateTablesCheckInterval";
+  private static final ConfigDef.Type TABLE_CREATE_CHECK_INTERVAL_SECS_CONFIG_TYPE =       ConfigDef.Type.INT;
+  private static final ConfigDef.Validator TABLE_CREATE_CHECK_INTERVAL_SECS_VALIDATOR =
+          ConfigDef.Range.atLeast(10);
+  public static final Integer TABLE_CREATE_CHECK_INTERVAL_SECS_DEFAULT =                   60;
+  private static final ConfigDef.Importance TABLE_CREATE_CHECK_INTERVAL_SECS_IMPORTANCE =  ConfigDef.Importance.LOW;
+  private static final String TABLE_CREATE_CHECK_INTERVAL_SECS_DOC =
+          "The interval, in seconds,in which to attempt to check if the table doesn't exists and try to create it again";
 
   public static final String BIGQUERY_MESSAGE_TIME_PARTITIONING_CONFIG =
       "bigQueryMessageTimePartitioning";
@@ -137,6 +147,13 @@ public class BigQuerySinkTaskConfig extends BigQuerySinkConfig {
             BIGQUERY_RETRY_IMPORTANCE,
             BIGQUERY_RETRY_DOC
         ).define(
+            TABLE_CREATE_CHECK_INTERVAL_SECS_CONFIG,
+            TABLE_CREATE_CHECK_INTERVAL_SECS_CONFIG_TYPE,
+            TABLE_CREATE_CHECK_INTERVAL_SECS_DEFAULT,
+            TABLE_CREATE_CHECK_INTERVAL_SECS_VALIDATOR,
+            TABLE_CREATE_CHECK_INTERVAL_SECS_IMPORTANCE,
+            TABLE_CREATE_CHECK_INTERVAL_SECS_DOC
+         ).define(
             BIGQUERY_RETRY_WAIT_CONFIG,
             BIGQUERY_RETRY_WAIT_CONFIG_TYPE,
             BIGQUERY_RETRY_WAIT_DEFAULT,

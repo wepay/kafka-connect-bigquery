@@ -166,11 +166,12 @@ public class BigQuerySinkTask extends SinkTask {
   private void maybeCreateTable(SinkRecord record, TableId baseTableId) {
     BigQuery bigQuery = getBigQuery();
     boolean autoCreateTables = config.getBoolean(config.TABLE_CREATE_CONFIG);
+    int checkIntervalSecs = config.getInt(config.TABLE_CREATE_CHECK_INTERVAL_SECS_CONFIG);
 
     boolean containsLastSeen = lastSeenTableIds.containsKey(baseTableId);
     if ( containsLastSeen) {
       long diff = new Date().getTime() - lastSeenTableIds.get(baseTableId);
-      if ( diff > 60000) {
+      if ( diff > checkIntervalSecs*1000L) {
         containsLastSeen = false;
         lastSeenTableIds.remove(baseTableId);
       }
