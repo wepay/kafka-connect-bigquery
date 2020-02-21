@@ -19,6 +19,7 @@ package com.wepay.kafka.connect.bigquery.write.batch;
 
 
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
+import com.google.cloud.bigquery.TableId;
 
 /**
  * Interface for building a {@link TableWriter} or TableWriterGCS.
@@ -36,4 +37,8 @@ public interface TableWriterBuilder {
    * @return a TableWriter containing the given writer, table, topic, and all added rows.
    */
   Runnable build();
+
+  TableId getBaseTableId();
+
+  String getTopic();
 }

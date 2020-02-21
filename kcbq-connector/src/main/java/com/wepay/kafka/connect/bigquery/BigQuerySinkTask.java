@@ -142,8 +142,6 @@ public class BigQuerySinkTask extends SinkTask {
 
     TableId baseTableId = topicsToBaseTableIds.get(record.topic());
 
-    maybeCreateTable(record, baseTableId);
-
     PartitionedTableId.Builder builder = new PartitionedTableId.Builder(baseTableId);
     if(usePartitionDecorator) {
     	
@@ -163,15 +161,15 @@ public class BigQuerySinkTask extends SinkTask {
 
   /**
    * Create the table which doesn't exist in BigQuery for a (record's) topic when autoCreateTables config is set to true.
-   * @param record Kafka Sink Record to be streamed into BigQuery.
+   * @param topic Kafka Sink Record topic.
    * @param baseTableId BaseTableId in BigQuery.
    */
-  private void maybeCreateTable(SinkRecord record, TableId baseTableId) {
+  private void maybeCreateTable(TableId baseTableId, String topic) {
     BigQuery bigQuery = getBigQuery();
     boolean autoCreateTables = config.getBoolean(config.TABLE_CREATE_CONFIG);
     if (autoCreateTables && bigQuery.getTable(baseTableId) == null) {
-      getSchemaManager(bigQuery).createTable(baseTableId, record.topic());
-      logger.info("Table {} does not exist, auto-created table for topic {}", baseTableId, record.topic());
+      getSchemaManager(bigQuery).createTable(baseTableId, topic);
+      logger.info("Table {} does not exist, auto-created table for topic {}", baseTableId, topic);
     }
   }
 
@@ -217,7 +215,8 @@ public class BigQuerySinkTask extends SinkTask {
         if (!tableWriterBuilders.containsKey(table)) {
           TableWriterBuilder tableWriterBuilder;
           if (config.getList(config.ENABLE_BATCH_CONFIG).contains(record.topic())) {
-            String gcsBlobName = record.topic() + "_" + uuid + "_" + Instant.now().toEpochMilli();
+            String topic = record.topic();
+            String gcsBlobName = topic + "_" + uuid + "_" + Instant.now().toEpochMilli();
             String gcsFolderName = config.getString(config.GCS_FOLDER_NAME_CONFIG);
             if (gcsFolderName != null && !"".equals(gcsFolderName)) {
               gcsBlobName = gcsFolderName + "/" + gcsBlobName;
@@ -227,6 +226,7 @@ public class BigQuerySinkTask extends SinkTask {
                 table.getBaseTableId(),
                 config.getString(config.GCS_BUCKET_NAME_CONFIG),
                 gcsBlobName,
+                topic,
                 recordConverter);
           } else {
             tableWriterBuilder =
@@ -240,6 +240,7 @@ public class BigQuerySinkTask extends SinkTask {
 
     // add tableWriters to the executor work queue
     for (TableWriterBuilder builder : tableWriterBuilders.values()) {
+      maybeCreateTable(builder.getBaseTableId(), builder.getTopic());
       executor.execute(builder.build());
     }
 

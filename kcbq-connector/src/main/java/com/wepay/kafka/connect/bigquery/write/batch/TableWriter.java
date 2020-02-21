@@ -20,13 +20,13 @@ package com.wepay.kafka.connect.bigquery.write.batch;
 
 import com.google.cloud.bigquery.BigQueryException;
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
+import com.google.cloud.bigquery.TableId;
 
 import com.wepay.kafka.connect.bigquery.convert.RecordConverter;
 import com.wepay.kafka.connect.bigquery.utils.PartitionedTableId;
 import com.wepay.kafka.connect.bigquery.write.row.BigQueryWriter;
 
 import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.sink.SinkRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -185,6 +185,16 @@ public class TableWriter implements Runnable {
      */
     public TableWriter build() {
       return new TableWriter(writer, table, rows, topic);
+    }
+
+    @Override
+    public TableId getBaseTableId() {
+      return table.getBaseTableId();
+    }
+
+    @Override
+    public String getTopic() {
+      return topic;
     }
   }
 }

@@ -32,7 +32,6 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Batch Table Writer that uploads records to GCS as a blob
@@ -87,6 +86,7 @@ public class GCSBatchTableWriter implements Runnable {
   public static class Builder implements TableWriterBuilder {
     private final String bucketName;
     private String blobName;
+    private String topic;
 
     private final TableId tableId;
 
@@ -107,10 +107,12 @@ public class GCSBatchTableWriter implements Runnable {
                    TableId tableId,
                    String gcsBucketName,
                    String gcsBlobName,
+                   String topic,
                    RecordConverter<Map<String, Object>> recordConverter) {
 
       this.bucketName = gcsBucketName;
       this.blobName = gcsBlobName;
+      this.topic = topic;
 
       this.tableId = tableId;
 
@@ -134,6 +136,16 @@ public class GCSBatchTableWriter implements Runnable {
 
     public GCSBatchTableWriter build() {
       return new GCSBatchTableWriter(rows, writer, tableId, bucketName, blobName);
+    }
+
+    @Override
+    public TableId getBaseTableId() {
+      return tableId;
+    }
+
+    @Override
+    public String getTopic() {
+      return topic;
     }
   }
 }
