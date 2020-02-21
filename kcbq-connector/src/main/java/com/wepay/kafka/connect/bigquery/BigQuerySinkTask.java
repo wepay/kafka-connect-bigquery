@@ -166,7 +166,7 @@ public class BigQuerySinkTask extends SinkTask {
    * @param baseTableId BaseTableId in BigQuery.
    * @param topic Kafka Sink Record topic.
    */
-  private void maybeCreateTable(TableId baseTableId, String topic) {
+  private void createTableIfNecessary(TableId baseTableId, String topic) {
     BigQuery bigQuery = getBigQuery();
     boolean autoCreateTables = config.getBoolean(config.TABLE_CREATE_CONFIG);
     if (autoCreateTables && bigQuery.getTable(baseTableId) == null) {
@@ -247,7 +247,7 @@ public class BigQuerySinkTask extends SinkTask {
 
     // add tableWriters to the executor work queue
     for (TableWriterBuilder builder : tableWriterBuilders.values()) {
-      maybeCreateTable(builder.getBaseTableId(), builder.getTopic());
+      createTableIfNecessary(builder.getBaseTableId(), builder.getTopic());
       executor.execute(builder.build());
     }
 
