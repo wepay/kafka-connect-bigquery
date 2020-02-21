@@ -163,8 +163,8 @@ public class BigQuerySinkTask extends SinkTask {
 
   /**
    * Create the table which doesn't exist in BigQuery for a (record's) topic when autoCreateTables config is set to true.
-   * @param topic Kafka Sink Record topic.
    * @param baseTableId BaseTableId in BigQuery.
+   * @param topic Kafka Sink Record topic.
    */
   private void maybeCreateTable(TableId baseTableId, String topic) {
     BigQuery bigQuery = getBigQuery();
