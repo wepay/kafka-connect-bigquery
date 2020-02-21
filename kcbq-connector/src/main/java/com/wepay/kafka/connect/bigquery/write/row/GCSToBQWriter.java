@@ -101,13 +101,6 @@ public class GCSToBQWriter {
     BlobInfo blobInfo =
          BlobInfo.newBuilder(blobId).setContentType("text/json").setMetadata(metadata).build();
 
-    // Check if the table specified exists
-    // This error shouldn't be thrown. All tables should be created by the connector at startup
-    if (bigQuery.getTable(tableId) == null) {
-      throw new ConnectException(
-          String.format("Table with TableId %s does not exist.", tableId.getTable()));
-    }
-
     int attemptCount = 0;
     boolean success = false;
     while (!success && (attemptCount <= retries)) {

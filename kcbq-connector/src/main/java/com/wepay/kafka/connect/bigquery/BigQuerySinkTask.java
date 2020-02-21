@@ -19,6 +19,7 @@ package com.wepay.kafka.connect.bigquery;
 
 
 import com.google.cloud.bigquery.BigQuery;
+import com.google.cloud.bigquery.BigQueryException;
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.storage.Bucket;
@@ -32,6 +33,7 @@ import com.wepay.kafka.connect.bigquery.config.BigQuerySinkTaskConfig;
 import com.wepay.kafka.connect.bigquery.convert.KafkaDataBuilder;
 import com.wepay.kafka.connect.bigquery.convert.RecordConverter;
 import com.wepay.kafka.connect.bigquery.convert.SchemaConverter;
+import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
 import com.wepay.kafka.connect.bigquery.exception.SinkConfigConnectException;
 import com.wepay.kafka.connect.bigquery.utils.FieldNameSanitizer;
 import com.wepay.kafka.connect.bigquery.utils.PartitionedTableId;
@@ -168,8 +170,13 @@ public class BigQuerySinkTask extends SinkTask {
     BigQuery bigQuery = getBigQuery();
     boolean autoCreateTables = config.getBoolean(config.TABLE_CREATE_CONFIG);
     if (autoCreateTables && bigQuery.getTable(baseTableId) == null) {
-      getSchemaManager(bigQuery).createTable(baseTableId, topic);
-      logger.info("Table {} does not exist, auto-created table for topic {}", baseTableId, topic);
+      try {
+        getSchemaManager(bigQuery).createTable(baseTableId, topic);
+        logger.info("Table {} does not exist, auto-created table for topic {}", baseTableId, topic);
+      } catch (BigQueryException exception) {
+        throw new BigQueryConnectException(
+                "Failed to auto-create table: " + baseTableId, exception);
+      }
     }
   }
 
