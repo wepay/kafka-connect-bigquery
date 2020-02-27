@@ -97,8 +97,6 @@ public class BigQuerySinkTaskConfigTest {
     assertFalse(testConfig.getBoolean(BigQuerySinkTaskConfig.BIGQUERY_PARTITION_DECORATOR_CONFIG));
   }
 
-
-
   @Test(expected = ConfigException.class)
   public void testAutoSchemaUpdateWithoutRetriever() {
     Map<String, String> badConfigProperties = propertiesFactory.getProperties();
