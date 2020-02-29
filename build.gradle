@@ -15,7 +15,7 @@ allprojects {
 project.ext {
     apacheHttpClientVersion = '4.5.6'
     avroVersion = '1.8.1'
-    debeziumVersion = '1.0.1.Final'
+    debeziumVersion = '0.6.1'
     googleCloudVersion = '1.79.0'
     googleAuthVersion = '0.9.0'
     googleCloudGsonVersion = '2.8.5'
@@ -208,7 +208,6 @@ project(':kcbq-connector') {
                 "com.google.auth:google-auth-library-oauth2-http:$googleAuthVersion",
                 "com.google.code.gson:gson:$googleCloudGsonVersion",
                 "io.debezium:debezium-core:$debeziumVersion",
-                "io.debezium:debezium-connector-mysql:$debeziumVersion",
                 "org.apache.kafka:connect-api:$kafkaVersion",
                 "org.apache.kafka:kafka-clients:$kafkaVersion",
                 "org.slf4j:slf4j-api:$slf4jVersion",
@@ -228,9 +227,6 @@ project(':kcbq-connector') {
     uploadArchives {
         repositories {
             mavenDeployer {
-                repository(url: "https://nexus.release.merlinjobs.com/repository/merlin-app-release/") {
-                    authentication(userName: "giovanny", password: "Fuck.321")
-                }
                 pom.project {
                     name 'Kafka Connect BigQuery Connector'
                     packaging 'jar'
@@ -273,9 +269,6 @@ project('kcbq-api') {
     uploadArchives {
         repositories {
             mavenDeployer {
-                repository(url: "https://nexus.release.merlinjobs.com/repository/merlin-app-release/") {
-                    authentication(userName: "giovanny", password: "Fuck.321")
-                }
                 pom.project {
                     name 'Kafka Connect BigQuery Connector API'
                     packaging 'jar'
@@ -353,11 +346,7 @@ project('kcbq-confluent') {
 
     uploadArchives {
         repositories {
-
             mavenDeployer {
-                repository(url: "https://nexus.release.merlinjobs.com/repository/merlin-app-release/") {
-                    authentication(userName: "giovanny", password: "Fuck.321")
-                }
                 pom.project {
                     name 'Kafka Connect BigQuery Connector Schema Registry Schema Retriever'
                     packaging 'jar'

@@ -111,8 +111,16 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
       if (isTableNotExistedException(exception) && autoCreateTables ) {
         //In some cases the table exists but the partition still is not created,
         // so we should no throw an exception but wait
-        if (bigQuery.getTable(tableId.getBaseTableId()) == null) {
-          attemptTableCreate(tableId.getBaseTableId(), topic);
+        try {
+          if (bigQuery.getTable(tableId.getBaseTableId()) == null) {
+            attemptTableCreate(tableId.getBaseTableId(), topic);
+          }
+        } catch(BigQueryConnectException ex) {
+          BigQueryException cause = (BigQueryException)ex.getCause();
+          //Ignore the exception because the table already exists
+          if ( !(cause.getCode() == 409 && cause.getReason().equalsIgnoreCase("duplicate"))) {
+            throw ex;
+          }
         }
       } else if (isTableMissingSchema(exception) && autoUpdateSchemas) {
         attemptSchemaUpdate(tableId, topic);
