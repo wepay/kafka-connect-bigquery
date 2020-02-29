@@ -108,8 +108,12 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
       }
     } catch (BigQueryException exception) {
       // Should only perform one table creation attempt.
-      if (isTableNotExistedException(exception) && autoCreateTables && bigQuery.getTable(tableId.getBaseTableId()) == null) {
-        attemptTableCreate(tableId.getBaseTableId(), topic);
+      if (isTableNotExistedException(exception) && autoCreateTables ) {
+        //In some cases the table exists but the partition still is not created,
+        // so we should no throw an exception but wait
+        if (bigQuery.getTable(tableId.getBaseTableId()) == null) {
+          attemptTableCreate(tableId.getBaseTableId(), topic);
+        }
       } else if (isTableMissingSchema(exception) && autoUpdateSchemas) {
         attemptSchemaUpdate(tableId, topic);
       } else {
@@ -129,7 +133,11 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
           logger.debug("re-attempting insertion");
           writeResponse = bigQuery.insertAll(request);
         } catch (BigQueryException exception) {
-          // no-op, we want to keep retrying the insert
+          // When autoCreateTable is used with autoUpdateSchemas and the MemorySchemaRetriever
+          // a table with no schema can appear and is necessary to check again
+          if (isTableMissingSchema(exception) && autoUpdateSchemas) {
+            attemptSchemaUpdate(tableId, topic);
+          }
         }
       } else {
         return writeResponse.getInsertErrors();
@@ -140,10 +148,12 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
             "Failed to write rows after BQ schema update within "
                 + RETRY_LIMIT + " attempts for: " + tableId.getBaseTableId());
       }
-      try {
-        Thread.sleep(RETRY_WAIT_TIME);
-      } catch (InterruptedException e) {
-        // no-op, we want to keep retrying the insert
+      if (writeResponse == null || writeResponse.hasErrors()) {
+        try {
+          Thread.sleep(RETRY_WAIT_TIME);
+        } catch (InterruptedException e) {
+          // no-op, we want to keep retrying the insert
+        }
       }
     }
     logger.debug("table insertion completed successfully");

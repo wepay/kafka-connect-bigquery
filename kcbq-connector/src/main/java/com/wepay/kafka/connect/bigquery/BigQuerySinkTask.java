@@ -260,7 +260,11 @@ public class BigQuerySinkTask extends SinkTask {
     if (testSchemaManager != null) {
       return testSchemaManager;
     }
-    schemaRetriever = config.getSchemaRetriever();
+
+    if ( schemaRetriever == null) {
+      schemaRetriever = config.getSchemaRetriever();
+    }
+
     SchemaConverter<com.google.cloud.bigquery.Schema> schemaConverter =
         config.getSchemaConverter();
     Optional<String> kafkaKeyFieldName = config.getKafkaKeyFieldName();
