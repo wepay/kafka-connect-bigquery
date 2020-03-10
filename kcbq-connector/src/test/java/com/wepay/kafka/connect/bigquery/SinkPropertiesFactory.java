@@ -33,6 +33,7 @@ public class SinkPropertiesFactory {
   public Map<String, String> getProperties() {
     Map<String, String> properties = new HashMap<>();
 
+    properties.put(BigQuerySinkConfig.TABLE_CREATE_CONFIG, "false");
     properties.put(BigQuerySinkConfig.TOPICS_CONFIG, "kcbq-test");
     properties.put(BigQuerySinkConfig.PROJECT_CONFIG, "test-project");
     properties.put(BigQuerySinkConfig.DATASETS_CONFIG, ".*=test");
@@ -62,7 +63,7 @@ public class SinkPropertiesFactory {
     config.getList(config.TOPICS_TO_TABLES_CONFIG);
     config.getList(config.DATASETS_CONFIG);
 
-    config.getString(config.KEYFILE_CONFIG);
+    config.getKeyFile();
     config.getString(config.PROJECT_CONFIG);
 
     config.getBoolean(config.SANITIZE_TOPICS_CONFIG);

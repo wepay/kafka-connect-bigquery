@@ -81,7 +81,7 @@ public class TableWriter implements Runnable {
           currentIndex += currentBatchSize;
           successCount++;
         } catch (BigQueryException err) {
-          logger.debug("Could not write batch of size {} to BigQuery.", currentBatch.size(), err);
+          logger.warn("Could not write batch of size {} to BigQuery.", currentBatch.size(), err);
           if (isBatchSizeError(err)) {
             failureCount++;
             currentBatchSize = getNewBatchSize(currentBatchSize);
@@ -177,17 +177,6 @@ public class TableWriter implements Runnable {
      */
     public void addRow(RowToInsert rowToInsert) {
       rows.add(rowToInsert);
-    }
-
-    private RowToInsert getRecordRow(SinkRecord record) {
-      return RowToInsert.of(getRowId(record), recordConverter.convertRecord(record));
-    }
-
-    private String getRowId(SinkRecord record) {
-      return String.format("%s-%d-%d",
-                           record.topic(),
-                           record.kafkaPartition(),
-                           record.kafkaOffset());
     }
 
     /**

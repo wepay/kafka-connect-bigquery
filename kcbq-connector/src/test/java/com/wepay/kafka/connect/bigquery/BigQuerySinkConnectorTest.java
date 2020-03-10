@@ -33,10 +33,10 @@ import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.Table;
 import com.google.cloud.bigquery.TableId;
 
+import com.wepay.kafka.connect.bigquery.api.KafkaSchemaRecordType;
 import com.wepay.kafka.connect.bigquery.api.SchemaRetriever;
 
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig;
-import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConnectorConfig;
 
 import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
 import com.wepay.kafka.connect.bigquery.exception.SinkConfigConnectException;
@@ -61,7 +61,7 @@ public class BigQuerySinkConnectorTest {
     }
 
     @Override
-    public Schema retrieveSchema(TableId table, String topic) {
+    public Schema retrieveSchema(TableId table, String topic, KafkaSchemaRecordType schemaType) {
       // Shouldn't be called
       return null;
     }
@@ -74,96 +74,6 @@ public class BigQuerySinkConnectorTest {
   @BeforeClass
   public static void initializePropertiesFactory() {
     propertiesFactory = new SinkConnectorPropertiesFactory();
-  }
-
-  @Test
-  public void testAutoCreateTables() {
-    final String dataset = "scratch";
-    final String existingTableTopic = "topic-with-existing-table";
-    final String nonExistingTableTopic = "topic-without-existing-table";
-    final TableId existingTable = TableId.of(dataset, "topic_with_existing_table");
-    final TableId nonExistingTable = TableId.of(dataset, "topic_without_existing_table");
-
-    Map<String, String> properties = propertiesFactory.getProperties();
-    properties.put(BigQuerySinkConnectorConfig.TABLE_CREATE_CONFIG, "true");
-    properties.put(BigQuerySinkConfig.SCHEMA_RETRIEVER_CONFIG, MockSchemaRetriever.class.getName());
-    properties.put(BigQuerySinkConfig.SANITIZE_TOPICS_CONFIG, "true");
-    properties.put(BigQuerySinkConfig.DATASETS_CONFIG, String.format(".*=%s", dataset));
-    properties.put(
-        BigQuerySinkConfig.TOPICS_CONFIG,
-        String.format("%s, %s", existingTableTopic, nonExistingTableTopic)
-    );
-
-    BigQuery bigQuery = mock(BigQuery.class);
-    Table fakeTable = mock(Table.class);
-    when(bigQuery.getTable(existingTable)).thenReturn(fakeTable);
-    when(bigQuery.getTable(nonExistingTable)).thenReturn(null);
-
-    SchemaManager schemaManager = mock(SchemaManager.class);
-
-    BigQuerySinkConnector testConnector = new BigQuerySinkConnector(bigQuery, schemaManager);
-    testConnector.start(properties);
-
-    verify(bigQuery).getTable(existingTable);
-    verify(bigQuery).getTable(nonExistingTable);
-    verify(schemaManager, never()).createTable(existingTable, existingTableTopic);
-    verify(schemaManager).createTable(nonExistingTable, nonExistingTableTopic);
-  }
-
-  @Test
-  public void testNonAutoCreateTables() {
-    final String dataset = "scratch";
-    final String[] topics = new String[] { "topic-one", "topicTwo", "TOPIC_THREE", "topic.four" };
-    final String[] tables = new String[] { "topic_one", "topicTwo", "TOPIC_THREE", "topic_four" };
-
-    Map<String, String> properties = propertiesFactory.getProperties();
-    properties.put(BigQuerySinkConnectorConfig.TABLE_CREATE_CONFIG, "false");
-    properties.put(BigQuerySinkConfig.SANITIZE_TOPICS_CONFIG, "true");
-    properties.put(BigQuerySinkConfig.DATASETS_CONFIG, String.format(".*=%s", dataset));
-    properties.put(BigQuerySinkConfig.TOPICS_CONFIG, String.join(",", topics));
-
-    BigQuery bigQuery = mock(BigQuery.class);
-    for (String table : tables) {
-      Table fakeTable = mock(Table.class);
-      when(bigQuery.getTable(TableId.of(dataset, table))).thenReturn(fakeTable);
-    }
-
-    SchemaManager schemaManager = mock(SchemaManager.class);
-
-    BigQuerySinkConnector testConnector = new BigQuerySinkConnector(bigQuery);
-    testConnector.start(properties);
-
-    verify(schemaManager, never()).createTable(any(TableId.class), any(String.class));
-
-    for (String table : tables) {
-      verify(bigQuery).getTable(TableId.of(dataset, table));
-    }
-  }
-
-  @Test(expected = BigQueryConnectException.class)
-  public void testNonAutoCreateTablesFailure() {
-    final String dataset = "scratch";
-    final String existingTableTopic = "topic-with-existing-table";
-    final String nonExistingTableTopic = "topic-without-existing-table";
-    final TableId existingTable = TableId.of(dataset, "topic_with_existing_table");
-    final TableId nonExistingTable = TableId.of(dataset, "topic_without_existing_table");
-
-    Map<String, String> properties = propertiesFactory.getProperties();
-    properties.put(BigQuerySinkConnectorConfig.TABLE_CREATE_CONFIG, "false");
-    properties.put(BigQuerySinkConfig.SANITIZE_TOPICS_CONFIG, "true");
-    properties.put(BigQuerySinkConfig.DATASETS_CONFIG, String.format(".*=%s", dataset));
-    properties.put(
-        BigQuerySinkConfig.TOPICS_CONFIG,
-        String.format("%s, %s", existingTableTopic, nonExistingTableTopic)
-    );
-
-    BigQuery bigQuery = mock(BigQuery.class);
-    Table fakeTable = mock(Table.class);
-    when(bigQuery.getTable(existingTable)).thenReturn(fakeTable);
-    when(bigQuery.getTable(nonExistingTable)).thenReturn(null);
-
-    BigQuerySinkConnector testConnector = new BigQuerySinkConnector(bigQuery);
-    testConnector.start(properties);
   }
 
   @Test
@@ -215,7 +125,7 @@ public class BigQuerySinkConnectorTest {
 
   @Test
   public void testConfig() {
-    assertEquals(BigQuerySinkConnectorConfig.getConfig(), new BigQuerySinkConnector().config());
+    assertEquals(BigQuerySinkConfig.getConfig(), new BigQuerySinkConnector().config());
   }
 
   // Make sure that a config exception is properly translated into a SinkConfigConnectException
