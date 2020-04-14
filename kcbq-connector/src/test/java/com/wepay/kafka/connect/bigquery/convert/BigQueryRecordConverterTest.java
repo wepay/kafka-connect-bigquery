@@ -200,16 +200,16 @@ public class BigQueryRecordConverterTest {
       bigQueryExpectedRecord.put(fieldName, expectedValues.get(test));
 
       Schema kafkaConnectSchema = SchemaBuilder
-              .struct()
-              .field(fieldName, Schema.FLOAT64_SCHEMA)
-              .build();
+          .struct()
+          .field(fieldName, Schema.FLOAT64_SCHEMA)
+          .build();
 
       Struct kafkaConnectStruct = new Struct(kafkaConnectSchema);
       kafkaConnectStruct.put(fieldName, testValues.get(test));
       SinkRecord kafkaConnectRecord = spoofSinkRecord(kafkaConnectSchema, kafkaConnectStruct, false);
 
       Map<String, Object> bigQueryTestRecord =
-              new BigQueryRecordConverter(SHOULD_CONVERT_DOUBLE).convertRecord(kafkaConnectRecord, KafkaSchemaRecordType.VALUE);
+          new BigQueryRecordConverter(SHOULD_CONVERT_DOUBLE).convertRecord(kafkaConnectRecord, KafkaSchemaRecordType.VALUE);
       assertEquals(bigQueryExpectedRecord, bigQueryTestRecord);
     }
   }
@@ -598,8 +598,8 @@ public class BigQueryRecordConverterTest {
     Schema kafkaConnectSchema = SchemaBuilder
         .struct()
         .field(nullableFieldName,
-               SchemaBuilder.struct().field("foobar",
-                                            SchemaBuilder.bool().build()).optional().build())
+            SchemaBuilder.struct().field("foobar",
+                SchemaBuilder.bool().build()).optional().build())
         .build();
 
     Struct kafkaConnectStruct = new Struct(kafkaConnectSchema);
@@ -617,20 +617,20 @@ public class BigQueryRecordConverterTest {
     Map kafkaConnectMap = new HashMap<Object, Object>(){{
       put("f1", "f2");
       put( "f3" ,
-              new HashMap<Object, Object>(){{
-                put("f4", "false");
-                put("f5", true);
-                put("f6", new ArrayList<String>(){{
-                  add("hello");
-                  add("world");
-                }});
-              }}
+          new HashMap<Object, Object>(){{
+            put("f4", "false");
+            put("f5", true);
+            put("f6", new ArrayList<String>(){{
+              add("hello");
+              add("world");
+            }});
+          }}
       );
     }};
 
     SinkRecord kafkaConnectRecord = spoofSinkRecord(null, kafkaConnectMap, true);
     Map<String, Object> convertedMap =
-            new BigQueryRecordConverter(SHOULD_CONVERT_DOUBLE).convertRecord(kafkaConnectRecord, KafkaSchemaRecordType.KEY);
+        new BigQueryRecordConverter(SHOULD_CONVERT_DOUBLE).convertRecord(kafkaConnectRecord, KafkaSchemaRecordType.KEY);
     assertEquals(kafkaConnectMap, convertedMap);
   }
 
@@ -639,20 +639,20 @@ public class BigQueryRecordConverterTest {
     Map kafkaConnectMap = new HashMap<Object, Object>(){{
       put("f1", "f2");
       put( "f3" ,
-              new HashMap<Object, Object>(){{
-                put(1, "false");
-                put("f5", true);
-                put("f6", new ArrayList<String>(){{
-                  add("hello");
-                  add("world");
-                }});
-              }}
+          new HashMap<Object, Object>(){{
+            put(1, "false");
+            put("f5", true);
+            put("f6", new ArrayList<String>(){{
+              add("hello");
+              add("world");
+            }});
+          }}
       );
     }};
 
     SinkRecord kafkaConnectRecord = spoofSinkRecord(null, kafkaConnectMap, false);
     Map<String, Object> convertedMap =
-            new BigQueryRecordConverter(SHOULD_CONVERT_DOUBLE).convertRecord(kafkaConnectRecord, KafkaSchemaRecordType.VALUE);
+        new BigQueryRecordConverter(SHOULD_CONVERT_DOUBLE).convertRecord(kafkaConnectRecord, KafkaSchemaRecordType.VALUE);
   }
 
   @Test
@@ -687,55 +687,24 @@ public class BigQueryRecordConverterTest {
   }
 
   @Test
-  public void testInvalidMapSchemalessNullValue() {
-    Map kafkaConnectMap = new HashMap<Object, Object>(){{
-      put("f1", "abc");
-      put("f2", "abc");
-      put("f3", null);
-    }};
-
-    SinkRecord kafkaConnectRecord = spoofSinkRecord(null, kafkaConnectMap);
-    Map<String, Object> stringObjectMap = new BigQueryRecordConverter(SHOULD_CONVERT_DOUBLE).convertRecord(kafkaConnectRecord);
-    Assert.assertEquals(kafkaConnectMap, stringObjectMap
-    );
-  }
-
-  @Test
-  public void testInvalidMapSchemalessNestedMapNullValue() {
-    Map kafkaConnectMap = new HashMap<Object, Object>(){{
-      put("f1", "abc");
-      put("f2", "abc");
-      put("f3", new HashMap<Object, Object>() {{
-        put("f31", "xyz");
-        put("f32", null);
-      }});
-    }};
-
-    SinkRecord kafkaConnectRecord = spoofSinkRecord(null, kafkaConnectMap);
-    Map<String, Object> stringObjectMap = new BigQueryRecordConverter(SHOULD_CONVERT_DOUBLE)
-        .convertRecord(kafkaConnectRecord);
-    Assert.assertEquals(kafkaConnectMap, stringObjectMap);
-  }
-
-  @Test
   public void testMapSchemalessConvertDouble() {
     Map kafkaConnectMap = new HashMap<Object, Object>(){{
       put("f1", Double.POSITIVE_INFINITY);
       put( "f3" ,
-              new HashMap<Object, Object>(){{
-                put("f4", Double.POSITIVE_INFINITY);
-                put("f5", true);
-                put("f6", new ArrayList<Double>(){{
-                  add(1.2);
-                  add(Double.POSITIVE_INFINITY);
-                }});
-              }}
+          new HashMap<Object, Object>(){{
+            put("f4", Double.POSITIVE_INFINITY);
+            put("f5", true);
+            put("f6", new ArrayList<Double>(){{
+              add(1.2);
+              add(Double.POSITIVE_INFINITY);
+            }});
+          }}
       );
     }};
 
     SinkRecord kafkaConnectRecord = spoofSinkRecord(null, kafkaConnectMap, true);
     Map<String, Object> convertedMap =
-            new BigQueryRecordConverter(SHOULD_CONVERT_DOUBLE).convertRecord(kafkaConnectRecord, KafkaSchemaRecordType.KEY);
+        new BigQueryRecordConverter(SHOULD_CONVERT_DOUBLE).convertRecord(kafkaConnectRecord, KafkaSchemaRecordType.KEY);
     assertEquals(convertedMap.get("f1"), Double.MAX_VALUE);
     assertEquals(((Map)(convertedMap.get("f3"))).get("f4"), Double.MAX_VALUE);
     assertEquals(((ArrayList)((Map)(convertedMap.get("f3"))).get("f6")).get(1), Double.MAX_VALUE);
@@ -748,20 +717,20 @@ public class BigQueryRecordConverterTest {
     Map kafkaConnectMap = new HashMap<Object, Object>(){{
       put("f1", helloWorldBuffer);
       put( "f3" ,
-              new HashMap<Object, Object>(){{
-                put("f4", helloWorld);
-                put("f5", true);
-                put("f6", new ArrayList<Double>(){{
-                  add(1.2);
-                  add(Double.POSITIVE_INFINITY);
-                }});
-              }}
+          new HashMap<Object, Object>(){{
+            put("f4", helloWorld);
+            put("f5", true);
+            put("f6", new ArrayList<Double>(){{
+              add(1.2);
+              add(Double.POSITIVE_INFINITY);
+            }});
+          }}
       );
     }};
 
     SinkRecord kafkaConnectRecord = spoofSinkRecord(null, kafkaConnectMap, false);
     Map<String, Object> convertedMap =
-            new BigQueryRecordConverter(SHOULD_CONVERT_DOUBLE).convertRecord(kafkaConnectRecord, KafkaSchemaRecordType.VALUE);
+        new BigQueryRecordConverter(SHOULD_CONVERT_DOUBLE).convertRecord(kafkaConnectRecord, KafkaSchemaRecordType.VALUE);
     assertEquals(convertedMap.get("f1"), Base64.getEncoder().encodeToString(helloWorld));
     assertEquals(((Map)(convertedMap.get("f3"))).get("f4"), Base64.getEncoder().encodeToString(helloWorld));
   }
