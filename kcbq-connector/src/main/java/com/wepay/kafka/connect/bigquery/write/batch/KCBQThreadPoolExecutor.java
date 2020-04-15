@@ -44,7 +44,7 @@ public class KCBQThreadPoolExecutor extends ThreadPoolExecutor {
   private static final Logger logger = LoggerFactory.getLogger(KCBQThreadPoolExecutor.class);
 
 
-  private ConcurrentHashMap.KeySetView<Throwable, Boolean> encounteredErrors =
+  private final ConcurrentHashMap.KeySetView<Throwable, Boolean> encounteredErrors =
       ConcurrentHashMap.newKeySet();
 
   /**
@@ -93,7 +93,6 @@ public class KCBQThreadPoolExecutor extends ThreadPoolExecutor {
     countDownLatch.await();
     if (encounteredErrors.size() > 0) {
       String errorString = createErrorString(encounteredErrors);
-      encounteredErrors.clear();
       throw new BigQueryConnectException("Some write threads encountered unrecoverable errors: "
                                          + errorString + "; See logs for more detail");
     }
@@ -105,5 +104,26 @@ public class KCBQThreadPoolExecutor extends ThreadPoolExecutor {
                         .map(throwable -> throwable.getClass().getName())
                         .collect(Collectors.toList()));
     return String.join(", ", exceptionTypeStrings);
+  }
+
+  private static String createDetailedErrorString(Collection<Throwable> errors) {
+    List<String> exceptionTypeStrings = new ArrayList<>(errors.size());
+    exceptionTypeStrings.addAll(errors.stream()
+        .map(throwable ->
+            throwable.getClass().getName() + "\nMessage: " + throwable.getLocalizedMessage())
+        .collect(Collectors.toList()));
+    return String.join(", ", exceptionTypeStrings);
+  }
+
+  /**
+   * Checks for BigQuery errors. No-op if there isn't any error.
+   *
+   * @throws BigQueryConnectException if there have been any unrecoverable errors when writing to BigQuery.
+   */
+  public void maybeFail() throws BigQueryConnectException {
+    if (encounteredErrors.size() > 0) {
+      throw new BigQueryConnectException("Encountered unrecoverable errors: "
+          + createDetailedErrorString(encounteredErrors) + "; See logs for more detail");
+    }
   }
 }
