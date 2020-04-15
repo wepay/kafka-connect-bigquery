@@ -297,6 +297,38 @@ public class BigQuerySinkTaskTest {
         TimestampType.NO_TIMESTAMP_TYPE, null)));
   }
 
+  @Test(expected = BigQueryConnectException.class, timeout = 60000L)
+  public void testSimplePutException() throws InterruptedException {
+    final String topic = "test-topic";
+
+    Map<String, String> properties = propertiesFactory.getProperties();
+    properties.put(BigQuerySinkConfig.TOPICS_CONFIG, topic);
+    properties.put(BigQuerySinkConfig.DATASETS_CONFIG, ".*=scratch");
+
+    BigQuery bigQuery = mock(BigQuery.class);
+    Storage storage = mock(Storage.class);
+
+    SinkTaskContext sinkTaskContext = mock(SinkTaskContext.class);
+    InsertAllResponse insertAllResponse = mock(InsertAllResponse.class);
+    when(bigQuery.insertAll(any())).thenReturn(insertAllResponse);
+    when(insertAllResponse.hasErrors()).thenReturn(true);
+    when(insertAllResponse.getInsertErrors()).thenReturn(Collections.singletonMap(
+        0L, Collections.singletonList(new BigQueryError("no such field", "us-central1", ""))));
+
+    SchemaRetriever schemaRetriever = mock(SchemaRetriever.class);
+    SchemaManager schemaManager = mock(SchemaManager.class);
+
+    BigQuerySinkTask testTask = new BigQuerySinkTask(bigQuery, schemaRetriever, storage, schemaManager);
+    testTask.initialize(sinkTaskContext);
+    testTask.start(properties);
+
+    testTask.put(Collections.singletonList(spoofSinkRecord(topic)));
+    while (true) {
+      Thread.sleep(100);
+      testTask.put(Collections.emptyList());
+    }
+  }
+
   // It's important that the buffer be completely wiped after a call to flush, since any execption
   // thrown during flush causes Kafka Connect to not commit the offsets for any records sent to the
   // task since the last flush
