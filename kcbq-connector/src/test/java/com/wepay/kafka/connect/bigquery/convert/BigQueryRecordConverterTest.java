@@ -687,37 +687,6 @@ public class BigQueryRecordConverterTest {
   }
 
   @Test
-  public void testInvalidMapSchemalessNullValue() {
-    Map kafkaConnectMap = new HashMap<Object, Object>(){{
-      put("f1", "abc");
-      put("f2", "abc");
-      put("f3", null);
-    }};
-
-    SinkRecord kafkaConnectRecord = spoofSinkRecord(null, kafkaConnectMap);
-    Map<String, Object> stringObjectMap = new BigQueryRecordConverter(SHOULD_CONVERT_DOUBLE).convertRecord(kafkaConnectRecord);
-    Assert.assertEquals(kafkaConnectMap, stringObjectMap
-    );
-  }
-
-  @Test
-  public void testInvalidMapSchemalessNestedMapNullValue() {
-    Map kafkaConnectMap = new HashMap<Object, Object>(){{
-      put("f1", "abc");
-      put("f2", "abc");
-      put("f3", new HashMap<Object, Object>() {{
-        put("f31", "xyz");
-        put("f32", null);
-      }});
-    }};
-
-    SinkRecord kafkaConnectRecord = spoofSinkRecord(null, kafkaConnectMap);
-    Map<String, Object> stringObjectMap = new BigQueryRecordConverter(SHOULD_CONVERT_DOUBLE)
-        .convertRecord(kafkaConnectRecord);
-    Assert.assertEquals(kafkaConnectMap, stringObjectMap);
-  }
-
-  @Test
   public void testMapSchemalessConvertDouble() {
     Map kafkaConnectMap = new HashMap<Object, Object>(){{
       put("f1", Double.POSITIVE_INFINITY);
