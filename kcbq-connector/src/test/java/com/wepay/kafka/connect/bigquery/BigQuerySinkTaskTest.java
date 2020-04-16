@@ -329,11 +329,11 @@ public class BigQuerySinkTaskTest {
     }
   }
 
-  // It's important that the buffer be completely wiped after a call to flush, since any execption
-  // thrown during flush causes Kafka Connect to not commit the offsets for any records sent to the
-  // task since the last flush
-  @Test
-  public void testBufferClearOnFlushError() {
+  // Since any exception thrown during flush causes Kafka Connect to not commit the offsets for any
+  // records sent to the task since the last flush. The task should fail, and next flush should
+  // also thrown an error.
+  @Test(expected = BigQueryConnectException.class)
+  public void testFlushException() {
     final String dataset = "scratch";
     final String topic = "test_topic";
 
