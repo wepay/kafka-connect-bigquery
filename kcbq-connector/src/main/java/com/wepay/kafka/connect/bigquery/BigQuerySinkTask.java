@@ -350,6 +350,7 @@ public class BigQuerySinkTask extends SinkTask {
     logger.info("Attempting to start GCS Load Executor.");
     gcsLoadExecutor = Executors.newScheduledThreadPool(1);
     String bucketName = config.getString(config.GCS_BUCKET_NAME_CONFIG);
+    String folderName = config.getString(config.GCS_FOLDER_NAME_CONFIG);
     Storage gcs = getGcs();
     // get the bucket, or create it if it does not exist.
     Bucket bucket = gcs.get(bucketName);
@@ -359,7 +360,8 @@ public class BigQuerySinkTask extends SinkTask {
       BucketInfo bucketInfo = BucketInfo.of(bucketName);
       bucket = gcs.create(bucketInfo);
     }
-    GCSToBQLoadRunnable loadRunnable = new GCSToBQLoadRunnable(getBigQuery(), bucket);
+    Storage.BlobListOption folderPrefixOption = Storage.BlobListOption.prefix(folderName);
+    GCSToBQLoadRunnable loadRunnable = new GCSToBQLoadRunnable(getBigQuery(), bucket, folderPrefixOption);
 
     int intervalSec = config.getInt(BigQuerySinkConfig.BATCH_LOAD_INTERVAL_SEC_CONFIG);
     gcsLoadExecutor.scheduleAtFixedRate(loadRunnable, intervalSec, intervalSec, TimeUnit.SECONDS);

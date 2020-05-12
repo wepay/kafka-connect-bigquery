@@ -29,6 +29,7 @@ import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.Bucket;
 import com.google.cloud.storage.StorageException;
+import com.google.cloud.storage.Storage.BlobListOption;
 
 import com.wepay.kafka.connect.bigquery.write.row.GCSToBQWriter;
 
@@ -58,6 +59,7 @@ public class GCSToBQLoadRunnable implements Runnable {
 
   private final BigQuery bigQuery;
   private final Bucket bucket;
+  private final BlobListOption folderPrefixOption;
   private final Map<Job, List<BlobId>> activeJobs;
   private final Set<BlobId> claimedBlobIds;
   private final Set<BlobId> deletableBlobIds;
@@ -79,9 +81,10 @@ public class GCSToBQLoadRunnable implements Runnable {
    * @param bigQuery the {@link BigQuery} instance.
    * @param bucket the the GCS bucket to read from.
    */
-  public GCSToBQLoadRunnable(BigQuery bigQuery, Bucket bucket) {
+  public GCSToBQLoadRunnable(BigQuery bigQuery, Bucket bucket, BlobListOption folderPrefixOption) {
     this.bigQuery = bigQuery;
     this.bucket = bucket;
+    this.folderPrefixOption = folderPrefixOption;
     this.activeJobs = new HashMap<>();
     this.claimedBlobIds = new HashSet<>();
     this.deletableBlobIds = new HashSet<>();
@@ -101,7 +104,7 @@ public class GCSToBQLoadRunnable implements Runnable {
     Map<TableId, Long> tableToCurrentLoadSize = new HashMap<>();
 
     logger.trace("Starting GCS bucket list");
-    Page<Blob> list = bucket.list();
+    Page<Blob> list = bucket.list(folderPrefixOption);
     logger.trace("Finished GCS bucket list");
 
     for (Blob blob : list.iterateAll()) {
