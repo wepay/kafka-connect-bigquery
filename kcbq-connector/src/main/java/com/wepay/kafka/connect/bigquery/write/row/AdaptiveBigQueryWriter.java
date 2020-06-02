@@ -44,7 +44,7 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
   private static final Logger logger = LoggerFactory.getLogger(AdaptiveBigQueryWriter.class);
 
   // The maximum number of retries we will attempt to write rows after creating a table or updating a BQ table schema.
-  private static final int RETRY_LIMIT = 5;
+  private static final int RETRY_LIMIT = 10;
   // Wait for about 30s between each retry since both creating table and updating schema take up to 2~3 minutes to take effect.
   private static final int RETRY_WAIT_TIME = 30000;
 
@@ -58,6 +58,9 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
    * @param schemaManager Used to update BigQuery tables.
    * @param retry How many retries to make in the event of a 500/503 error.
    * @param retryWait How long to wait in between retries.
+   * @param autoUpdateSchemas Whether table schemas should be automatically updated in the event of
+   *                          a mismatch
+   * @param autoCreateTables Whether tables should be automatically created
    */
   public AdaptiveBigQueryWriter(BigQuery bigQuery,
                                 SchemaManager schemaManager,
@@ -150,7 +153,7 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
     return new HashMap<>();
   }
 
-  private void attemptSchemaUpdate(PartitionedTableId tableId, String topic) {
+  protected void attemptSchemaUpdate(PartitionedTableId tableId, String topic) {
     try {
       schemaManager.updateSchema(tableId.getBaseTableId(), topic);
     } catch (BigQueryException exception) {
@@ -159,10 +162,9 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
     }
   }
 
-  private void attemptTableCreate(TableId tableId, String topic) {
+  protected void attemptTableCreate(TableId tableId, String topic) {
     try {
       schemaManager.createTable(tableId, topic);
-      logger.info("Table {} does not exist, auto-created table for topic {}", tableId, topic);
     } catch (BigQueryException exception) {
       throw new BigQueryConnectException(
               "Failed to create table " + tableId, exception);

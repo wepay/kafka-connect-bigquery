@@ -33,6 +33,11 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.function.Consumer;
 
 /**
  * Simple Table Writer that attempts to write all the rows it is given at once.
@@ -48,21 +53,26 @@ public class TableWriter implements Runnable {
   private final PartitionedTableId table;
   private final List<RowToInsert> rows;
   private final String topic;
+  private final Consumer<List<RowToInsert>> onFinish;
 
   /**
    * @param writer the {@link BigQueryWriter} to use.
    * @param table the BigQuery table to write to.
    * @param rows the rows to write.
    * @param topic the kafka source topic of this data.
+   * @param onFinish a callback to invoke after all rows have been written successfully, which is
+   *                 called with all the rows written by the writer
    */
   public TableWriter(BigQueryWriter writer,
                      PartitionedTableId table,
                      List<RowToInsert> rows,
-                     String topic) {
+                     String topic,
+                     Consumer<List<RowToInsert>> onFinish) {
     this.writer = writer;
     this.table = table;
     this.rows = rows;
     this.topic = topic;
+    this.onFinish = onFinish;
   }
 
   @Override
@@ -102,6 +112,7 @@ public class TableWriter implements Runnable {
       logger.debug(logMessage, rows.size(), successCount, failureCount);
     }
 
+    onFinish.accept(rows);
   }
 
   private static int getNewBatchSize(int currentBatchSize) {
@@ -150,25 +161,21 @@ public class TableWriter implements Runnable {
     private final PartitionedTableId table;
     private final String topic;
 
+    private Consumer<List<RowToInsert>> onFinish;
     private List<RowToInsert> rows;
-
-    private RecordConverter<Map<String, Object>> recordConverter;
 
     /**
      * @param writer the BigQueryWriter to use
      * @param table the BigQuery table to write to.
      * @param topic the kafka source topic associated with the given table.
-     * @param recordConverter the record converter used to convert records to rows
      */
-    public Builder(BigQueryWriter writer, PartitionedTableId table, String topic,
-                   RecordConverter<Map<String, Object>> recordConverter) {
+    public Builder(BigQueryWriter writer, PartitionedTableId table, String topic) {
       this.writer = writer;
       this.table = table;
       this.topic = topic;
 
+      this.onFinish = null;
       this.rows = new ArrayList<>();
-
-      this.recordConverter = recordConverter;
     }
 
     /**
@@ -180,11 +187,24 @@ public class TableWriter implements Runnable {
     }
 
     /**
+     * Specify a callback to be invoked after all rows have been written. The callback will be
+     * invoked with the full list of rows written by this table writer.
+     * @param onFinish the callback to invoke; may not be null
+     * @throws IllegalStateException if invoked more than once on a single builder instance
+     */
+    public void onFinish(Consumer<List<RowToInsert>> onFinish) {
+      if (this.onFinish != null) {
+        throw new IllegalStateException("Cannot overwrite existing finish callback");
+      }
+      this.onFinish = Objects.requireNonNull(onFinish, "Finish callback cannot be null");
+    }
+
+    /**
      * Create a {@link TableWriter} from this builder.
      * @return a TableWriter containing the given writer, table, topic, and all added rows.
      */
     public TableWriter build() {
-      return new TableWriter(writer, table, rows, topic);
+      return new TableWriter(writer, table, rows, topic, onFinish != null ? onFinish : n -> { });
     }
   }
 }
