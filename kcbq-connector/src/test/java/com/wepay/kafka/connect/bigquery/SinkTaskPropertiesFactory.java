@@ -30,6 +30,7 @@ public class SinkTaskPropertiesFactory extends SinkPropertiesFactory {
 
     properties.put(BigQuerySinkTaskConfig.SCHEMA_UPDATE_CONFIG, "false");
     properties.put(BigQuerySinkConfig.TABLE_CREATE_CONFIG, "false");
+    properties.put(BigQuerySinkTaskConfig.TASK_ID_CONFIG, "4");
 
     return properties;
   }

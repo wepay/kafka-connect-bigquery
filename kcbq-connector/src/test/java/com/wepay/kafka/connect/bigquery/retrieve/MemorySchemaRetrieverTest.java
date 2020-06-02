@@ -26,7 +26,7 @@ public class MemorySchemaRetrieverTest {
     final TableId tableId = getTableId("testTable", "testDataset");
     SchemaRetriever retriever = new MemorySchemaRetriever();
     retriever.configure(new HashMap<>());
-    Assert.assertEquals(retriever.retrieveSchema(tableId, topic, KafkaSchemaRecordType.VALUE), SchemaBuilder.struct().build());
+    Assert.assertEquals(SchemaBuilder.struct().build(), retriever.retrieveSchema(tableId, topic, KafkaSchemaRecordType.VALUE));
   }
 
   @Test
@@ -39,7 +39,7 @@ public class MemorySchemaRetrieverTest {
     Schema expectedSchema = Schema.OPTIONAL_FLOAT32_SCHEMA;
     retriever.setLastSeenSchema(tableId, topic, expectedSchema);
 
-    Assert.assertEquals(retriever.retrieveSchema(tableId, topic, KafkaSchemaRecordType.KEY), expectedSchema);
+    Assert.assertEquals(expectedSchema, retriever.retrieveSchema(tableId, topic, KafkaSchemaRecordType.VALUE));
   }
 
   @Test
@@ -56,9 +56,10 @@ public class MemorySchemaRetrieverTest {
     retriever.setLastSeenSchema(floatTableId, floatSchemaTopic, expectedFloatSchema);
     retriever.setLastSeenSchema(intTableId, intSchemaTopic, expectedIntSchema);
 
-    Assert.assertEquals(
-        retriever.retrieveSchema(floatTableId, floatSchemaTopic, KafkaSchemaRecordType.KEY), expectedFloatSchema);
-    Assert.assertEquals(retriever.retrieveSchema(intTableId, intSchemaTopic, KafkaSchemaRecordType.KEY), expectedIntSchema);
+    Assert.assertEquals(expectedFloatSchema,
+        retriever.retrieveSchema(floatTableId, floatSchemaTopic, KafkaSchemaRecordType.VALUE));
+    Assert.assertEquals(expectedIntSchema,
+        retriever.retrieveSchema(intTableId, intSchemaTopic, KafkaSchemaRecordType.VALUE));
   }
 
   @Test
@@ -73,6 +74,25 @@ public class MemorySchemaRetrieverTest {
     retriever.setLastSeenSchema(tableId, intSchemaTopic, firstSchema);
     retriever.setLastSeenSchema(tableId, intSchemaTopic, secondSchema);
 
-    Assert.assertEquals(retriever.retrieveSchema(tableId, intSchemaTopic, KafkaSchemaRecordType.VALUE), secondSchema);
+    Assert.assertEquals(secondSchema,
+        retriever.retrieveSchema(tableId, intSchemaTopic, KafkaSchemaRecordType.VALUE));
+  }
+
+  @Test
+  public void testRetrieveKeyAndValueSchema() {
+    final String schemaTopic = "test-key-and-value";
+    final TableId tableId = getTableId("testTable", "testDataset");
+    SchemaRetriever retriever = new MemorySchemaRetriever();
+    retriever.configure(new HashMap<>());
+
+    Schema keySchema = Schema.STRING_SCHEMA;
+    Schema valueSchema = Schema.OPTIONAL_BOOLEAN_SCHEMA;
+    retriever.setLastSeenSchema(tableId, schemaTopic, keySchema, KafkaSchemaRecordType.KEY);
+    retriever.setLastSeenSchema(tableId, schemaTopic, valueSchema, KafkaSchemaRecordType.VALUE);
+
+    Assert.assertEquals(keySchema,
+        retriever.retrieveSchema(tableId, schemaTopic, KafkaSchemaRecordType.KEY));
+    Assert.assertEquals(valueSchema,
+        retriever.retrieveSchema(tableId, schemaTopic, KafkaSchemaRecordType.VALUE));
   }
 }

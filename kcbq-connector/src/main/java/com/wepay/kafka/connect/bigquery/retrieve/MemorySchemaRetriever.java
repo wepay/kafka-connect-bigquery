@@ -16,34 +16,24 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
-/**
- * Uses the Confluent Schema Registry to fetch the latest schema for a given topic.
- */
 public class MemorySchemaRetriever implements SchemaRetriever {
   private static final Logger logger = LoggerFactory.getLogger(MemorySchemaRetriever.class);
   private static final int CACHE_SIZE = 1000;
   private Cache<String, Schema> schemaCache;
 
-  /**
-   * Only here because the package-private constructor (which is only used in testing) would
-   * otherwise cover up the no-args constructor.
-   */
-  public MemorySchemaRetriever() {
-  }
-
-  private String getCacheKey(String tableName, String topic) {
-    return new StringBuilder(tableName).append(topic).toString();
+  private String getCacheKey(String tableName, String topic, KafkaSchemaRecordType schemaType) {
+    return String.format("%s-%s-%s", tableName, topic, schemaType.toString());
   }
 
   @Override
   public void configure(Map<String, String> properties) {
-    schemaCache = new SynchronizedCache<>(new LRUCache<String, Schema>(CACHE_SIZE));
+    schemaCache = new SynchronizedCache<>(new LRUCache<>(CACHE_SIZE));
   }
 
   @Override
   public Schema retrieveSchema(TableId table, String topic, KafkaSchemaRecordType schemaType) {
     String tableName = table.getTable();
-    Schema schema = schemaCache.get(getCacheKey(tableName, topic));
+    Schema schema = schemaCache.get(getCacheKey(tableName, topic, schemaType));
     if (schema != null) {
       return schema;
     }
@@ -54,9 +44,16 @@ public class MemorySchemaRetriever implements SchemaRetriever {
     return SchemaBuilder.struct().build();
   }
 
+  // Keep this implementation in order to preserve backwards compatibility for older versions of the
+  // connector.
   @Override
-  public void setLastSeenSchema(TableId table, String topic, Schema schema) {
+  public void setLastSeenSchema(TableId tableId, String topic, Schema schema) {
+    setLastSeenSchema(tableId, topic, schema, KafkaSchemaRecordType.VALUE);
+  }
+
+  @Override
+  public void setLastSeenSchema(TableId table, String topic, Schema schema, KafkaSchemaRecordType schemaType) {
     logger.debug("Updating last seen schema to " + schema.toString());
-    schemaCache.put(getCacheKey(table.getTable(), topic), schema);
+    schemaCache.put(getCacheKey(table.getTable(), topic, schemaType), schema);
   }
 }

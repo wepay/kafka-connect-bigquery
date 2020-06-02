@@ -20,15 +20,16 @@ package com.wepay.kafka.connect.bigquery.write.batch;
 
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkTaskConfig;
 import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
+import com.wepay.kafka.connect.bigquery.exception.ExpectedInterruptException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -64,7 +65,8 @@ public class KCBQThreadPoolExecutor extends ThreadPoolExecutor {
   protected void afterExecute(Runnable runnable, Throwable throwable) {
     super.afterExecute(runnable, throwable);
 
-    if (throwable != null) {
+    // Skip interrupted exceptions, as they are thrown by design on task shutdown
+    if (throwable != null && !(throwable instanceof ExpectedInterruptException)) {
       logger.error("Task failed with {} error: {}",
                    throwable.getClass().getName(),
                    throwable.getMessage());
@@ -91,19 +93,27 @@ public class KCBQThreadPoolExecutor extends ThreadPoolExecutor {
       execute(new CountDownRunnable(countDownLatch));
     }
     countDownLatch.await();
+    maybeThrowEncounteredErrors();
+  }
+
+  /**
+   * Immediately throw an exception if any unrecoverable errors were encountered by any of the write
+   * tasks.
+   *
+   * @throws BigQueryConnectException if any of the tasks failed.
+   */
+  public void maybeThrowEncounteredErrors() {
     if (encounteredErrors.size() > 0) {
       String errorString = createErrorString(encounteredErrors);
       encounteredErrors.clear();
       throw new BigQueryConnectException("Some write threads encountered unrecoverable errors: "
-                                         + errorString + "; See logs for more detail");
+          + errorString + "; See logs for more detail");
     }
   }
 
   private static String createErrorString(Collection<Throwable> errors) {
-    List<String> exceptionTypeStrings = new ArrayList<>(errors.size());
-    exceptionTypeStrings.addAll(errors.stream()
-                        .map(throwable -> throwable.getClass().getName())
-                        .collect(Collectors.toList()));
-    return String.join(", ", exceptionTypeStrings);
+    return errors.stream()
+                 .map(Objects::toString)
+                 .collect(Collectors.joining(", "));
   }
 }

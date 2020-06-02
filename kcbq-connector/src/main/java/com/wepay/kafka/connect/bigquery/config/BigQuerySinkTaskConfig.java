@@ -32,7 +32,6 @@ import java.util.Map;
  * Class for task-specific configuration properties.
  */
 public class BigQuerySinkTaskConfig extends BigQuerySinkConfig {
-  private static final ConfigDef config;
   private static final Logger logger = LoggerFactory.getLogger(BigQuerySinkTaskConfig.class);
 
   public static final String SCHEMA_UPDATE_CONFIG =                     "autoUpdateSchemas";
@@ -62,7 +61,7 @@ public class BigQuerySinkTaskConfig extends BigQuerySinkConfig {
       "The maximum size (or -1 for no maximum size) of the worker queue for bigQuery write "
       + "requests before all topics are paused. This is a soft limit; the size of the queue can "
       + "go over this before topics are paused. All topics will be resumed once a flush is "
-      + "requested or the size of the queue drops under half of the maximum size.";
+      + "triggered or the size of the queue drops under half of the maximum size.";
 
   public static final String BIGQUERY_RETRY_CONFIG =                    "bigQueryRetry";
   private static final ConfigDef.Type BIGQUERY_RETRY_TYPE =             ConfigDef.Type.INT;
@@ -127,8 +126,18 @@ public class BigQuerySinkTaskConfig extends BigQuerySinkConfig {
   private static final String BIGQUERY_CLUSTERING_FIELD_NAMES_DOC =
       "List of fields on which data should be clustered by in BigQuery, separated by commas";
 
-  static {
-    config = BigQuerySinkConfig.getConfig()
+  public static final String TASK_ID_CONFIG =                   "taskId";
+  private static final ConfigDef.Type TASK_ID_TYPE =            ConfigDef.Type.INT;
+  public static final ConfigDef.Importance TASK_ID_IMPORTANCE = ConfigDef.Importance.LOW;
+  private static final String TASK_ID_DOC =                     "A unique for each task created by the connector";
+
+  /**
+   * Return a ConfigDef object used to define this config's fields.
+   *
+   * @return A ConfigDef object used to define this config's fields.
+   */
+  public static ConfigDef getConfig() {
+    return BigQuerySinkConfig.getConfig()
         .define(
             SCHEMA_UPDATE_CONFIG,
             SCHEMA_UPDATE_TYPE,
@@ -187,6 +196,11 @@ public class BigQuerySinkTaskConfig extends BigQuerySinkConfig {
             BIGQUERY_CLUSTERING_FIELD_NAMES_DEFAULT,
             BIGQUERY_CLUSTERING_FIELD_NAMES_IMPORTANCE,
             BIGQUERY_CLUSTERING_FIELD_NAMES_DOC
+        ).define(
+            TASK_ID_CONFIG,
+            TASK_ID_TYPE,
+            TASK_ID_IMPORTANCE,
+            TASK_ID_DOC
         );
   }
 
@@ -253,15 +267,11 @@ public class BigQuerySinkTaskConfig extends BigQuerySinkConfig {
     }
   }
 
-  public static ConfigDef getConfig() {
-    return config;
-  }
-
   /**
    * @param properties A Map detailing configuration properties and their respective values.
    */
   public BigQuerySinkTaskConfig(Map<String, String> properties) {
-    super(config, properties);
+    super(getConfig(), properties);
     checkAutoUpdateSchemas();
     checkPartitionConfigs();
     checkClusteringConfigs();

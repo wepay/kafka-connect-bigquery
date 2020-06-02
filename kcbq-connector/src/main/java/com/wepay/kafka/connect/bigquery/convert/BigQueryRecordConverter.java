@@ -103,10 +103,9 @@ public class BigQueryRecordConverter implements RecordConverter<Map<String, Obje
       return convertBytes(value);
     }
     if (value instanceof List) {
-      return
-          ((List) value).stream().map(
-                  v -> convertSchemalessRecord(v)
-          ).collect(Collectors.toList());
+      return ((List<?>) value).stream()
+          .map(this::convertSchemalessRecord)
+          .collect(Collectors.toList());
     }
     if (value instanceof Map) {
       return
@@ -128,7 +127,6 @@ public class BigQueryRecordConverter implements RecordConverter<Map<String, Obje
         " found in schemaless record data. Can't convert record to bigQuery format");
   }
 
-  @SuppressWarnings("unchecked")
   private Object convertObject(Object kafkaConnectObject, Schema kafkaConnectSchema) {
     if (kafkaConnectObject == null) {
       if (kafkaConnectSchema.isOptional()) {

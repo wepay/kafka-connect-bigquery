@@ -45,6 +45,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.Optional;
@@ -53,7 +54,6 @@ import java.util.Optional;
  * Base class for connector and task configs; contains properties shared between the two of them.
  */
 public class BigQuerySinkConfig extends AbstractConfig {
-  private static final ConfigDef config;
   private static final Validator validator = new Validator();
   private static final Logger logger = LoggerFactory.getLogger(BigQuerySinkConfig.class);
 
@@ -233,8 +233,61 @@ public class BigQuerySinkConfig extends AbstractConfig {
   private static final String TABLE_CREATE_DOC =
           "Automatically create BigQuery tables if they don't already exist";
 
-  static {
-    config = new ConfigDef()
+  public static final String UPSERT_ENABLED_CONFIG =                    "upsertEnabled";
+  private static final ConfigDef.Type UPSERT_ENABLED_TYPE =             ConfigDef.Type.BOOLEAN;
+  public static final boolean UPSERT_ENABLED_DEFAULT =                  false;
+  private static final ConfigDef.Importance UPSERT_ENABLED_IMPORTANCE = ConfigDef.Importance.LOW;
+  private static final String UPSERT_ENABLED_DOC =
+      "Enable upsert functionality on the connector through the use of record keys, intermediate "
+      + "tables, and periodic merge flushes. Row-matching will be performed based on the contents " 
+      + "of record keys.";
+
+  public static final String DELETE_ENABLED_CONFIG =                    "deleteEnabled";
+  private static final ConfigDef.Type DELETE_ENABLED_TYPE =             ConfigDef.Type.BOOLEAN;
+  public static final boolean DELETE_ENABLED_DEFAULT =                  false;
+  private static final ConfigDef.Importance DELETE_ENABLED_IMPORTANCE = ConfigDef.Importance.LOW;
+  private static final String DELETE_ENABLED_DOC =
+      "Enable delete functionality on the connector through the use of record keys, intermediate " 
+      + "tables, and periodic merge flushes. A delete will be performed when a record with a null " 
+      + "value (i.e., a tombstone record) is read.";
+
+  public static final String INTERMEDIATE_TABLE_SUFFIX_CONFIG =                     "intermediateTableSuffix";
+  private static final ConfigDef.Type INTERMEDIATE_TABLE_SUFFIX_TYPE =              ConfigDef.Type.STRING;
+  public static final String INTERMEDIATE_TABLE_SUFFIX_DEFAULT =                    "tmp";
+  private static final ConfigDef.Validator INTERMEDIATE_TABLE_SUFFIX_VALIDATOR =    new ConfigDef.NonEmptyString();
+  private static final ConfigDef.Importance INTERMEDIATE_TABLE_SUFFIX_IMPORTANCE = ConfigDef.Importance.LOW;
+  private static final String INTERMEDIATE_TABLE_SUFFIX_DOC =
+      "A suffix that will be appended to the names of destination tables to create the names for " 
+      + "the corresponding intermediate tables. Multiple intermediate tables may be created for a " 
+      + "single destination table, but their names will always start with the name of the " 
+      + "destination table, followed by this suffix, and possibly followed by an additional " 
+      + "suffix.";
+
+  public static final String MERGE_INTERVAL_MS_CONFIG =                    "mergeIntervalMs";
+  private static final ConfigDef.Type MERGE_INTERVAL_MS_TYPE =              ConfigDef.Type.LONG;
+  public static final long MERGE_INTERVAL_MS_DEFAULT =                     60_000L;
+  private static final ConfigDef.Validator MERGE_INTERVAL_MS_VALIDATOR =   ConfigDef.Range.atLeast(-1);
+  private static final ConfigDef.Importance MERGE_INTERVAL_MS_IMPORTANCE = ConfigDef.Importance.LOW;
+  private static final String MERGE_INTERVAL_MS_DOC =
+      "How often (in milliseconds) to perform a merge flush, if upsert/delete is enabled. Can be "
+      + "set to -1 to disable periodic flushing.";
+
+  public static final String MERGE_RECORDS_THRESHOLD_CONFIG =                    "mergeRecordsThreshold";
+  private static final ConfigDef.Type MERGE_RECORDS_THRESHOLD_TYPE =             ConfigDef.Type.LONG;
+  public static final long MERGE_RECORDS_THRESHOLD_DEFAULT =                     -1;
+  private static final ConfigDef.Validator MERGE_RECORDS_THRESHOLD_VALIDATOR =   ConfigDef.Range.atLeast(-1);
+  private static final ConfigDef.Importance MERGE_RECORDS_THRESHOLD_IMPORTANCE = ConfigDef.Importance.LOW;
+  private static final String MERGE_RECORDS_THRESHOLD_DOC =
+      "How many records to write to an intermediate table before performing a merge flush, if " 
+      + "upsert/delete is enabled. Can be set to -1 to disable record count-based flushing.";
+
+  /**
+   * Return a ConfigDef object used to define this config's fields.
+   *
+   * @return A ConfigDef object used to define this config's fields.
+   */
+  public static ConfigDef getConfig() {
+    return new ConfigDef()
         .define(
             TOPICS_CONFIG,
             TOPICS_TYPE,
@@ -365,6 +418,39 @@ public class BigQuerySinkConfig extends AbstractConfig {
             TABLE_CREATE_DEFAULT,
             TABLE_CREATE_IMPORTANCE,
             TABLE_CREATE_DOC
+        ).define(
+            UPSERT_ENABLED_CONFIG,
+            UPSERT_ENABLED_TYPE,
+            UPSERT_ENABLED_DEFAULT,
+            UPSERT_ENABLED_IMPORTANCE,
+            UPSERT_ENABLED_DOC
+        ).define(
+            DELETE_ENABLED_CONFIG,
+            DELETE_ENABLED_TYPE,
+            DELETE_ENABLED_DEFAULT,
+            DELETE_ENABLED_IMPORTANCE,
+            DELETE_ENABLED_DOC
+        ).define(
+            INTERMEDIATE_TABLE_SUFFIX_CONFIG,
+            INTERMEDIATE_TABLE_SUFFIX_TYPE,
+            INTERMEDIATE_TABLE_SUFFIX_DEFAULT,
+            INTERMEDIATE_TABLE_SUFFIX_VALIDATOR,
+            INTERMEDIATE_TABLE_SUFFIX_IMPORTANCE,
+            INTERMEDIATE_TABLE_SUFFIX_DOC
+        ).define(
+            MERGE_INTERVAL_MS_CONFIG,
+            MERGE_INTERVAL_MS_TYPE,
+            MERGE_INTERVAL_MS_DEFAULT,
+            MERGE_INTERVAL_MS_VALIDATOR,
+            MERGE_INTERVAL_MS_IMPORTANCE,
+            MERGE_INTERVAL_MS_DOC
+        ).define(
+            MERGE_RECORDS_THRESHOLD_CONFIG,
+            MERGE_RECORDS_THRESHOLD_TYPE,
+            MERGE_RECORDS_THRESHOLD_DEFAULT,
+            MERGE_RECORDS_THRESHOLD_VALIDATOR,
+            MERGE_RECORDS_THRESHOLD_IMPORTANCE,
+            MERGE_RECORDS_THRESHOLD_DOC
         );
   }
     /**
@@ -384,6 +470,36 @@ public class BigQuerySinkConfig extends AbstractConfig {
             throw new ConfigException("Must configure one of " +
                 TOPICS_CONFIG + " or " + TOPICS_REGEX_CONFIG);
         }
+
+        if (upsertDeleteEnabled(props)) {
+            if (gcsBatchLoadingEnabled(props)) {
+              throw new ConfigException("Cannot enable both upsert/delete and GCS batch loading");
+            }
+
+            String mergeIntervalStr = Optional.ofNullable(props.get(MERGE_INTERVAL_MS_CONFIG))
+                .map(String::trim)
+                .orElse(Long.toString(MERGE_INTERVAL_MS_DEFAULT));
+            String mergeRecordsThresholdStr = Optional.ofNullable(props.get(MERGE_RECORDS_THRESHOLD_CONFIG))
+                .map(String::trim)
+                .orElse(Long.toString(MERGE_RECORDS_THRESHOLD_DEFAULT));
+            if ("-1".equals(mergeIntervalStr) && "-1".equals(mergeRecordsThresholdStr)) {
+              throw new ConfigException(MERGE_INTERVAL_MS_CONFIG + " and "
+                  + MERGE_RECORDS_THRESHOLD_CONFIG + " cannot both be -1");
+            }
+
+            if ("0".equals(mergeIntervalStr)) {
+              throw new ConfigException(MERGE_INTERVAL_MS_CONFIG, mergeIntervalStr, "cannot be zero");
+            }
+            if ("0".equals(mergeRecordsThresholdStr)) {
+              throw new ConfigException(MERGE_RECORDS_THRESHOLD_CONFIG, mergeRecordsThresholdStr, "cannot be zero");
+            }
+
+            String kafkaKeyFieldStr = props.get(KAFKA_KEY_FIELD_NAME_CONFIG);
+            if (kafkaKeyFieldStr == null || kafkaKeyFieldStr.trim().isEmpty()) {
+              throw new ConfigException(KAFKA_KEY_FIELD_NAME_CONFIG + " must be specified when "
+                  + UPSERT_ENABLED_CONFIG + " and/or " + DELETE_ENABLED_CONFIG + " are set to true");
+            }
+        }
     }
 
     public static boolean hasTopicsConfig(Map<String, String> props) {
@@ -394,6 +510,18 @@ public class BigQuerySinkConfig extends AbstractConfig {
     public static boolean hasTopicsRegexConfig(Map<String, String> props) {
         String topicsRegexStr = props.get(TOPICS_REGEX_CONFIG);
         return topicsRegexStr != null && !topicsRegexStr.trim().isEmpty();
+    }
+
+    public static boolean upsertDeleteEnabled(Map<String, String> props) {
+        String upsertStr = props.get(UPSERT_ENABLED_CONFIG);
+        String deleteStr = props.get(DELETE_ENABLED_CONFIG);
+        return Boolean.TRUE.toString().equalsIgnoreCase(upsertStr)
+            || Boolean.TRUE.toString().equalsIgnoreCase(deleteStr);
+    }
+
+    public static boolean gcsBatchLoadingEnabled(Map<String, String> props) {
+        String batchLoadStr = props.get(ENABLE_BATCH_CONFIG);
+        return batchLoadStr != null && !batchLoadStr.isEmpty();
     }
 
   @SuppressWarnings("unchecked")
@@ -696,22 +824,13 @@ public class BigQuerySinkConfig extends AbstractConfig {
     }
   }
 
-  /**
-   * Return the ConfigDef object used to define this config's fields.
-   *
-   * @return The ConfigDef object used to define this config's fields.
-   */
-  public static ConfigDef getConfig() {
-    return config;
-  }
-
   protected BigQuerySinkConfig(ConfigDef config, Map<String, String> properties) {
     super(config, properties);
     verifyBucketSpecified();
   }
 
   public BigQuerySinkConfig(Map<String, String> properties) {
-    super(config, properties);
+    super(getConfig(), properties);
     verifyBucketSpecified();
     checkAutoCreateTables();
   }

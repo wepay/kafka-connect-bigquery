@@ -21,8 +21,6 @@ package com.wepay.kafka.connect.bigquery.write.batch;
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 import com.google.cloud.bigquery.TableId;
 
-import com.wepay.kafka.connect.bigquery.convert.RecordConverter;
-
 import com.wepay.kafka.connect.bigquery.write.row.GCSToBQWriter;
 import org.apache.kafka.connect.errors.ConnectException;
 
@@ -31,7 +29,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Batch Table Writer that uploads records to GCS as a blob
@@ -95,7 +92,6 @@ public class GCSBatchTableWriter implements Runnable {
     private final TableId tableId;
 
     private List<RowToInsert> rows;
-    private final RecordConverter<Map<String, Object>> recordConverter;
     private final GCSToBQWriter writer;
 
     /**
@@ -106,29 +102,19 @@ public class GCSBatchTableWriter implements Runnable {
      * @param gcsBucketName The GCS bucket to write to.
      * @param gcsBlobName The name of the GCS blob to write.
      * @param topic Kafka record topic
-     * @param recordConverter the {@link RecordConverter} to use.
      */
     public Builder(GCSToBQWriter writer,
                    TableId tableId,
                    String gcsBucketName,
                    String gcsBlobName,
-                   String topic,
-                   RecordConverter<Map<String, Object>> recordConverter) {
-
+                   String topic) {
+      this.writer = writer;
+      this.tableId = tableId;
       this.bucketName = gcsBucketName;
       this.blobName = gcsBlobName;
       this.topic = topic;
 
-      this.tableId = tableId;
-
       this.rows = new ArrayList<>();
-      this.recordConverter = recordConverter;
-      this.writer = writer;
-    }
-
-    public Builder setBlobName(String blobName) {
-      this.blobName = blobName;
-      return this;
     }
 
     /**

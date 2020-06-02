@@ -287,6 +287,7 @@ public class BigQueryWriterTest {
     Map<String, String> properties = propertiesFactory.getProperties();
     properties.put(BigQuerySinkTaskConfig.BIGQUERY_RETRY_CONFIG, bigqueryRetry);
     properties.put(BigQuerySinkTaskConfig.BIGQUERY_RETRY_WAIT_CONFIG, bigqueryRetryWait);
+    properties.put(BigQuerySinkTaskConfig.TASK_ID_CONFIG, "6");
     properties.put(BigQuerySinkConfig.TOPICS_CONFIG, topic);
     properties.put(BigQuerySinkConfig.DATASETS_CONFIG, String.format(".*=%s", dataset));
     return properties;
