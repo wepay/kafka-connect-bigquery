@@ -185,6 +185,11 @@ public class BigQueryConnectorIntegrationTest {
 
   private List<List<Object>> readAllRows(String tableName) {
     Table table = bigQuery.getTable(dataset, tableName);
+
+    if (table == null){
+        return new ArrayList<>(); // if table doesn't exist, return empty list of rows
+    }
+
     Schema schema = table.getDefinition().getSchema();
 
     List<List<Object>> rows = new ArrayList<>();
@@ -214,6 +219,12 @@ public class BigQueryConnectorIntegrationTest {
     expectedRows.add(Arrays.asList(4L, "Required string", "Optional string", null, null));
 
     testRows(expectedRows, readAllRows("kcbq_test_nulls"));
+  }
+
+  @Test
+  public void testAdjacentFolder() {
+      List populatedRows = readAllRows("kcbq_test_shouldnt_populate");
+      assertEquals("Table using adjacent gcs folder shouldn't populate", 0, populatedRows.size());
   }
 
   @Test
