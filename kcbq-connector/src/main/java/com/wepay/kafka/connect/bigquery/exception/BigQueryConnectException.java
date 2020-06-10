@@ -20,8 +20,10 @@ package com.wepay.kafka.connect.bigquery.exception;
 
 import com.google.cloud.bigquery.BigQueryError;
 
+import com.google.cloud.bigquery.InsertAllRequest;
 import org.apache.kafka.connect.errors.ConnectException;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -30,6 +32,10 @@ import java.util.Map;
  * update failures, and table insertion failures.
  */
 public class BigQueryConnectException extends ConnectException {
+
+  private List<InsertAllRequest.RowToInsert> failedRows = new ArrayList<>();
+  private boolean invalidSchema = false;
+
   public BigQueryConnectException(String msg) {
     super(msg);
   }
@@ -44,6 +50,23 @@ public class BigQueryConnectException extends ConnectException {
 
   public BigQueryConnectException(Map<Long, List<BigQueryError>> errors) {
     super(formatInsertAllErrors(errors));
+  }
+
+  public BigQueryConnectException(
+      Map<Long, List<BigQueryError>> errors,
+      List<InsertAllRequest.RowToInsert> failedRows
+  ) {
+    super(formatInsertAllErrors(errors));
+    this.failedRows = failedRows;
+    this.invalidSchema = true;
+  }
+
+  public List<InsertAllRequest.RowToInsert> getFailedRows() {
+    return failedRows;
+  }
+
+  public boolean isInvalidSchema() {
+    return invalidSchema;
   }
 
   private static String formatInsertAllErrors(Map<Long, List<BigQueryError>> errorsMap) {

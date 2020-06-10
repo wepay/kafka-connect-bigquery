@@ -124,9 +124,20 @@ public abstract class BigQueryWriter {
               rows.size() - failedRowsMap.size(), failedRowsMap.size());
           // update insert rows and retry in case of partial failure
           rows = getFailedRows(rows, failedRowsMap.keySet(), topic, table);
+          // if the rows are failing due to invalid schema, throw an exception
+          if (onlyContainsInvalidSchemaErrors(failedRowsMap)) {
+            throw new BigQueryConnectException(failedRowsMap, rows);
+          }
           mostRecentException = new BigQueryConnectException(failedRowsMap);
           retryCount++;
         } else {
+          // if the rows are failing due to invalid schema, throw an exception with the failed rows
+          if (onlyContainsInvalidSchemaErrors(failedRowsMap)) {
+            throw new BigQueryConnectException(
+                failedRowsMap,
+                getFailedRows(rows, failedRowsMap.keySet(), topic, table)
+            );
+          }
           // throw an exception in case of complete failure
           throw new BigQueryConnectException(failedRowsMap);
         }
@@ -202,5 +213,34 @@ public abstract class BigQueryWriter {
   private void waitRandomTime() throws InterruptedException {
     // wait
     Thread.sleep(retryWaitMs + random.nextInt(WAIT_MAX_JITTER));
+  }
+
+  /*
+   * Currently, the only way to determine the cause of an insert all failure is by examining the map
+   * object returned by the insertErrors() method of an insert all response. The only way to
+   * determine the cause of each individual error is by manually examining each error's reason() and
+   * message() strings, and guessing what they mean. Ultimately, the goal of this method is to
+   * return whether or not an insertion failed due solely to a mismatch between the schemas of the
+   * inserted rows and the schema of the actual BigQuery table.
+   * This is why we can't have nice things, Google.
+   */
+  public boolean onlyContainsInvalidSchemaErrors(Map<Long, List<BigQueryError>> errors) {
+    boolean invalidSchemaError = false;
+    for (List<BigQueryError> errorList : errors.values()) {
+      for (BigQueryError error : errorList) {
+        if (error.getReason().equals("invalid") && error.getMessage().contains("no such field")) {
+          invalidSchemaError = true;
+        } else if (!error.getReason().equals("stopped")) {
+          /* if some rows are in the old schema format, and others aren't, the old schema
+           * formatted rows will show up as error: stopped. We still want to continue if this is
+           * the case, because these errors don't represent a unique error if there are also
+           * invalidSchemaErrors.
+           */
+          return false;
+        }
+      }
+    }
+    // if we only saw "stopped" errors, we want to return false. (otherwise, return true)
+    return invalidSchemaError;
   }
 }
