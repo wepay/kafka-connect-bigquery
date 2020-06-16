@@ -53,7 +53,6 @@ import java.util.Optional;
  * Base class for connector and task configs; contains properties shared between the two of them.
  */
 public class BigQuerySinkConfig extends AbstractConfig {
-  private static final ConfigDef config;
   private static final Validator validator = new Validator();
   private static final Logger logger = LoggerFactory.getLogger(BigQuerySinkConfig.class);
 
@@ -281,8 +280,13 @@ public class BigQuerySinkConfig extends AbstractConfig {
       "How many records to write to an intermediate table before performing a merge flush, if " 
       + "upsert/delete is enabled. Can be set to -1 to disable record count-based flushing.";
 
-  static {
-    config = new ConfigDef()
+  /**
+   * Return a ConfigDef object used to define this config's fields.
+   *
+   * @return A ConfigDef object used to define this config's fields.
+   */
+  public static ConfigDef getConfig() {
+    return new ConfigDef()
         .define(
             TOPICS_CONFIG,
             TOPICS_TYPE,
@@ -810,22 +814,13 @@ public class BigQuerySinkConfig extends AbstractConfig {
     }
   }
 
-  /**
-   * Return the ConfigDef object used to define this config's fields.
-   *
-   * @return The ConfigDef object used to define this config's fields.
-   */
-  public static ConfigDef getConfig() {
-    return config;
-  }
-
   protected BigQuerySinkConfig(ConfigDef config, Map<String, String> properties) {
     super(config, properties);
     verifyBucketSpecified();
   }
 
   public BigQuerySinkConfig(Map<String, String> properties) {
-    super(config, properties);
+    super(getConfig(), properties);
     verifyBucketSpecified();
     checkAutoCreateTables();
   }
