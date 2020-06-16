@@ -23,6 +23,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyObject;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -43,6 +44,8 @@ import com.wepay.kafka.connect.bigquery.convert.BigQueryRecordConverter;
 import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
 import com.wepay.kafka.connect.bigquery.exception.ConversionConnectException;
 import com.wepay.kafka.connect.bigquery.exception.SinkConfigConnectException;
+import com.wepay.kafka.connect.bigquery.write.batch.KCBQThreadPoolExecutor;
+import com.wepay.kafka.connect.bigquery.write.row.BigQueryWriter;
 import org.apache.kafka.common.config.ConfigException;
 
 import org.apache.kafka.common.record.TimestampType;
@@ -61,6 +64,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.RejectedExecutionException;
 
@@ -70,6 +74,41 @@ public class BigQuerySinkTaskTest {
   @BeforeClass
   public static void initializePropertiesFactory() {
     propertiesFactory = new SinkTaskPropertiesFactory();
+  }
+
+  @Test
+  public void testSchemaMismatch() throws InterruptedException {
+    final String topic = "test-topic";
+
+    Map<String, String> properties = propertiesFactory.getProperties();
+    properties.put(BigQuerySinkConfig.TOPICS_CONFIG, topic);
+    properties.put(BigQuerySinkConfig.DATASETS_CONFIG, ".*=scratch");
+
+    BigQuery bigQuery = mock(BigQuery.class);
+    Storage storage = mock(Storage.class);
+
+    SinkTaskContext sinkTaskContext = mock(SinkTaskContext.class);
+
+    SchemaRetriever schemaRetriever = mock(SchemaRetriever.class);
+    SchemaManager schemaManager = mock(SchemaManager.class);
+
+    BigQuerySinkTask testTask = new BigQuerySinkTask(bigQuery, schemaRetriever, storage, schemaManager);
+    testTask.initialize(sinkTaskContext);
+    testTask.start(properties);
+
+    testTask.reporter = mock(ErrantRecordReporter.class);
+    testTask.executor = mock(KCBQThreadPoolExecutor.class);
+
+    BigQueryConnectException exception = new BigQueryConnectException("exception!");
+    Map<InsertAllRequest.RowToInsert, SinkRecord> failedRowsMap = new HashMap<>();
+    failedRowsMap.put(mock(InsertAllRequest.RowToInsert.class), mock(SinkRecord.class));
+    exception.setInvalidSchema(true);
+    exception.setFailedRowsMap(failedRowsMap);
+
+    doThrow(exception).when(testTask.executor).awaitCurrentTasks();
+    testTask.flush(Collections.emptyMap());
+
+    verify(testTask.reporter, times(1)).report(any(), any());
   }
 
   @Test

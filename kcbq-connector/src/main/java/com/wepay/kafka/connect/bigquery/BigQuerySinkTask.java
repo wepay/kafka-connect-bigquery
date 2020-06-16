@@ -82,6 +82,8 @@ public class BigQuerySinkTask extends SinkTask {
   ErrantRecordReporter reporter;
   // Visible for testing
   RecordConverter<Map<String, Object>> recordConverter;
+  // Visible for testing
+  KCBQThreadPoolExecutor executor;
 
   private SchemaRetriever schemaRetriever;
   private BigQueryWriter bigQueryWriter;
@@ -93,7 +95,6 @@ public class BigQuerySinkTask extends SinkTask {
 
   private TopicPartitionManager topicPartitionManager;
 
-  private KCBQThreadPoolExecutor executor;
   private static final int EXECUTOR_SHUTDOWN_TIMEOUT_SEC = 30;
   
   private final BigQuery testBigQuery;
@@ -135,6 +136,12 @@ public class BigQuerySinkTask extends SinkTask {
       executor.awaitCurrentTasks();
     } catch (InterruptedException err) {
       throw new ConnectException("Interrupted while waiting for write tasks to complete.", err);
+    } catch (BigQueryConnectException e) {
+      if (e.isInvalidSchema()) {
+        e.getFailedRowsMap().forEach((row, record) -> reporter.report(record, e));
+      } else {
+        throw e;
+      }
     }
 
     topicPartitionManager.resumeAll();
@@ -206,8 +213,6 @@ public class BigQuerySinkTask extends SinkTask {
 
     // create tableWriters
     Map<PartitionedTableId, TableWriterBuilder> tableWriterBuilders = new HashMap<>();
-    // RowToInsert to SinkRecord map
-    Map<RowToInsert, SinkRecord> rowAndSinkRecord = new HashMap<>();
 
     for (SinkRecord record : records) {
       if (record.value() != null) {
@@ -241,25 +246,16 @@ public class BigQuerySinkTask extends SinkTask {
           tableWriterBuilders.put(table, tableWriterBuilder);
         }
         RowToInsert row = getRecordRow(record);
-        rowAndSinkRecord.put(row, record);
         if (row == null) {
           return;
         }
-        tableWriterBuilders.get(table).addRow(row);
+        tableWriterBuilders.get(table).addToRowMap(row, record);
       }
     }
 
     // add tableWriters to the executor work queue
     for (TableWriterBuilder builder : tableWriterBuilders.values()) {
-      try {
-        executor.execute(builder.build());
-      } catch (BigQueryConnectException e) {
-        if (e.isInvalidSchema()) {
-          for (RowToInsert row : e.getFailedRows()) {
-            reporter.report(rowAndSinkRecord.get(row), e);
-          }
-        }
-      }
+      executor.execute(builder.build());
     }
 
     // check if we should pause topics

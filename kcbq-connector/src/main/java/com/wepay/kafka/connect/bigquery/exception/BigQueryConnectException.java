@@ -22,10 +22,13 @@ import com.google.cloud.bigquery.BigQueryError;
 
 import com.google.cloud.bigquery.InsertAllRequest;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.sink.SinkRecord;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Class for exceptions that occur while interacting with BigQuery, such as login failures, schema
@@ -33,7 +36,7 @@ import java.util.Map;
  */
 public class BigQueryConnectException extends ConnectException {
 
-  private List<InsertAllRequest.RowToInsert> failedRows = new ArrayList<>();
+  private Map<InsertAllRequest.RowToInsert, SinkRecord> failedRowsMap = new HashMap<>();
   private boolean invalidSchema = false;
 
   public BigQueryConnectException(String msg) {
@@ -48,25 +51,26 @@ public class BigQueryConnectException extends ConnectException {
     super(thr);
   }
 
-  public BigQueryConnectException(Map<Long, List<BigQueryError>> errors) {
+  public BigQueryConnectException(Map<Long, List<BigQueryError>> errors,
+                                  List<InsertAllRequest.RowToInsert> failedRows) {
     super(formatInsertAllErrors(errors));
+    failedRowsMap = failedRows.stream().collect(Collectors.toMap(row -> row, null));
   }
 
-  public BigQueryConnectException(
-      Map<Long, List<BigQueryError>> errors,
-      List<InsertAllRequest.RowToInsert> failedRows
-  ) {
-    super(formatInsertAllErrors(errors));
-    this.failedRows = failedRows;
-    this.invalidSchema = true;
+  public Map<InsertAllRequest.RowToInsert, SinkRecord> getFailedRowsMap() {
+    return failedRowsMap;
   }
 
-  public List<InsertAllRequest.RowToInsert> getFailedRows() {
-    return failedRows;
+  public void setFailedRowsMap(Map<InsertAllRequest.RowToInsert, SinkRecord> failedRowsMap) {
+    this.failedRowsMap = failedRowsMap;
   }
 
   public boolean isInvalidSchema() {
     return invalidSchema;
+  }
+
+  public void setInvalidSchema(boolean invalidSchema) {
+    this.invalidSchema = invalidSchema;
   }
 
   private static String formatInsertAllErrors(Map<Long, List<BigQueryError>> errorsMap) {

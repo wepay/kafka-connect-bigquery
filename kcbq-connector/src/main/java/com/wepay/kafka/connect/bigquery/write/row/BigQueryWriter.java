@@ -124,22 +124,18 @@ public abstract class BigQueryWriter {
               rows.size() - failedRowsMap.size(), failedRowsMap.size());
           // update insert rows and retry in case of partial failure
           rows = getFailedRows(rows, failedRowsMap.keySet(), topic, table);
-          // if the rows are failing due to invalid schema, throw an exception
-          if (onlyContainsInvalidSchemaErrors(failedRowsMap)) {
-            throw new BigQueryConnectException(failedRowsMap, rows);
-          }
-          mostRecentException = new BigQueryConnectException(failedRowsMap);
+          mostRecentException = new BigQueryConnectException(failedRowsMap, rows);
           retryCount++;
         } else {
-          // if the rows are failing due to invalid schema, throw an exception with the failed rows
+          // create an exception in case of complete failure
+          BigQueryConnectException exception = new BigQueryConnectException(failedRowsMap,
+              getFailedRows(rows, failedRowsMap.keySet(), topic, table));
+
+          // if the rows are failing due to invalid schema, set the invalid schema field to true
           if (onlyContainsInvalidSchemaErrors(failedRowsMap)) {
-            throw new BigQueryConnectException(
-                failedRowsMap,
-                getFailedRows(rows, failedRowsMap.keySet(), topic, table)
-            );
+            exception.setInvalidSchema(true);
           }
-          // throw an exception in case of complete failure
-          throw new BigQueryConnectException(failedRowsMap);
+          throw exception;
         }
       } catch (BigQueryException err) {
         mostRecentException = err;
@@ -176,26 +172,15 @@ public abstract class BigQueryWriter {
   }
 
   /**
-   * Decide whether the failure is a partial failure or complete failure
-   * @param rows The rows to write.
-   * @param failedRowsMap A map from failed row index to the BigQueryError.
-   * @return isPartialFailure.
-   */
-  private boolean isPartialFailure(List<InsertAllRequest.RowToInsert> rows,
-                                   Map<Long, List<BigQueryError>> failedRowsMap) {
-    return failedRowsMap.size() < rows.size();
-  }
-
-  /**
    * Filter out succeed rows, and return a list of failed rows.
    * @param rows The rows to write.
    * @param failRowsSet A set of failed row index.
    * @return A list of failed rows.
    */
-  private List<InsertAllRequest.RowToInsert> getFailedRows(List<InsertAllRequest.RowToInsert> rows,
-                                                           Set<Long> failRowsSet,
-                                                           String topic,
-                                                           PartitionedTableId table) {
+  public List<InsertAllRequest.RowToInsert> getFailedRows(List<InsertAllRequest.RowToInsert> rows,
+                                                          Set<Long> failRowsSet,
+                                                          String topic,
+                                                          PartitionedTableId table) {
     List<InsertAllRequest.RowToInsert> failRows = new ArrayList<>();
     for (int index = 0; index < rows.size(); index++) {
       if (failRowsSet.contains((long)index)) {
@@ -204,6 +189,17 @@ public abstract class BigQueryWriter {
     }
     logger.debug("{} rows from topic {} failed to be written to table {}.", rows.size(), topic, table.getFullTableName());
     return failRows;
+  }
+
+  /**
+   * Decide whether the failure is a partial failure or complete failure
+   * @param rows The rows to write.
+   * @param failedRowsMap A map from failed row index to the BigQueryError.
+   * @return isPartialFailure.
+   */
+  private boolean isPartialFailure(List<InsertAllRequest.RowToInsert> rows,
+                                   Map<Long, List<BigQueryError>> failedRowsMap) {
+    return failedRowsMap.size() < rows.size();
   }
 
   /**

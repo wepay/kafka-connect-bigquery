@@ -22,6 +22,7 @@ import com.google.cloud.bigquery.BigQueryException;
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 
 import com.wepay.kafka.connect.bigquery.convert.RecordConverter;
+import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
 import com.wepay.kafka.connect.bigquery.utils.PartitionedTableId;
 import com.wepay.kafka.connect.bigquery.write.row.BigQueryWriter;
 
@@ -31,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -49,20 +51,23 @@ public class TableWriter implements Runnable {
   private final List<RowToInsert> rows;
   private final String topic;
 
+  private Map<RowToInsert, SinkRecord> rowMap;
+
   /**
    * @param writer the {@link BigQueryWriter} to use.
    * @param table the BigQuery table to write to.
-   * @param rows the rows to write.
+   * @param rowMap the map containing the rows to write and their corresponding sink records.
    * @param topic the kafka source topic of this data.
    */
   public TableWriter(BigQueryWriter writer,
                      PartitionedTableId table,
-                     List<RowToInsert> rows,
+                     Map<RowToInsert, SinkRecord> rowMap,
                      String topic) {
     this.writer = writer;
     this.table = table;
-    this.rows = rows;
+    this.rowMap = rowMap;
     this.topic = topic;
+    this.rows = new ArrayList<>(rowMap.keySet());
   }
 
   @Override
@@ -86,6 +91,15 @@ public class TableWriter implements Runnable {
             failureCount++;
             currentBatchSize = getNewBatchSize(currentBatchSize);
           }
+        } catch (BigQueryConnectException e) {
+          if (e.isInvalidSchema()) {
+            Map<RowToInsert, SinkRecord> failedRowsMap = e.getFailedRowsMap();
+            for (RowToInsert row : failedRowsMap.keySet()) {
+              failedRowsMap.put(row, rowMap.get(row));
+            }
+            e.setFailedRowsMap(failedRowsMap);
+          }
+          throw e;
         }
       }
     } catch (InterruptedException err) {
@@ -150,7 +164,7 @@ public class TableWriter implements Runnable {
     private final PartitionedTableId table;
     private final String topic;
 
-    private List<RowToInsert> rows;
+    private Map<RowToInsert, SinkRecord> rowMap;
 
     private RecordConverter<Map<String, Object>> recordConverter;
 
@@ -166,17 +180,17 @@ public class TableWriter implements Runnable {
       this.table = table;
       this.topic = topic;
 
-      this.rows = new ArrayList<>();
-
+      this.rowMap = new HashMap<>();
       this.recordConverter = recordConverter;
     }
 
     /**
-     * Add a record to the builder.
-     * @param rowToInsert the row to add
+     * Add a row and its corresponding record to the builder.
+     * @param row the row to add
+     * @param record the corresponding sink record
      */
-    public void addRow(RowToInsert rowToInsert) {
-      rows.add(rowToInsert);
+    public void addToRowMap(RowToInsert row, SinkRecord record) {
+      rowMap.put(row, record);
     }
 
     /**
@@ -184,7 +198,7 @@ public class TableWriter implements Runnable {
      * @return a TableWriter containing the given writer, table, topic, and all added rows.
      */
     public TableWriter build() {
-      return new TableWriter(writer, table, rows, topic);
+      return new TableWriter(writer, table, rowMap, topic);
     }
   }
 }
