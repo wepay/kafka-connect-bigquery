@@ -32,6 +32,8 @@ import com.wepay.kafka.connect.bigquery.config.BigQuerySinkTaskConfig;
 import com.wepay.kafka.connect.bigquery.convert.KafkaDataBuilder;
 import com.wepay.kafka.connect.bigquery.convert.RecordConverter;
 import com.wepay.kafka.connect.bigquery.convert.SchemaConverter;
+import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
+import com.wepay.kafka.connect.bigquery.exception.ConversionConnectException;
 import com.wepay.kafka.connect.bigquery.exception.SinkConfigConnectException;
 import com.wepay.kafka.connect.bigquery.utils.FieldNameSanitizer;
 import com.wepay.kafka.connect.bigquery.utils.PartitionedTableId;
@@ -50,6 +52,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.record.TimestampType;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.sink.ErrantRecordReporter;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
 import org.slf4j.Logger;
@@ -75,18 +78,23 @@ import java.util.Optional;
 public class BigQuerySinkTask extends SinkTask {
   private static final Logger logger = LoggerFactory.getLogger(BigQuerySinkTask.class);
 
+  // Visible for testing
+  ErrantRecordReporter reporter;
+  // Visible for testing
+  RecordConverter<Map<String, Object>> recordConverter;
+  // Visible for testing
+  KCBQThreadPoolExecutor executor;
+
   private SchemaRetriever schemaRetriever;
   private BigQueryWriter bigQueryWriter;
   private GCSToBQWriter gcsToBQWriter;
   private BigQuerySinkTaskConfig config;
-  private RecordConverter<Map<String, Object>> recordConverter;
   private Map<String, TableId> topicsToBaseTableIds;
   private boolean useMessageTimeDatePartitioning;
   private boolean usePartitionDecorator;
 
   private TopicPartitionManager topicPartitionManager;
 
-  private KCBQThreadPoolExecutor executor;
   private static final int EXECUTOR_SHUTDOWN_TIMEOUT_SEC = 30;
   
   private final BigQuery testBigQuery;
@@ -128,6 +136,12 @@ public class BigQuerySinkTask extends SinkTask {
       executor.awaitCurrentTasks();
     } catch (InterruptedException err) {
       throw new ConnectException("Interrupted while waiting for write tasks to complete.", err);
+    } catch (BigQueryConnectException e) {
+      if (e.isInvalidSchema()) {
+        e.getFailedRowsMap().forEach((row, record) -> reporter.report(record, e));
+      } else {
+        throw e;
+      }
     }
 
     topicPartitionManager.resumeAll();
@@ -161,7 +175,17 @@ public class BigQuerySinkTask extends SinkTask {
   }
 
   private RowToInsert getRecordRow(SinkRecord record) {
-    Map<String, Object> convertedRecord = recordConverter.convertRecord(record, KafkaSchemaRecordType.VALUE);
+    Map<String, Object> convertedRecord;
+    try {
+      convertedRecord = recordConverter.convertRecord(record, KafkaSchemaRecordType.VALUE);
+    } catch(ConversionConnectException e) {
+      if (reporter != null) {
+        reporter.report(record, e);
+      } else {
+        throw e;
+      }
+      return null;
+    }
     Optional<String> kafkaKeyFieldName = config.getKafkaKeyFieldName();
     if (kafkaKeyFieldName.isPresent()) {
       convertedRecord.put(kafkaKeyFieldName.get(), recordConverter.convertRecord(record, KafkaSchemaRecordType.KEY));
@@ -221,7 +245,11 @@ public class BigQuerySinkTask extends SinkTask {
           }
           tableWriterBuilders.put(table, tableWriterBuilder);
         }
-        tableWriterBuilders.get(table).addRow(getRecordRow(record));
+        RowToInsert row = getRecordRow(record);
+        if (row == null) {
+          return;
+        }
+        tableWriterBuilders.get(table).addToRowMap(row, record);
       }
     }
 
@@ -343,6 +371,13 @@ public class BigQuerySinkTask extends SinkTask {
             config.getBoolean(config.BIGQUERY_PARTITION_DECORATOR_CONFIG);
     if (hasGCSBQTask) {
       startGCSToBQLoadTask();
+    }
+
+    try {
+      reporter = context.errantRecordReporter(); // may be null if DLQ not enabled
+    } catch (NoClassDefFoundError e) {
+      // Will occur in Connect runtimes earlier than 2.6
+      reporter = null;
     }
   }
 

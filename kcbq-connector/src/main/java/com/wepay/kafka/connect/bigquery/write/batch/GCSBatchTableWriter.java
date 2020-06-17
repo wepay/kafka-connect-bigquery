@@ -26,10 +26,12 @@ import com.wepay.kafka.connect.bigquery.convert.RecordConverter;
 import com.wepay.kafka.connect.bigquery.write.row.GCSToBQWriter;
 import org.apache.kafka.connect.errors.ConnectException;
 
+import org.apache.kafka.connect.sink.SinkRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -94,7 +96,7 @@ public class GCSBatchTableWriter implements Runnable {
 
     private final TableId tableId;
 
-    private List<RowToInsert> rows;
+    private Map<RowToInsert, SinkRecord> rowMap;
     private final RecordConverter<Map<String, Object>> recordConverter;
     private final GCSToBQWriter writer;
 
@@ -121,7 +123,7 @@ public class GCSBatchTableWriter implements Runnable {
 
       this.tableId = tableId;
 
-      this.rows = new ArrayList<>();
+      this.rowMap = new HashMap<>();
       this.recordConverter = recordConverter;
       this.writer = writer;
     }
@@ -132,15 +134,16 @@ public class GCSBatchTableWriter implements Runnable {
     }
 
     /**
-     * Adds a record to the builder.
-     * @param rowToInsert the row to add
+     * Add a row and its corresponding record to the builder.
+     * @param row the row to add.
+     * @param record the corresponding sink record.
      */
-    public void addRow(RowToInsert rowToInsert) {
-      rows.add(rowToInsert);
+    public void addToRowMap(RowToInsert row, SinkRecord record) {
+      rowMap.put(row, record);
     }
 
     public GCSBatchTableWriter build() {
-      return new GCSBatchTableWriter(rows, writer, tableId, bucketName, blobName, topic);
+      return new GCSBatchTableWriter(new ArrayList<>(rowMap.keySet()), writer, tableId, bucketName, blobName, topic);
     }
   }
 }

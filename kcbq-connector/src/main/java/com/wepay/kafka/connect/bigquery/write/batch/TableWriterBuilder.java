@@ -19,6 +19,7 @@ package com.wepay.kafka.connect.bigquery.write.batch;
 
 
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
+import org.apache.kafka.connect.sink.SinkRecord;
 
 /**
  * Interface for building a {@link TableWriter} or TableWriterGCS.
@@ -26,10 +27,11 @@ import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 public interface TableWriterBuilder {
 
   /**
-   * Add a record to the builder.
+   * Add a row and its corresponding record to the builder.
    * @param rowToInsert the row to add.
+   * @param sinkRecord the corresponding sink record.
    */
-  void addRow(RowToInsert rowToInsert);
+  void addToRowMap(RowToInsert rowToInsert, SinkRecord sinkRecord);
 
   /**
    * Create a {@link TableWriter} from this builder.

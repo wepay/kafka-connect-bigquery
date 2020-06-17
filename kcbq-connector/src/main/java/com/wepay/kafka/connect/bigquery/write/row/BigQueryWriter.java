@@ -124,11 +124,18 @@ public abstract class BigQueryWriter {
               rows.size() - failedRowsMap.size(), failedRowsMap.size());
           // update insert rows and retry in case of partial failure
           rows = getFailedRows(rows, failedRowsMap.keySet(), topic, table);
-          mostRecentException = new BigQueryConnectException(failedRowsMap);
+          mostRecentException = new BigQueryConnectException(failedRowsMap, rows);
           retryCount++;
         } else {
-          // throw an exception in case of complete failure
-          throw new BigQueryConnectException(failedRowsMap);
+          // create an exception in case of complete failure
+          BigQueryConnectException exception = new BigQueryConnectException(failedRowsMap,
+              getFailedRows(rows, failedRowsMap.keySet(), topic, table));
+
+          // if the rows are failing due to invalid schema, set the invalid schema field to true
+          if (onlyContainsInvalidSchemaErrors(failedRowsMap)) {
+            exception.setInvalidSchema(true);
+          }
+          throw exception;
         }
       } catch (BigQueryException err) {
         mostRecentException = err;
@@ -165,26 +172,15 @@ public abstract class BigQueryWriter {
   }
 
   /**
-   * Decide whether the failure is a partial failure or complete failure
-   * @param rows The rows to write.
-   * @param failedRowsMap A map from failed row index to the BigQueryError.
-   * @return isPartialFailure.
-   */
-  private boolean isPartialFailure(List<InsertAllRequest.RowToInsert> rows,
-                                   Map<Long, List<BigQueryError>> failedRowsMap) {
-    return failedRowsMap.size() < rows.size();
-  }
-
-  /**
    * Filter out succeed rows, and return a list of failed rows.
    * @param rows The rows to write.
    * @param failRowsSet A set of failed row index.
    * @return A list of failed rows.
    */
-  private List<InsertAllRequest.RowToInsert> getFailedRows(List<InsertAllRequest.RowToInsert> rows,
-                                                           Set<Long> failRowsSet,
-                                                           String topic,
-                                                           PartitionedTableId table) {
+  public List<InsertAllRequest.RowToInsert> getFailedRows(List<InsertAllRequest.RowToInsert> rows,
+                                                          Set<Long> failRowsSet,
+                                                          String topic,
+                                                          PartitionedTableId table) {
     List<InsertAllRequest.RowToInsert> failRows = new ArrayList<>();
     for (int index = 0; index < rows.size(); index++) {
       if (failRowsSet.contains((long)index)) {
@@ -196,11 +192,51 @@ public abstract class BigQueryWriter {
   }
 
   /**
+   * Decide whether the failure is a partial failure or complete failure
+   * @param rows The rows to write.
+   * @param failedRowsMap A map from failed row index to the BigQueryError.
+   * @return isPartialFailure.
+   */
+  private boolean isPartialFailure(List<InsertAllRequest.RowToInsert> rows,
+                                   Map<Long, List<BigQueryError>> failedRowsMap) {
+    return failedRowsMap.size() < rows.size();
+  }
+
+  /**
    * Wait at least {@link #retryWaitMs}, with up to an additional 1 second of random jitter.
    * @throws InterruptedException if interrupted.
    */
   private void waitRandomTime() throws InterruptedException {
     // wait
     Thread.sleep(retryWaitMs + random.nextInt(WAIT_MAX_JITTER));
+  }
+
+  /*
+   * Currently, the only way to determine the cause of an insert all failure is by examining the map
+   * object returned by the insertErrors() method of an insert all response. The only way to
+   * determine the cause of each individual error is by manually examining each error's reason() and
+   * message() strings, and guessing what they mean. Ultimately, the goal of this method is to
+   * return whether or not an insertion failed due solely to a mismatch between the schemas of the
+   * inserted rows and the schema of the actual BigQuery table.
+   * This is why we can't have nice things, Google.
+   */
+  public boolean onlyContainsInvalidSchemaErrors(Map<Long, List<BigQueryError>> errors) {
+    boolean invalidSchemaError = false;
+    for (List<BigQueryError> errorList : errors.values()) {
+      for (BigQueryError error : errorList) {
+        if (error.getReason().equals("invalid") && error.getMessage().contains("no such field")) {
+          invalidSchemaError = true;
+        } else if (!error.getReason().equals("stopped")) {
+          /* if some rows are in the old schema format, and others aren't, the old schema
+           * formatted rows will show up as error: stopped. We still want to continue if this is
+           * the case, because these errors don't represent a unique error if there are also
+           * invalidSchemaErrors.
+           */
+          return false;
+        }
+      }
+    }
+    // if we only saw "stopped" errors, we want to return false. (otherwise, return true)
+    return invalidSchemaError;
   }
 }

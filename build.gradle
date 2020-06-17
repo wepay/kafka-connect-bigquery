@@ -133,6 +133,7 @@ project(':kcbq-connector') {
     }
 
     repositories {
+        mavenLocal()
         mavenCentral()
     }
 
@@ -200,16 +201,18 @@ project(':kcbq-connector') {
     }
 
     dependencies {
+        implementation('org.apache.kafka:connect-api:2.6.0-SNAPSHOT') {
+            force = true
+        }
+        
         compile (
                 project(':kcbq-api'),
-
+                "org.apache.kafka:kafka-clients:$kafkaVersion",
                 "com.google.cloud:google-cloud-bigquery:$googleCloudVersion",
                 "com.google.cloud:google-cloud-storage:$googleCloudVersion",
                 "com.google.auth:google-auth-library-oauth2-http:$googleAuthVersion",
                 "com.google.code.gson:gson:$googleCloudGsonVersion",
                 "io.debezium:debezium-core:$debeziumVersion",
-                "org.apache.kafka:connect-api:$kafkaVersion",
-                "org.apache.kafka:kafka-clients:$kafkaVersion",
                 "org.slf4j:slf4j-api:$slf4jVersion",
         )
 
@@ -256,9 +259,9 @@ project('kcbq-api') {
     }
 
     dependencies {
+        implementation("org.apache.kafka:connect-api:2.6.0-SNAPSHOT")
         compile (
                 "com.google.cloud:google-cloud-bigquery:$googleCloudVersion",
-                "org.apache.kafka:connect-api:$kafkaVersion"
         )
     }
 

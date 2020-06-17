@@ -18,14 +18,18 @@ package com.wepay.kafka.connect.bigquery.write.batch;
  */
 
 
+import com.google.cloud.bigquery.InsertAllRequest;
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkTaskConfig;
 import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
+import org.apache.kafka.connect.sink.SinkRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -91,12 +95,36 @@ public class KCBQThreadPoolExecutor extends ThreadPoolExecutor {
       execute(new CountDownRunnable(countDownLatch));
     }
     countDownLatch.await();
-    if (encounteredErrors.size() > 0) {
-      String errorString = createErrorString(encounteredErrors);
-      encounteredErrors.clear();
-      throw new BigQueryConnectException("Some write threads encountered unrecoverable errors: "
-                                         + errorString + "; See logs for more detail");
+    String errorString = createErrorString(encounteredErrors);
+
+
+    Map<InsertAllRequest.RowToInsert, SinkRecord> failedRowMap = new HashMap<>();
+    for (Throwable error : encounteredErrors) {
+      if (error instanceof BigQueryConnectException) {
+        BigQueryConnectException bqce = (BigQueryConnectException) error;
+        if (bqce.isInvalidSchema()) {
+          failedRowMap.putAll(bqce.getFailedRowsMap());
+        } else {
+          encounteredErrors.clear();
+          throw new BigQueryConnectException("Some write threads encountered unrecoverable errors: "
+              + errorString + "; See logs for more detail");
+        }
+      } else {
+        encounteredErrors.clear();
+        throw new BigQueryConnectException("Some write threads encountered unrecoverable errors: "
+            + errorString + "; See logs for more detail");
+      }
     }
+
+    if (!failedRowMap.isEmpty()) {
+      encounteredErrors.clear();
+      BigQueryConnectException e = new BigQueryConnectException("Invalid schema for one or more "
+          + "rows");
+      e.setInvalidSchema(true);
+      e.setFailedRowsMap(failedRowMap);
+      throw e;
+    }
+
   }
 
   private static String createErrorString(Collection<Throwable> errors) {
