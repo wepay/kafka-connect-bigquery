@@ -45,6 +45,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.Optional;
@@ -471,6 +472,10 @@ public class BigQuerySinkConfig extends AbstractConfig {
         }
 
         if (upsertDeleteEnabled(props)) {
+            if (gcsBatchLoadingEnabled(props)) {
+              throw new ConfigException("Cannot enable both upsert/delete and GCS batch loading");
+            }
+
             String mergeIntervalStr = Optional.ofNullable(props.get(MERGE_INTERVAL_MS_CONFIG))
                 .map(String::trim)
                 .orElse(Long.toString(MERGE_INTERVAL_MS_DEFAULT));
@@ -512,6 +517,11 @@ public class BigQuerySinkConfig extends AbstractConfig {
         String deleteStr = props.get(DELETE_ENABLED_CONFIG);
         return Boolean.TRUE.toString().equalsIgnoreCase(upsertStr)
             || Boolean.TRUE.toString().equalsIgnoreCase(deleteStr);
+    }
+
+    public static boolean gcsBatchLoadingEnabled(Map<String, String> props) {
+        String batchLoadStr = props.get(ENABLE_BATCH_CONFIG);
+        return batchLoadStr != null && !batchLoadStr.isEmpty();
     }
 
   @SuppressWarnings("unchecked")
