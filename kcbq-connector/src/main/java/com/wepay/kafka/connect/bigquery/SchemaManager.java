@@ -168,9 +168,8 @@ public class SchemaManager {
         logger.debug("Skipping create of {} as it should already exist or appear very soon", table(table));
         return;
       }
-      Schema kafkaValueSchema = schemaRetriever.retrieveSchema(table, topic, KafkaSchemaRecordType.VALUE);
-      Schema kafkaKeySchema = kafkaKeyFieldName.isPresent() ? schemaRetriever.retrieveSchema(table, topic, KafkaSchemaRecordType.KEY) : null;
-      TableInfo tableInfo = constructTableInfo(table, kafkaKeySchema, kafkaValueSchema);
+
+      TableInfo tableInfo = constructTableInfo(table, topic);
       logger.info("Attempting to create {} with schema {}",
           table(table), tableInfo.getDefinition().getSchema());
       try {
@@ -180,8 +179,7 @@ public class SchemaManager {
       } catch (BigQueryException e) {
         if (e.getCode() == 409) {
           logger.debug("Failed to create {} as it already exists (possibly created by another task)", table(table));
-          com.google.cloud.bigquery.Schema schema = bigQuery.getTable(table).getDefinition().getSchema();
-          schemaCache.put(table, schema);
+          schemaCache.put(table, readTableSchema(table));
         }
       }
     }
@@ -194,13 +192,10 @@ public class SchemaManager {
    */
   public void updateSchema(TableId table, String topic) {
     synchronized (tableUpdateLocks.computeIfAbsent(table, t -> new Object())) {
-      Schema kafkaValueSchema = schemaRetriever.retrieveSchema(table, topic, KafkaSchemaRecordType.VALUE);
-      Schema kafkaKeySchema = kafkaKeyFieldName.isPresent() ? schemaRetriever.retrieveSchema(table, topic, KafkaSchemaRecordType.KEY) : null;
-      TableInfo tableInfo = constructTableInfo(table, kafkaKeySchema, kafkaValueSchema);
+      TableInfo tableInfo = constructTableInfo(table, topic);
   
       if (!schemaCache.containsKey(table)) {
-        logger.debug("Reading schema for {}", table(table));
-        schemaCache.put(table, bigQuery.getTable(table).getDefinition().getSchema());
+        schemaCache.put(table, readTableSchema(table));
       }
   
       if (!schemaCache.get(table).equals(tableInfo.getDefinition().getSchema())) {
@@ -213,6 +208,12 @@ public class SchemaManager {
         logger.debug("Skipping update of {} since current schema should be compatible", table(table));
       }
     }
+  }
+
+  private TableInfo constructTableInfo(TableId table, String topic) {
+    Schema kafkaValueSchema = schemaRetriever.retrieveSchema(table, topic, KafkaSchemaRecordType.VALUE);
+    Schema kafkaKeySchema = kafkaKeyFieldName.isPresent() ? schemaRetriever.retrieveSchema(table, topic, KafkaSchemaRecordType.KEY) : null;
+    return constructTableInfo(table, kafkaKeySchema, kafkaValueSchema);
   }
 
   // package private for testing.
@@ -331,6 +332,11 @@ public class SchemaManager {
     return (intermediateTables ? "intermediate " : "")
         + "table "
         + table;
+  }
+
+  private com.google.cloud.bigquery.Schema readTableSchema(TableId table) {
+    logger.trace("Reading schema for {}", table(table));
+    return bigQuery.getTable(table).getDefinition().getSchema();
   }
 
   private Object lock(ConcurrentMap<TableId, Object> locks, TableId table) {
