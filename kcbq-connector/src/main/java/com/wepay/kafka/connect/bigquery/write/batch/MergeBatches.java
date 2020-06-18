@@ -125,7 +125,8 @@ public class MergeBatches {
     batchNumbers.put(result, new AtomicInteger());
     batches.put(result, new ConcurrentHashMap<>());
 
-    return result;  }
+    return result;
+  }
 
   public TableId destinationTableFor(TableId intermediateTable) {
     return intermediateToDestinationTables.get(intermediateTable);
