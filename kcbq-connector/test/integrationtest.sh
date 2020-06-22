@@ -218,6 +218,7 @@ for file in "$BASE_DIR"/resources/test_schemas/*; do
         test_tables+="${test_tables:+ }kcbq_test_$(basename "${file/-/_}")"
         test_topics+="${test_topics:+,}kcbq_test_$(basename "$file")"
 done
+test_tables+="${test_tables:+ }kcbq_test_shouldnt_populate"
 
 "$GRADLEW" -p "$BASE_DIR/.." \
     -Pkcbq_test_keyfile="$KCBQ_TEST_KEYFILE" \
@@ -226,6 +227,7 @@ done
     -Pkcbq_test_tables="$test_tables" \
     -Pkcbq_test_bucket="$KCBQ_TEST_BUCKET" \
     -Pkcbq_test_keysource="$KCBQ_TEST_KEYSOURCE" \
+    -Pkcbq_test_folder="$KCBQ_TEST_FOLDER" \
     integrationTestPrep
 
 ####################################################################################################

@@ -170,12 +170,15 @@ project(':kcbq-connector') {
     }
 
     task integrationTestBucketPrep(type: JavaExec) {
+        dependsOn 'integrationTestTablePrep'
         main = 'com.wepay.kafka.connect.bigquery.it.utils.BucketClearer'
         classpath = sourceSets.integrationTest.runtimeClasspath
         args findProperty('kcbq_test_keyfile') ?: ''
         args findProperty('kcbq_test_project') ?: ''
         args findProperty('kcbq_test_bucket') ?: ''
         args findProperty('kcbq_test_keysource') ?: ''
+        args findProperty('kcbq_test_folder') ?: ''
+        args findProperty('kcbq_test_dataset') ?: ''
     }
 
     task integrationTest(type: Test) {
