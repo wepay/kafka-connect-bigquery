@@ -40,6 +40,7 @@ import java.util.stream.Stream;
 public class MergeQueries {
   public static final String INTERMEDIATE_TABLE_KEY_FIELD_NAME = "key";
   public static final String INTERMEDIATE_TABLE_VALUE_FIELD_NAME = "value";
+  public static final String INTERMEDIATE_TABLE_ITERATION_FIELD_NAME = "i";
   public static final String INTERMEDIATE_TABLE_PARTITION_TIME_FIELD_NAME = "partitionTime";
   public static final String INTERMEDIATE_TABLE_BATCH_NUMBER_FIELD = "batchNumber";
 
@@ -160,7 +161,7 @@ public class MergeQueries {
     USING (
       SELECT * FROM (
         SELECT ARRAY_AGG(
-          x ORDER BY partitionTime DESC LIMIT 1
+          x ORDER BY i DESC LIMIT 1
         )[OFFSET(0)] src
         FROM `<dataset>`.`<intermediateTable>` x
         WHERE batchNumber=<batchNumber>
@@ -182,22 +183,32 @@ public class MergeQueries {
 
 
     delete only:
-
+    
     MERGE `<dataset>`.`<destinationTable>`
-    USING (
-      SELECT * FROM (
-        SELECT ARRAY_AGG(
-          x ORDER BY partitionTime DESC LIMIT 1
-        )[OFFSET(0)] src
-        FROM `<dataset>`.`<intermediateTable>` x
-        WHERE batchNumber=<batchNumber>
-        GROUP BY key.<field>[, key.<field>...]
-      )
-    )
-    ON `<destinationTable>`.<keyField>=`src`.key AND `src`.value IS NULL
-    WHEN MATCHED
-      THEN DELETE
-    WHEN NOT MATCHED
+      USING (
+        SELECT batch.key AS key, value, partitionTime
+         FROM (
+          SELECT src.i, src.key FROM (
+            SELECT ARRAY_AGG(
+              x ORDER BY i DESC LIMIT 1
+            )[OFFSET(0)] src
+            FROM (
+              SELECT * FROM `<dataset>`.`<intermediateTable>`
+              WHERE batchNumber=<batchNumber>
+            ) x
+            WHERE x.value IS NULL
+            GROUP BY key.<field>[, key.<field>...])) AS deletes
+          RIGHT JOIN (
+            SELECT * FROM `<dataset>`.`<intermediateTable`
+            WHERE batchNumber=<batchNumber>
+          ) AS batch
+          USING (key)
+        WHERE deletes.i IS NULL OR batch.i >= deletes.i
+        ORDER BY batch.i ASC) AS src
+      ON `<destinationTable>`.<keyField>=src.key AND src.value IS NULL
+      WHEN MATCHED
+        THEN DELETE
+      WHEN NOT MATCHED AND src.value IS NOT NULL
       THEN INSERT (<keyField>, _PARTITIONTIME, <valueField>[, <valueField>])
       VALUES (
         `src`.key,
@@ -212,7 +223,7 @@ public class MergeQueries {
     USING (
       SELECT * FROM (
         SELECT ARRAY_AGG(
-          x ORDER BY partitionTime DESC LIMIT 1
+          x ORDER BY i DESC LIMIT 1
         )[OFFSET(0)] src
         FROM `<dataset>`.`<intermediateTable>` x
         WHERE batchNumber=<batchNumber>
@@ -236,6 +247,7 @@ public class MergeQueries {
     Schema intermediateSchema = schemaManager.cachedSchema(intermediateTable);
 
     String srcKey = INTERMEDIATE_TABLE_KEY_FIELD_NAME;
+    String i = INTERMEDIATE_TABLE_ITERATION_FIELD_NAME;
 
     List<String> keyFields = listFields(
         intermediateSchema.getFields().get(srcKey).getSubFields(),
@@ -247,40 +259,90 @@ public class MergeQueries {
         .collect(Collectors.toList());
 
     List<String> srcValueFields = dstValueFields.stream()
-        .map(field -> "`src`." + INTERMEDIATE_TABLE_VALUE_FIELD_NAME + "." + field)
+        .map(field -> "src." + INTERMEDIATE_TABLE_VALUE_FIELD_NAME + "." + field)
         .collect(Collectors.toList());
     List<String> updateValues = dstValueFields.stream()
-        .map(field -> field + "=`src`." + INTERMEDIATE_TABLE_VALUE_FIELD_NAME + "." + field)
+        .map(field -> field + "=src." + INTERMEDIATE_TABLE_VALUE_FIELD_NAME + "." + field)
         .collect(Collectors.toList());
 
-    String partitionTimeField = insertPartitionTime ? "_PARTITIONTIME, " : "";
+    String partitionTimeSrcColumn = insertPartitionTime ? INTERMEDIATE_TABLE_PARTITION_TIME_FIELD_NAME + ", " : "";
+    String partitionTimePseudocolumn = insertPartitionTime ? "_PARTITIONTIME, " : "";
     String partitionTimeValue = insertPartitionTime
-        ? "CAST(CAST(DATE(`src`." + INTERMEDIATE_TABLE_PARTITION_TIME_FIELD_NAME + ") AS DATE) AS TIMESTAMP), "
+        ? "CAST(CAST(DATE(src." + INTERMEDIATE_TABLE_PARTITION_TIME_FIELD_NAME + ") AS DATE) AS TIMESTAMP), "
         : "";
 
     String dst = destinationTable.getTable();
 
-    StringBuilder keysMatch = new StringBuilder("`").append(dst).append("`.").append(keyFieldName).append("=`src`.").append(srcKey);
+    StringBuilder intTable = new StringBuilder("`").append(intermediateTable.getDataset())
+        .append("`.`").append(intermediateTable.getTable())
+        .append("` ");
 
-    StringBuilder mergeOpening = new StringBuilder("MERGE `").append(destinationTable.getDataset()).append("`.`").append(destinationTable.getTable()).append("` ")
-        .append("USING (")
-          .append("SELECT * FROM (")
-            .append("SELECT ARRAY_AGG(")
-              .append("x ORDER BY ").append(INTERMEDIATE_TABLE_PARTITION_TIME_FIELD_NAME).append(" DESC LIMIT 1")
-            .append(")[OFFSET(0)] src ")
-            .append("FROM `").append(intermediateTable.getDataset()).append("`.`").append(intermediateTable.getTable()).append("` x ")
-            .append("WHERE ").append(INTERMEDIATE_TABLE_BATCH_NUMBER_FIELD).append("=").append(batchNumber).append(" ")
-            .append("GROUP BY ").append(String.join(", ", keyFields))
-          .append(")")
-        .append(") ");
+    StringBuilder keysMatch = new StringBuilder("`").append(dst).append("`.").append(keyFieldName).append("=src.").append(srcKey).append(" ");
+    StringBuilder batchNumberClause = new StringBuilder("WHERE ").append(INTERMEDIATE_TABLE_BATCH_NUMBER_FIELD).append("=").append(batchNumber);
+    StringBuilder deduplicatedAsX = new StringBuilder("SELECT ARRAY_AGG(")
+        .append("x ORDER BY ").append(i).append(" DESC LIMIT 1")
+        .append(")[OFFSET(0)] src ");
+    StringBuilder groupByKeys = new StringBuilder("GROUP BY ").append(String.join(", ", keyFields));
+
+    StringBuilder mergeOpening = new StringBuilder("MERGE `").append(destinationTable.getDataset()).append("`.`")
+        .append(destinationTable.getTable()).append("` ")
+        .append("USING ");
+
+    /*
+      Delete-only is the trickiest mode. Naively, we could just run a MERGE using the intermediate table as a source
+      and sort in ascending order of iteration. However, this would miss an edge case where, for a given key,
+      a non-tombstone record is sent, followed by a tombstone, and would result in all rows with that key being deleted
+      from the table, followed by an insertion of a row for the initial non-tombstone record. This is incorrect; any and
+      all records with a given key that precede a tombstone should either never make it into BigQuery or be deleted once
+      the tombstone record is merge flushed.
+
+      So instead, we have to try to filter out rows from the source (i.e., intermediate) table that precede tombstone
+      records for their keys. We do this by:
+
+        - Finding the latest tombstone row for each key in the current batch and extracting the iteration number for each, referring to this as the "deletes" table
+        - Joining that with the current batch from the intermediate table on the row key, keeping both tables' iteration numbers
+          (a RIGHT JOIN is used so that rows whose keys don't have any tombstones present are included with a NULL iteration number for the "deletes" table)
+        - Filtering out all rows where the "delete" table's iteration number is non-null, and their iteration number is less than the "delete" table's iteration number
+
+      This gives us only rows from the most recent tombstone onward, and works in both cases where the most recent row for a key is or is not a tombstone.
+
+     */
+    StringBuilder deleteSrc = new StringBuilder("(SELECT ")
+        .append("batch.").append(srcKey).append(" AS ").append(srcKey).append(", ")
+        .append(partitionTimeSrcColumn)
+        .append(INTERMEDIATE_TABLE_VALUE_FIELD_NAME).append(" ")
+        .append("FROM (")
+          .append("SELECT src.").append(i).append(", ")
+          .append("src.").append(srcKey).append(" ")
+          .append("FROM (").append(deduplicatedAsX)
+            .append("FROM (")
+              .append("SELECT * FROM ").append(intTable)
+              .append(batchNumberClause)
+            .append(") x ")
+            .append("WHERE x.value IS NULL ")
+            .append(groupByKeys).append(")) AS deletes ")
+          .append("RIGHT JOIN (")
+            .append("SELECT * FROM ").append(intTable)
+            .append(batchNumberClause)
+          .append(") AS batch ")
+          .append("USING (").append(srcKey).append(") ")
+        .append("WHERE deletes.").append(i).append(" IS NULL OR batch.").append(i).append(" >= deletes.").append(i).append(" ")
+        .append("ORDER BY batch.").append(i).append(" ASC) AS src ");
+
+    StringBuilder deduplicatedSrc = new StringBuilder("(SELECT * FROM (")
+        .append(deduplicatedAsX)
+          .append("FROM ").append(intTable).append("x ")
+          .append(batchNumberClause).append(" ")
+          .append("GROUP BY ").append(String.join(", ", keyFields))
+        .append(")) ");
 
     StringBuilder insertClause = new StringBuilder("THEN INSERT (")
           .append(keyFieldName).append(", ")
-          .append(partitionTimeField)
+          .append(partitionTimePseudocolumn)
           .append(String.join(", ", dstValueFields))
         .append(") ")
         .append("VALUES (")
-          .append("`src`.").append(srcKey).append(", ")
+          .append("src.").append(srcKey).append(", ")
           .append(partitionTimeValue)
           .append(String.join(", ", srcValueFields))
         .append(")");
@@ -288,12 +350,13 @@ public class MergeQueries {
     StringBuilder updateClause = new StringBuilder("THEN UPDATE SET ")
         .append(String.join(", ", updateValues));
 
-    StringBuilder valueIs = new StringBuilder("`src`.").append(INTERMEDIATE_TABLE_VALUE_FIELD_NAME).append(" IS ");
+    StringBuilder valueIs = new StringBuilder("src.").append(INTERMEDIATE_TABLE_VALUE_FIELD_NAME).append(" IS ");
 
     if (upsertEnabled && deleteEnabled) {
       // Delete rows with null values, and upsert all others
       return mergeOpening
-          .append("ON ").append(keysMatch).append(" ")
+          .append(deduplicatedSrc)
+          .append("ON ").append(keysMatch)
           .append("WHEN MATCHED AND ").append(valueIs).append("NOT NULL ")
             .append(updateClause).append(" ")
           .append("WHEN MATCHED AND ").append(valueIs).append("NULL ")
@@ -302,24 +365,26 @@ public class MergeQueries {
             .append(insertClause)
           .append(";")
           .toString();
-    } else if (deleteEnabled) {
-      // Delete rows with null values, and insert all others
+    } else if (upsertEnabled) {
+      // Assume all rows have non-null values and upsert them all
       return mergeOpening
-          .append("ON ").append(keysMatch).append(" ")
-            .append("AND ").append(valueIs).append("NULL ")
+          .append(deduplicatedSrc)
+          .append("ON ").append(keysMatch)
           .append("WHEN MATCHED ")
-            .append("THEN DELETE ")
+            .append(updateClause).append(" ")
           .append("WHEN NOT MATCHED ")
             .append(insertClause)
           .append(";")
           .toString();
-    } else if (upsertEnabled) {
-      // Assume all rows have non-null values and upsert them all
+    } else if (deleteEnabled) {
+      // Delete rows with null values, and insert all others
       return mergeOpening
-          .append("ON ").append(keysMatch).append(" ")
+          .append(deleteSrc)
+          .append("ON ").append(keysMatch)
+            .append("AND ").append(valueIs).append("NULL ")
           .append("WHEN MATCHED ")
-            .append(updateClause).append(" ")
-          .append("WHEN NOT MATCHED ")
+            .append("THEN DELETE ")
+          .append("WHEN NOT MATCHED AND ").append(valueIs).append("NOT NULL ")
             .append(insertClause)
           .append(";")
           .toString();
@@ -328,7 +393,7 @@ public class MergeQueries {
     }
   }
 
-  // DELETE FROM `<intermediateTable>` WHERE batchNumber <= <batchNumber> AND _PARTITIONTIME IS NOT NULL;
+  // DELETE FROM `<dataset>`.`<intermediateTable>` WHERE batchNumber <= <batchNumber> AND _PARTITIONTIME IS NOT NULL;
   @VisibleForTesting
   static String batchClearQuery(TableId intermediateTable, int batchNumber) {
     return new StringBuilder("DELETE FROM `").append(intermediateTable.getDataset()).append("`.`").append(intermediateTable.getTable()).append("` ")

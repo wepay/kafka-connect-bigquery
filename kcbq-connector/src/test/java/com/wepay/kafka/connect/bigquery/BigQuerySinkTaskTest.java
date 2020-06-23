@@ -22,6 +22,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Mockito.mock;
@@ -40,6 +41,7 @@ import com.google.cloud.bigquery.QueryJobConfiguration;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.storage.Storage;
 
+import com.wepay.kafka.connect.bigquery.api.KafkaSchemaRecordType;
 import com.wepay.kafka.connect.bigquery.api.SchemaRetriever;
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig;
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkTaskConfig;
@@ -141,11 +143,15 @@ public class BigQuerySinkTaskTest {
     testTask.initialize(sinkTaskContext);
     testTask.start(properties);
 
-    testTask.put(Collections.singletonList(spoofSinkRecord(topic)));
+    SinkRecord spoofedRecord =
+        spoofSinkRecord(topic, "k", "key", "v", "value", TimestampType.NO_TIMESTAMP_TYPE, null);
+    testTask.put(Collections.singletonList(spoofedRecord));
     testTask.flush(Collections.emptyMap());
     verify(bigQuery, times(1)).insertAll(any(InsertAllRequest.class));
-    verify(schemaRetriever, times(1)).setLastSeenSchema(any(TableId.class),
-        any(String.class), any(Schema.class));
+    verify(schemaRetriever, times(1)).setLastSeenSchema(
+        any(TableId.class), any(String.class), any(Schema.class), eq(KafkaSchemaRecordType.KEY));
+    verify(schemaRetriever, times(1)).setLastSeenSchema(
+        any(TableId.class), any(String.class), any(Schema.class), eq(KafkaSchemaRecordType.VALUE));
   }
 
   @Test

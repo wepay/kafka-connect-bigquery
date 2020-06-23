@@ -133,6 +133,7 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
           writeResponse = bigQuery.insertAll(request);
         } catch (BigQueryException exception) {
           // no-op, we want to keep retrying the insert
+          logger.trace("insertion failed", exception);
         }
       } else {
         return writeResponse.getInsertErrors();
@@ -181,6 +182,7 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
    * This is why we can't have nice things, Google.
    */
   private boolean onlyContainsInvalidSchemaErrors(Map<Long, List<BigQueryError>> errors) {
+    logger.trace("write response contained errors: \n{}", errors);
     boolean invalidSchemaError = false;
     for (List<BigQueryError> errorList : errors.values()) {
       for (BigQueryError error : errorList) {

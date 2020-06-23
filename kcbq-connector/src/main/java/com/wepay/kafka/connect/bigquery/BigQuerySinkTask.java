@@ -164,6 +164,11 @@ public class BigQuerySinkTask extends SinkTask {
 
     TableId baseTableId = topicsToBaseTableIds.get(record.topic());
     if (upsertDelete) {
+
+      // Notify the schema retriever of the schema for the destination table (it will be notified
+      // for the intermediate table in the put() loop)
+      recordLastSeenSchemas(baseTableId, record);
+
       TableId intermediateTableId = mergeBatches.intermediateTableFor(baseTableId);
       // If upsert/delete is enabled, we want to stream into a non-partitioned intermediate table
       return new PartitionedTableId.Builder(intermediateTableId).build();
@@ -225,6 +230,7 @@ public class BigQuerySinkTask extends SinkTask {
 
     result.put(MergeQueries.INTERMEDIATE_TABLE_KEY_FIELD_NAME, convertedKey);
     result.put(MergeQueries.INTERMEDIATE_TABLE_VALUE_FIELD_NAME, convertedValue);
+    result.put(MergeQueries.INTERMEDIATE_TABLE_ITERATION_FIELD_NAME, totalBatchSize);
     if (usePartitionDecorator && useMessageTimeDatePartitioning) {
       if (record.timestampType() == TimestampType.NO_TIMESTAMP_TYPE) {
         throw new ConnectException(
@@ -262,6 +268,15 @@ public class BigQuerySinkTask extends SinkTask {
         record.kafkaOffset());
   }
 
+  private void recordLastSeenSchemas(TableId table, SinkRecord record) {
+    if (schemaRetriever != null) {
+      schemaRetriever.setLastSeenSchema(
+          table, record.topic(), record.keySchema(), KafkaSchemaRecordType.KEY);
+      schemaRetriever.setLastSeenSchema(
+          table, record.topic(), record.valueSchema(), KafkaSchemaRecordType.VALUE);
+    }
+  }
+
   @Override
   public void put(Collection<SinkRecord> records) {
     if (upsertDelete) {
@@ -277,11 +292,7 @@ public class BigQuerySinkTask extends SinkTask {
     for (SinkRecord record : records) {
       if (record.value() != null || config.getBoolean(config.DELETE_ENABLED_CONFIG)) {
         PartitionedTableId table = getRecordTable(record);
-        if (schemaRetriever != null) {
-          schemaRetriever.setLastSeenSchema(table.getBaseTableId(),
-                                            record.topic(),
-                                            record.valueSchema());
-        }
+        recordLastSeenSchemas(table.getBaseTableId(), record);
 
         if (!tableWriterBuilders.containsKey(table)) {
           TableWriterBuilder tableWriterBuilder;

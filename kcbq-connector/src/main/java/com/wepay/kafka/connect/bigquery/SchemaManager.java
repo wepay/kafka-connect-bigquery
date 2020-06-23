@@ -300,6 +300,12 @@ public class SchemaManager {
         .build();
     result.add(kafkaKeyField);
 
+    Field iterationField = Field
+        .newBuilder(MergeQueries.INTERMEDIATE_TABLE_ITERATION_FIELD_NAME, LegacySQLTypeName.INTEGER)
+        .setMode(Field.Mode.REQUIRED)
+        .build();
+    result.add(iterationField);
+
     Field partitionTimeField = Field
         .newBuilder(MergeQueries.INTERMEDIATE_TABLE_PARTITION_TIME_FIELD_NAME, LegacySQLTypeName.TIMESTAMP)
         .setMode(Field.Mode.NULLABLE)

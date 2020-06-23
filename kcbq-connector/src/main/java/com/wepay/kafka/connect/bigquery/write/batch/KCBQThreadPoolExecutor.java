@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -110,10 +111,8 @@ public class KCBQThreadPoolExecutor extends ThreadPoolExecutor {
   }
 
   private static String createErrorString(Collection<Throwable> errors) {
-    List<String> exceptionTypeStrings = new ArrayList<>(errors.size());
-    exceptionTypeStrings.addAll(errors.stream()
-                        .map(throwable -> throwable.getClass().getName())
-                        .collect(Collectors.toList()));
-    return String.join(", ", exceptionTypeStrings);
+    return errors.stream()
+                 .map(Objects::toString)
+                 .collect(Collectors.joining(", "));
   }
 }
