@@ -84,6 +84,9 @@ public class TableWriter implements Runnable {
           logger.warn("Could not write batch of size {} to BigQuery.", currentBatch.size(), err);
           if (isBatchSizeError(err)) {
             failureCount++;
+            if (currentBatchSize == 1) {
+              throw err;
+            }
             currentBatchSize = getNewBatchSize(currentBatchSize);
           }
         }
