@@ -233,6 +233,12 @@ public class BigQuerySinkConfig extends AbstractConfig {
   private static final String TABLE_CREATE_DOC =
           "Automatically create BigQuery tables if they don't already exist";
 
+  public static final String AUTO_CREATE_BUCKET_CONFIG = "AutoCreateBucket";
+  private static final ConfigDef.Type AUTO_CREATE_BUCKET_TYPE = ConfigDef.Type.BOOLEAN;
+  public static final Boolean AUTO_CREATE_BUCKET_DEFAULT = false;
+  private static final ConfigDef.Importance AUTO_CREATE_BUCKET_IMPORTANCE = ConfigDef.Importance.MEDIUM;
+  private static final String AUTO_CREATE_BUCKET_DOC =
+          "Whether or not to automatically create a bucket";
   static {
     config = new ConfigDef()
         .define(
@@ -365,6 +371,12 @@ public class BigQuerySinkConfig extends AbstractConfig {
             TABLE_CREATE_DEFAULT,
             TABLE_CREATE_IMPORTANCE,
             TABLE_CREATE_DOC
+        ).define(
+            AUTO_CREATE_BUCKET_CONFIG,
+            AUTO_CREATE_BUCKET_TYPE,
+            AUTO_CREATE_BUCKET_DEFAULT,
+            AUTO_CREATE_BUCKET_IMPORTANCE,
+            AUTO_CREATE_BUCKET_DOC
         );
   }
     /**

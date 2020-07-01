@@ -43,11 +43,10 @@ public class BucketClearer {
     }
     Storage gcs = new GCSBuilder(args[1]).setKey(args[0]).setKeySource(keySource).build();
 
-    // if bucket exists, delete it.
     String bucketName = args[2];
     Bucket bucket = gcs.get(bucketName);
     if(bucket != null){
-      logger.info("Deleting objects in the bucket");
+      logger.info("Deleting objects in the Bucket {}",bucketName);
       for(Blob blob: bucket.list().iterateAll()){
         gcs.delete(blob.getBlobId());
       }

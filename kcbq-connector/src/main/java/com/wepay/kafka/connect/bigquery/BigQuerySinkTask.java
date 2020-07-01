@@ -32,10 +32,10 @@ import com.wepay.kafka.connect.bigquery.config.BigQuerySinkTaskConfig;
 import com.wepay.kafka.connect.bigquery.convert.KafkaDataBuilder;
 import com.wepay.kafka.connect.bigquery.convert.RecordConverter;
 import com.wepay.kafka.connect.bigquery.convert.SchemaConverter;
+import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
 import com.wepay.kafka.connect.bigquery.exception.SinkConfigConnectException;
 import com.wepay.kafka.connect.bigquery.utils.FieldNameSanitizer;
 import com.wepay.kafka.connect.bigquery.utils.PartitionedTableId;
-import com.wepay.kafka.connect.bigquery.utils.TopicToTableResolver;
 import com.wepay.kafka.connect.bigquery.utils.Version;
 import com.wepay.kafka.connect.bigquery.write.batch.GCSBatchTableWriter;
 import com.wepay.kafka.connect.bigquery.write.batch.KCBQThreadPoolExecutor;
@@ -80,9 +80,9 @@ public class BigQuerySinkTask extends SinkTask {
   private GCSToBQWriter gcsToBQWriter;
   private BigQuerySinkTaskConfig config;
   private RecordConverter<Map<String, Object>> recordConverter;
-  private Map<String, TableId> topicsToBaseTableIds;
   private boolean useMessageTimeDatePartitioning;
   private boolean usePartitionDecorator;
+  private boolean sanitize;
 
   private TopicPartitionManager topicPartitionManager;
 
@@ -133,15 +133,29 @@ public class BigQuerySinkTask extends SinkTask {
     topicPartitionManager.resumeAll();
   }
 
-  private PartitionedTableId getRecordTable(SinkRecord record) {
-    // Dynamically update topicToBaseTableIds mapping. topicToBaseTableIds was used to be
-    // constructed when connector starts hence new topic configuration needed connector to restart.
-    // Dynamic update shall not require connector restart and shall compute table id in runtime.
-    if (!topicsToBaseTableIds.containsKey(record.topic())) {
-      TopicToTableResolver.updateTopicToTable(config, record.topic(), topicsToBaseTableIds);
-    }
+  private void ensureExistingTable(TableId table) {
+    BigQuery bigQuery = getBigQuery();
 
-    TableId baseTableId = topicsToBaseTableIds.get(record.topic());
+    if (bigQuery.getTable(table) == null) {
+      logger.warn(
+              "You may want to enable auto table creation by setting {}=true in the properties file",
+              config.TABLE_CREATE_CONFIG);
+      throw new BigQueryConnectException("Table '" + table + "' does not exist");
+    }
+  }
+
+
+  private PartitionedTableId getRecordTable(SinkRecord record) {
+
+    String dataset = record.topic().split("=")[0];
+    String tableName = record.topic().split("=")[1];
+    if (sanitize){
+      tableName = FieldNameSanitizer.sanitizeName(tableName);
+    }
+    TableId baseTableId = TableId.of(dataset,tableName);
+    if(!config.getBoolean(config.TABLE_CREATE_CONFIG)){
+      ensureExistingTable(baseTableId);
+    }
 
     PartitionedTableId.Builder builder = new PartitionedTableId.Builder(baseTableId);
     if (usePartitionDecorator) {
@@ -333,7 +347,6 @@ public class BigQuerySinkTask extends SinkTask {
 
     bigQueryWriter = getBigQueryWriter();
     gcsToBQWriter = getGcsWriter();
-    topicsToBaseTableIds = TopicToTableResolver.getTopicsToTables(config);
     recordConverter = getConverter();
     executor = new KCBQThreadPoolExecutor(config, new LinkedBlockingQueue<>());
     topicPartitionManager = new TopicPartitionManager();
@@ -341,6 +354,8 @@ public class BigQuerySinkTask extends SinkTask {
         config.getBoolean(config.BIGQUERY_MESSAGE_TIME_PARTITIONING_CONFIG);
     usePartitionDecorator = 
             config.getBoolean(config.BIGQUERY_PARTITION_DECORATOR_CONFIG);
+    sanitize =
+            config.getBoolean(BigQuerySinkConfig.SANITIZE_TOPICS_CONFIG);
     if (hasGCSBQTask) {
       startGCSToBQLoadTask();
     }
