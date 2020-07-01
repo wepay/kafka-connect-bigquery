@@ -356,8 +356,11 @@ public class BigQuerySinkTask extends SinkTask {
     if (bucket == null) {
       // todo here is where we /could/ set a retention policy for the bucket,
       // but for now I don't think we want to do that.
-      BucketInfo bucketInfo = BucketInfo.of(bucketName);
-      bucket = gcs.create(bucketInfo);
+      if (config.getBoolean(config.AUTO_CREATE_BUCKET_CONFIG)) {
+        BucketInfo bucketInfo = BucketInfo.of(bucketName);
+        bucket = gcs.create(bucketInfo);
+      }
+      else throw new ConfigException("Bucket does not exist. Set "+ config.AUTO_CREATE_BUCKET_CONFIG + "to true");
     }
     GCSToBQLoadRunnable loadRunnable = new GCSToBQLoadRunnable(getBigQuery(), bucket);
 

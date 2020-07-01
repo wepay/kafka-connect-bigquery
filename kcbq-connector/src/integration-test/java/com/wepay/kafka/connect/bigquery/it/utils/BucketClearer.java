@@ -18,6 +18,7 @@ package com.wepay.kafka.connect.bigquery.it.utils;
  */
 
 
+import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.Bucket;
 
 import com.google.cloud.storage.Storage;
@@ -44,10 +45,12 @@ public class BucketClearer {
 
     // if bucket exists, delete it.
     String bucketName = args[2];
-    if (gcs.delete(bucketName)) {
-      logger.info("Bucket {} deleted successfully", bucketName);
-    } else {
-      logger.info("Bucket {} does not exist", bucketName);
+    Bucket bucket = gcs.get(bucketName);
+    if(bucket != null){
+      logger.info("Deleting objects in the bucket");
+      for(Blob blob: bucket.list().iterateAll()){
+        gcs.delete(blob.getBlobId());
+      }
     }
   }
 
