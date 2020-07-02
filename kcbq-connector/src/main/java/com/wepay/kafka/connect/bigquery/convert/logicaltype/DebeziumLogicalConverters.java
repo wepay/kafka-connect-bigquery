@@ -99,8 +99,11 @@ public class DebeziumLogicalConverters {
       String formattedSecondsTimestamp = bqTimeSecondsFormat.format(date);
 
       Long microRemainder = microTimestamp % MICROS_IN_SEC;
+      // NOTE: If the microTimestamp happens to start with a 0, the leading 0 would be dropped and the converted time
+      // would be wrong.
+      String formattedMicroRemainder = String.format("%06d", microRemainder);
 
-      return formattedSecondsTimestamp + "." + microRemainder;
+      return formattedSecondsTimestamp + "." + formattedMicroRemainder;
     }
   }
 
@@ -130,6 +133,9 @@ public class DebeziumLogicalConverters {
       String formattedSecondsTimestamp = bqDatetimeSecondsFormat.format(date);
 
       Long microRemainder = microTimestamp % MICROS_IN_SEC;
+      // NOTE: If the microTimestamp happens to start with a 0, the leading 0 would be dropped and the converted time
+      // would be wrong.
+      String formattedMicroRemainder = String.format("%06d", microRemainder);
 
       return formattedSecondsTimestamp + "." + microRemainder;
     }
