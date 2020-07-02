@@ -137,7 +137,7 @@ public class DebeziumLogicalConverters {
       // would be wrong.
       String formattedMicroRemainder = String.format("%06d", microRemainder);
 
-      return formattedSecondsTimestamp + "." + microRemainder;
+      return formattedSecondsTimestamp + "." + formattedMicroRemainder;
     }
   }
 
