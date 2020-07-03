@@ -22,6 +22,7 @@ import com.google.cloud.bigquery.BigQuery;
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig;
 import com.wepay.kafka.connect.bigquery.exception.SinkConfigConnectException;
 
+
 import com.wepay.kafka.connect.bigquery.utils.Version;
 
 import org.apache.kafka.common.config.ConfigDef;
