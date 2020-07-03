@@ -173,10 +173,14 @@ public class BigQuerySinkTask extends SinkTask {
     if (config.getBoolean(config.SANITIZE_FIELD_NAME_CONFIG)) {
       convertedRecord = FieldNameSanitizer.replaceInvalidKeys(convertedRecord);
     }
-    return RowToInsert.of(getRowId(record), convertedRecord);
+    if (config.getBoolean(config.BEST_EFFORT_DEDUPLICATION_CONFIG)) {
+      return RowToInsert.of(getRowId(record), convertedRecord);
+    } else {
+      return RowToInsert.of(convertedRecord);
+    }
   }
 
-  private String getRowId(SinkRecord record) {
+  String getRowId(SinkRecord record) {
     return String.format("%s-%d-%d",
         record.topic(),
         record.kafkaPartition(),

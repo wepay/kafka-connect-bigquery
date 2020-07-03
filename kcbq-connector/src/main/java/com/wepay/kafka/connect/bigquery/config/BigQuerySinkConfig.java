@@ -233,6 +233,15 @@ public class BigQuerySinkConfig extends AbstractConfig {
   private static final String TABLE_CREATE_DOC =
           "Automatically create BigQuery tables if they don't already exist";
 
+  public static final String BEST_EFFORT_DEDUPLICATION_CONFIG =         "bestEffortDeduplication";
+  private static final ConfigDef.Type BEST_EFFORT_DEDUPLICATION_TYPE =  ConfigDef.Type.BOOLEAN;
+  public static final Boolean BEST_EFFORT_DEDUPLICATION_DEFAULT =       true;
+  private static final ConfigDef.Importance BEST_EFFORT_DEDUPLICATION_IMPORTANCE =
+      ConfigDef.Importance.MEDIUM;
+  private static final String BEST_EFFORT_DEDUPLICATION_DOC =
+      "If false, Big Query best effort de-duplication will be disabled, which increases "
+      + "the streaming ingest quota, at the expense of not checking for duplicates";
+
   static {
     config = new ConfigDef()
         .define(
@@ -365,7 +374,13 @@ public class BigQuerySinkConfig extends AbstractConfig {
             TABLE_CREATE_DEFAULT,
             TABLE_CREATE_IMPORTANCE,
             TABLE_CREATE_DOC
-        );
+         ).define(
+            BEST_EFFORT_DEDUPLICATION_CONFIG,
+            BEST_EFFORT_DEDUPLICATION_TYPE,
+            BEST_EFFORT_DEDUPLICATION_DEFAULT,
+            BEST_EFFORT_DEDUPLICATION_IMPORTANCE,
+            BEST_EFFORT_DEDUPLICATION_DOC
+         );
   }
     /**
      * Throw an exception if the passed-in properties do not constitute a valid sink.

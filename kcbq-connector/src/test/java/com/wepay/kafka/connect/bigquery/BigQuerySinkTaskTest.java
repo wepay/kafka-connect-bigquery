@@ -24,6 +24,7 @@ import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -96,6 +97,37 @@ public class BigQuerySinkTaskTest {
     testTask.put(Collections.singletonList(spoofSinkRecord(topic)));
     testTask.flush(Collections.emptyMap());
     verify(bigQuery, times(1)).insertAll(any(InsertAllRequest.class));
+  }
+
+  @Test
+  public void testPutWhenBestEffortDeduplicationIsSetToFalse() {
+    final String topic = "test-topic";
+
+    Map<String, String> properties = propertiesFactory.getProperties();
+    properties.put(BigQuerySinkConfig.TOPICS_CONFIG, topic);
+    properties.put(BigQuerySinkConfig.DATASETS_CONFIG, ".*=scratch");
+    properties.put(BigQuerySinkTaskConfig.BEST_EFFORT_DEDUPLICATION_CONFIG, "false");
+
+    BigQuery bigQuery = mock(BigQuery.class);
+    Storage storage = mock(Storage.class);
+
+    SinkTaskContext sinkTaskContext = mock(SinkTaskContext.class);
+    InsertAllResponse insertAllResponse = mock(InsertAllResponse.class);
+
+    when(bigQuery.insertAll(anyObject())).thenReturn(insertAllResponse);
+    when(insertAllResponse.hasErrors()).thenReturn(false);
+
+    SchemaRetriever schemaRetriever = mock(SchemaRetriever.class);
+    SchemaManager schemaManager = mock(SchemaManager.class);
+
+    BigQuerySinkTask testTask = spy(new BigQuerySinkTask(bigQuery, schemaRetriever, storage, schemaManager));
+    testTask.initialize(sinkTaskContext);
+    testTask.start(properties);
+
+    testTask.put(Collections.singletonList(spoofSinkRecord(topic)));
+    testTask.flush(Collections.emptyMap());
+    verify(bigQuery, times(1)).insertAll(any(InsertAllRequest.class));
+    verify(testTask, times(0)).getRowId(any(SinkRecord.class));
   }
 
   @Test
