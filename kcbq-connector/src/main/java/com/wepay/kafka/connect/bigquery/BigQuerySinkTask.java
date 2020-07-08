@@ -152,7 +152,8 @@ public class BigQuerySinkTask extends SinkTask {
     if (sanitize){
       tableName = FieldNameSanitizer.sanitizeName(tableName);
     }
-    System.out.print("Tbale name "+tableName);
+    System.out.println("Table name "+tableName);
+    System.out.println("Dataset"+dataset);
     TableId baseTableId = TableId.of(dataset,tableName);
     if(!config.getBoolean(config.TABLE_CREATE_CONFIG)){
       ensureExistingTable(baseTableId);

@@ -78,6 +78,7 @@ public class BigQuerySinkConnector extends SinkConnector {
     return config.getConfig();
   }
 
+
   @Override
   public void start(Map<String, String> properties) {
     logger.trace("connector.start()");
@@ -90,6 +91,7 @@ public class BigQuerySinkConnector extends SinkConnector {
           err
       );
     }
+
   }
 
   @Override
