@@ -16,6 +16,7 @@ import com.wepay.kafka.connect.bigquery.convert.KafkaDataBuilder;
 import com.wepay.kafka.connect.bigquery.convert.SchemaConverter;
 
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.sink.SinkRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,8 +70,9 @@ public class SchemaManager {
    * @param table The BigQuery table to create.
    * @param topic The Kafka topic used to determine the schema.
    */
+  // this has to changed since it wont be the topic anymore that decides the schema.
   public void createTable(TableId table, String topic) {
-    Schema kafkaValueSchema = schemaRetriever.retrieveSchema(table, topic, KafkaSchemaRecordType.VALUE);
+    Schema kafkaValueSchema = schemaRetriever.retrieveKeySchema();
     Schema kafkaKeySchema = kafkaKeyFieldName.isPresent() ? schemaRetriever.retrieveSchema(table, topic, KafkaSchemaRecordType.KEY) : null;
     bigQuery.create(constructTableInfo(table, kafkaKeySchema, kafkaValueSchema));
   }
@@ -80,6 +82,7 @@ public class SchemaManager {
    * @param table The BigQuery table to update.
    * @param topic The Kafka topic used to determine the schema.
    */
+  // this needs to be changed too
   public void updateSchema(TableId table, String topic) {
     Schema kafkaValueSchema = schemaRetriever.retrieveSchema(table, topic, KafkaSchemaRecordType.VALUE);
     Schema kafkaKeySchema = kafkaKeyFieldName.isPresent() ? schemaRetriever.retrieveSchema(table, topic, KafkaSchemaRecordType.KEY) : null;

@@ -11,6 +11,7 @@ import org.apache.kafka.common.cache.SynchronizedCache;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
+import org.apache.kafka.connect.sink.SinkRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,6 +20,8 @@ import java.util.Map;
 /**
  * Uses the Confluent Schema Registry to fetch the latest schema for a given topic.
  */
+// might not need this class at all
+
 public class MemorySchemaRetriever implements SchemaRetriever {
   private static final Logger logger = LoggerFactory.getLogger(MemorySchemaRetriever.class);
   private static final int CACHE_SIZE = 1000;
@@ -41,8 +44,19 @@ public class MemorySchemaRetriever implements SchemaRetriever {
   }
 
   @Override
-  public Schema retrieveSchema(TableId table, String topic, KafkaSchemaRecordType schemaType) {
-    String tableName = table.getTable();
+  public Schema retrieveKeySchema(SinkRecord record) {
+    return retrieveSchema(record.topic(),KafkaSchemaRecordType.KEY);
+  }
+
+  @Override
+  public Schema retrieveValueSchema(SinkRecord record) {
+    return retrieveSchema(record.topic(),KafkaSchemaRecordType.VALUE);
+  }
+
+
+  private Schema retrieveSchema(String topic, KafkaSchemaRecordType schemaType) {
+    //String tableName = table.getTable();
+    String tableName = topic; //assuming that topic has been changed to contain table name
     Schema schema = schemaCache.get(getCacheKey(tableName, topic));
     if (schema != null) {
       return schema;
@@ -54,9 +68,5 @@ public class MemorySchemaRetriever implements SchemaRetriever {
     return SchemaBuilder.struct().build();
   }
 
-  @Override
-  public void setLastSeenSchema(TableId table, String topic, Schema schema) {
-    logger.debug("Updating last seen schema to " + schema.toString());
-    schemaCache.put(getCacheKey(table.getTable(), topic), schema);
-  }
+
 }

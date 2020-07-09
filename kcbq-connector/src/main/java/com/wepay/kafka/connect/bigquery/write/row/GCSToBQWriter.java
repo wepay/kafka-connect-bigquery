@@ -100,6 +100,7 @@ public class GCSToBQWriter {
    * @param blobName the name of the GCS blob to write.
    * @throws InterruptedException if interrupted.
    */
+  // writeRows -> needs to be changed
   public void writeRows(List<RowToInsert> rows,
                         TableId tableId,
                         String bucketName,

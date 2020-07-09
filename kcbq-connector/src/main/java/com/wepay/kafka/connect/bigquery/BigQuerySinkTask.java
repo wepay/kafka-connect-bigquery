@@ -207,11 +207,11 @@ public class BigQuerySinkTask extends SinkTask {
     for (SinkRecord record : records) {
       if (record.value() != null) {
         PartitionedTableId table = getRecordTable(record);
-        if (schemaRetriever != null) {
-          schemaRetriever.setLastSeenSchema(table.getBaseTableId(),
-                                            record.topic(),
-                                            record.valueSchema());
-        }
+//        if (schemaRetriever != null) {
+//          schemaRetriever.setLastSeenSchema(table.getBaseTableId(),
+//                                            record.topic(),
+//                                            record.valueSchema());
+//        }
 
         if (!tableWriterBuilders.containsKey(table)) {
           TableWriterBuilder tableWriterBuilder;
