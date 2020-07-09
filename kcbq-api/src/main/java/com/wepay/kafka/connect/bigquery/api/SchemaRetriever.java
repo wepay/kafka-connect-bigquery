@@ -3,6 +3,7 @@ package com.wepay.kafka.connect.bigquery.api;
 import com.google.cloud.bigquery.TableId;
 
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.sink.SinkRecord;
 
 import java.util.Map;
 
@@ -16,7 +17,7 @@ public interface SchemaRetriever {
    * {@link org.apache.kafka.connect.sink.SinkConnector#start(Map)} method.
    * @param properties The configuration settings of the connector.
    */
-  public void configure(Map<String, String> properties);
+  void configure(Map<String, String> properties);
 
   /**
    * Retrieve the most current schema for the given topic.
@@ -25,7 +26,9 @@ public interface SchemaRetriever {
    * @param schemaType The type of kafka schema, either "value" or "key".
    * @return The Schema for the given table.
    */
-  public Schema retrieveSchema(TableId table, String topic, KafkaSchemaRecordType schemaType);
+  Schema retrieveKeySchema(SinkRecord record);
+
+  Schema retrieveValueSchema(SinkRecord record);
 
   /**
    * Set the last seen schema for a given topic
@@ -33,5 +36,5 @@ public interface SchemaRetriever {
    * @param topic The topic to retrieve a schema for.
    * @param schema The last seen Kafka Connect Schema
    */
-  public void setLastSeenSchema(TableId table, String topic, Schema schema);
+  // void setLastSeenSchema(TableId table, String topic, Schema schema);
 }

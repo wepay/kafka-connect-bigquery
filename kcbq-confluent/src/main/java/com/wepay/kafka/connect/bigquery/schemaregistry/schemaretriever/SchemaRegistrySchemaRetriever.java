@@ -18,6 +18,7 @@ import org.apache.kafka.connect.data.Schema;
 
 import org.apache.kafka.connect.errors.ConnectException;
 
+import org.apache.kafka.connect.sink.SinkRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,7 +63,16 @@ public class SchemaRegistrySchemaRetriever implements SchemaRetriever {
   }
 
   @Override
-  public Schema retrieveSchema(TableId table, String topic, KafkaSchemaRecordType schemaType) {
+  public Schema retrieveKeySchema(SinkRecord record){
+    return retrieveSchema(record.topic(),KafkaSchemaRecordType.KEY);
+  }
+
+  @Override
+  public Schema retrieveValueSchema(SinkRecord record){
+    return retrieveSchema(record.topic(),KafkaSchemaRecordType.VALUE);
+  }
+  // might change topic parameter to sinkrecord if using recordNameStrategy
+  private Schema retrieveSchema(String topic, KafkaSchemaRecordType schemaType) {
     String subject = getSubject(topic, schemaType);
     try {
       logger.debug("Retrieving schema information for topic {} with subject {}", topic, subject);
@@ -78,8 +88,7 @@ public class SchemaRegistrySchemaRetriever implements SchemaRetriever {
     }
   }
 
-  @Override
-  public void setLastSeenSchema(TableId table, String topic, Schema schema) { }
+
 
   private String getSubject(String topic, KafkaSchemaRecordType schemaType) {
     return topic + "-" + schemaType.toString();
