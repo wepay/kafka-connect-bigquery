@@ -113,16 +113,6 @@ public class BigQuerySinkConfig extends AbstractConfig {
           "The name of the folder under the bucket in which gcs blobs used to batch load to BigQuery "
                   + "should be located. Only relevant if enableBatchLoad is configured.";
 
-  public static final String TOPICS_TO_TABLES_CONFIG =                     "topicsToTables";
-  private static final ConfigDef.Type TOPICS_TO_TABLES_TYPE =              ConfigDef.Type.LIST;
-  private static final ConfigDef.Importance TOPICS_TO_TABLES_IMPORTANCE =
-      ConfigDef.Importance.MEDIUM;
-  public static final Object TOPICS_TO_TABLES_DEFAULT =                    null;
-  private static final String TOPICS_TO_TABLES_DOC =
-      "A list of mappings from topic regexes to table names. Note the regex must include "
-      + "capture groups that are referenced in the format string using placeholders (i.e. $1) "
-      + "(form of <topic regex>=<format string>)";
-
   public static final String PROJECT_CONFIG =                     "project";
   private static final ConfigDef.Type PROJECT_TYPE =              ConfigDef.Type.STRING;
   private static final ConfigDef.Importance PROJECT_IMPORTANCE =  ConfigDef.Importance.HIGH;
@@ -286,12 +276,6 @@ public class BigQuerySinkConfig extends AbstractConfig {
             GCS_FOLDER_NAME_IMPORTANCE,
             GCS_FOLDER_NAME_DOC
         ).define(
-            TOPICS_TO_TABLES_CONFIG,
-            TOPICS_TO_TABLES_TYPE,
-            TOPICS_TO_TABLES_DEFAULT,
-            TOPICS_TO_TABLES_IMPORTANCE,
-            TOPICS_TO_TABLES_DOC
-        ).define(
             PROJECT_CONFIG,
             PROJECT_TYPE,
             PROJECT_IMPORTANCE,
@@ -414,9 +398,6 @@ public class BigQuerySinkConfig extends AbstractConfig {
     public void ensureValid(String name, Object value) {
       switch (name) {
         case DATASETS_CONFIG:
-          ensureValidMap(name, (List<String>) value);
-          break;
-        case TOPICS_TO_TABLES_CONFIG:
           ensureValidMap(name, (List<String>) value);
           break;
         default:
