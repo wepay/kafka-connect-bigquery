@@ -25,13 +25,11 @@ import com.google.cloud.storage.Bucket;
 import com.google.cloud.storage.BucketInfo;
 import com.google.cloud.storage.Storage;
 import com.google.common.annotations.VisibleForTesting;
-import com.wepay.kafka.connect.bigquery.api.KafkaSchemaRecordType;
 import com.wepay.kafka.connect.bigquery.api.SchemaRetriever;
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig;
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkTaskConfig;
-import com.wepay.kafka.connect.bigquery.convert.KafkaDataBuilder;
-import com.wepay.kafka.connect.bigquery.convert.RecordConverter;
 import com.wepay.kafka.connect.bigquery.convert.SchemaConverter;
+import com.wepay.kafka.connect.bigquery.utils.SinkRecordConverter;
 import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
 import com.wepay.kafka.connect.bigquery.exception.SinkConfigConnectException;
 import com.wepay.kafka.connect.bigquery.utils.FieldNameSanitizer;
@@ -79,7 +77,8 @@ public class BigQuerySinkTask extends SinkTask {
   private BigQueryWriter bigQueryWriter;
   private GCSToBQWriter gcsToBQWriter;
   private BigQuerySinkTaskConfig config;
-  private RecordConverter<Map<String, Object>> recordConverter;
+  private SinkRecordConverter recordConverter;
+
   private boolean useMessageTimeDatePartitioning;
   private boolean usePartitionDecorator;
   private boolean sanitize;
@@ -135,10 +134,8 @@ public class BigQuerySinkTask extends SinkTask {
 
   private void ensureExistingTable(TableId table) {
     BigQuery bigQuery = getBigQuery();
-
     if (bigQuery.getTable(table) == null) {
-      logger.warn(
-              "You may want to enable auto table creation by setting {}=true in the properties file",
+      logger.warn("You may want to enable auto table creation by setting {}=true in the properties file",
               config.TABLE_CREATE_CONFIG);
       throw new BigQueryConnectException("Table '" + table + "' does not exist");
     }
@@ -146,7 +143,6 @@ public class BigQuerySinkTask extends SinkTask {
 
 
   private PartitionedTableId getRecordTable(SinkRecord record) {
-
     String dataset = record.topic().split("=")[0];
     String tableName = record.topic().split("=")[1];
     if (sanitize){
@@ -174,29 +170,6 @@ public class BigQuerySinkTask extends SinkTask {
     return builder.build();
   }
 
-  private RowToInsert getRecordRow(SinkRecord record) {
-    Map<String, Object> convertedRecord = recordConverter.convertRecord(record, KafkaSchemaRecordType.VALUE);
-    Optional<String> kafkaKeyFieldName = config.getKafkaKeyFieldName();
-    if (kafkaKeyFieldName.isPresent()) {
-      convertedRecord.put(kafkaKeyFieldName.get(), recordConverter.convertRecord(record, KafkaSchemaRecordType.KEY));
-    }
-    Optional<String> kafkaDataFieldName = config.getKafkaDataFieldName();
-    if (kafkaDataFieldName.isPresent()) {
-      convertedRecord.put(kafkaDataFieldName.get(), KafkaDataBuilder.buildKafkaDataRecord(record));
-    }
-    if (config.getBoolean(config.SANITIZE_FIELD_NAME_CONFIG)) {
-      convertedRecord = FieldNameSanitizer.replaceInvalidKeys(convertedRecord);
-    }
-    return RowToInsert.of(getRowId(record), convertedRecord);
-  }
-
-  private String getRowId(SinkRecord record) {
-    return String.format("%s-%d-%d",
-        record.topic(),
-        record.kafkaPartition(),
-        record.kafkaOffset());
-  }
-
   @Override
   public void put(Collection<SinkRecord> records) {
     logger.info("Putting {} records in the sink.", records.size());
@@ -207,12 +180,6 @@ public class BigQuerySinkTask extends SinkTask {
     for (SinkRecord record : records) {
       if (record.value() != null) {
         PartitionedTableId table = getRecordTable(record);
-//        if (schemaRetriever != null) {
-//          schemaRetriever.setLastSeenSchema(table.getBaseTableId(),
-//                                            record.topic(),
-//                                            record.valueSchema());
-//        }
-
         if (!tableWriterBuilders.containsKey(table)) {
           TableWriterBuilder tableWriterBuilder;
           if (config.getList(config.ENABLE_BATCH_CONFIG).contains(record.topic())) {
@@ -227,7 +194,6 @@ public class BigQuerySinkTask extends SinkTask {
                 table.getBaseTableId(),
                 config.getString(config.GCS_BUCKET_NAME_CONFIG),
                 gcsBlobName,
-                topic,
                 recordConverter);
           } else {
             tableWriterBuilder =
@@ -235,7 +201,7 @@ public class BigQuerySinkTask extends SinkTask {
           }
           tableWriterBuilders.put(table, tableWriterBuilder);
         }
-        tableWriterBuilders.get(table).addRow(getRecordRow(record));
+        tableWriterBuilders.get(table).addRow(record);
       }
     }
 
@@ -255,10 +221,6 @@ public class BigQuerySinkTask extends SinkTask {
         topicPartitionManager.resumeAll();
       }
     }
-  }
-
-  private RecordConverter<Map<String, Object>> getConverter() {
-    return config.getRecordConverter();
   }
 
   private BigQuery getBigQuery() {
@@ -347,7 +309,7 @@ public class BigQuerySinkTask extends SinkTask {
 
     bigQueryWriter = getBigQueryWriter();
     gcsToBQWriter = getGcsWriter();
-    recordConverter = getConverter();
+    recordConverter = new SinkRecordConverter(config);
     executor = new KCBQThreadPoolExecutor(config, new LinkedBlockingQueue<>());
     topicPartitionManager = new TopicPartitionManager();
     useMessageTimeDatePartitioning =
