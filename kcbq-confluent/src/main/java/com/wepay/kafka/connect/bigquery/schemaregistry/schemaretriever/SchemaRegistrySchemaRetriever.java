@@ -64,10 +64,8 @@ public class SchemaRegistrySchemaRetriever implements SchemaRetriever {
   @Override
   public Schema retrieveSchema(TableId table, String topic, KafkaSchemaRecordType schemaType) {
     String subject = getSubject(topic, schemaType);
-
     try {
       logger.debug("Retrieving schema information for topic {} with subject {}", topic, subject);
-      System.out.println(schemaRegistryClient.getAllSubjects());
       SchemaMetadata latestSchemaMetadata = schemaRegistryClient.getLatestSchemaMetadata(subject);
       org.apache.avro.Schema avroSchema = new Parser().parse(latestSchemaMetadata.getSchema());
       return avroData.toConnectSchema(avroSchema);
@@ -84,7 +82,6 @@ public class SchemaRegistrySchemaRetriever implements SchemaRetriever {
   public void setLastSeenSchema(TableId table, String topic, Schema schema) { }
 
   private String getSubject(String topic, KafkaSchemaRecordType schemaType) {
-
     return topic + "-" + schemaType.toString();
   }
 }
