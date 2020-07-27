@@ -291,7 +291,6 @@ public class BigQuerySinkTaskTest {
     BigQuerySinkTask testTask = new BigQuerySinkTask(bigQuery, schemaRetriever, storage, schemaManager);
     testTask.initialize(sinkTaskContext);
     testTask.start(properties);
-
     testTask.put(Collections.singletonList(spoofSinkRecord(topic, "value", "message text",
         TimestampType.NO_TIMESTAMP_TYPE, null)));
   }
