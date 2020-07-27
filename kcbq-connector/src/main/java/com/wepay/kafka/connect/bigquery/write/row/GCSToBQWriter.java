@@ -35,14 +35,12 @@ import com.wepay.kafka.connect.bigquery.exception.GCSConnectException;
 
 import org.apache.kafka.connect.errors.ConnectException;
 
+import org.apache.kafka.connect.sink.SinkRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 
 /**
  * A class for batch writing list of rows to BigQuery through GCS.
@@ -101,11 +99,10 @@ public class GCSToBQWriter {
    * @throws InterruptedException if interrupted.
    */
   // writeRows -> needs to be changed
-  public void writeRows(List<RowToInsert> rows,
+  public void writeRows(SortedMap<SinkRecord, RowToInsert> rows,
                         TableId tableId,
                         String bucketName,
-                        String blobName,
-                        String topic) throws InterruptedException {
+                        String blobName) throws InterruptedException {
 
     // Get Source URI
     BlobId blobId = BlobId.of(bucketName, blobName);
@@ -117,7 +114,7 @@ public class GCSToBQWriter {
     // Check if the table specified exists
     // This error shouldn't be thrown. All tables should be created by the connector at startup
     if (autoCreateTables && bigQuery.getTable(tableId) == null) {
-      attemptTableCreate(tableId, topic);
+      attemptTableCreate(tableId, rows.keySet());
     }
 
     int attemptCount = 0;
@@ -160,9 +157,9 @@ public class GCSToBQWriter {
    * Creates a JSON string containing all records and uploads it as a blob to GCS.
    * @return The blob uploaded to GCS
    */
-  private Blob uploadRowsToGcs(List<RowToInsert> rows, BlobInfo blobInfo) {
+  private Blob uploadRowsToGcs(SortedMap<SinkRecord, RowToInsert> rows, BlobInfo blobInfo) {
     try {
-      Blob resultBlob = uploadBlobToGcs(toJson(rows).getBytes("UTF-8"), blobInfo);
+      Blob resultBlob = uploadBlobToGcs(toJson(rows.values()).getBytes("UTF-8"), blobInfo);
       return resultBlob;
     } catch (UnsupportedEncodingException uee) {
       throw new GCSConnectException("Failed to upload blob to GCS", uee);
@@ -179,7 +176,7 @@ public class GCSToBQWriter {
    * @return The resulting newline delimited JSON string containing all records in the original
    *         list
    */
-  private String toJson(List<RowToInsert> rows) {
+  private String toJson(Collection<RowToInsert> rows) {
     StringBuilder jsonRecordsBuilder = new StringBuilder("");
     for (RowToInsert row : rows) {
       Map<String, Object> record = row.getContent();
@@ -197,10 +194,10 @@ public class GCSToBQWriter {
     Thread.sleep(retryWaitMs + random.nextInt(WAIT_MAX_JITTER));
   }
 
-  private void attemptTableCreate(TableId tableId, String topic) {
+  private void attemptTableCreate(TableId tableId, Set<SinkRecord> records) {
     try {
-      schemaManager.createTable(tableId, topic);
-      logger.info("Table {} does not exist, auto-created table for topic {}", tableId, topic);
+      schemaManager.createTable(tableId, records);
+      logger.info("Table {} does not exist, auto-created table ", tableId);
     } catch (BigQueryException exception) {
       throw new BigQueryConnectException(
               "Failed to create table " + tableId, exception);

@@ -57,10 +57,8 @@ public class SinkPropertiesFactory {
     config.getTopicsToDatasets();
 
     config.getMap(config.DATASETS_CONFIG);
-    config.getMap(config.TOPICS_TO_TABLES_CONFIG);
 
     config.getList(config.TOPICS_CONFIG);
-    config.getList(config.TOPICS_TO_TABLES_CONFIG);
     config.getList(config.DATASETS_CONFIG);
 
     config.getKeyFile();

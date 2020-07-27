@@ -45,9 +45,9 @@ public class BucketClearer {
 
     String bucketName = args[2];
     Bucket bucket = gcs.get(bucketName);
-    if(bucket != null){
-      logger.info("Deleting objects in the Bucket {}",bucketName);
-      for(Blob blob: bucket.list().iterateAll()){
+    if (bucket != null) {
+      logger.info("Deleting objects in the Bucket {}", bucketName);
+      for (Blob blob: bucket.list().iterateAll()) {
         gcs.delete(blob.getBlobId());
       }
     }

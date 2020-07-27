@@ -143,13 +143,15 @@ public class BigQuerySinkTask extends SinkTask {
 
 
   private PartitionedTableId getRecordTable(SinkRecord record) {
+
+    // SMT RegexTransformation replaces the topic with <Dataset>=<TableName>
     String dataset = record.topic().split("=")[0];
     String tableName = record.topic().split("=")[1];
-    if (sanitize){
+    if (sanitize) {
       tableName = FieldNameSanitizer.sanitizeName(tableName);
     }
-    TableId baseTableId = TableId.of(dataset,tableName);
-    if(!config.getBoolean(config.TABLE_CREATE_CONFIG)){
+    TableId baseTableId = TableId.of(dataset, tableName);
+    if (!config.getBoolean(config.TABLE_CREATE_CONFIG)) {
       ensureExistingTable(baseTableId);
     }
 
@@ -197,7 +199,7 @@ public class BigQuerySinkTask extends SinkTask {
                 recordConverter);
           } else {
             tableWriterBuilder =
-                new TableWriter.Builder(bigQueryWriter, table, record.topic(), recordConverter);
+                new TableWriter.Builder(bigQueryWriter, table, recordConverter);
           }
           tableWriterBuilders.put(table, tableWriterBuilder);
         }
@@ -244,7 +246,9 @@ public class BigQuerySinkTask extends SinkTask {
     Optional<String> kafkaDataFieldName = config.getKafkaDataFieldName();
     Optional<String> timestampPartitionFieldName = config.getTimestampPartitionFieldName();
     Optional<List<String>> clusteringFieldName = config.getClusteringPartitionFieldName();
-    return new SchemaManager(schemaRetriever, schemaConverter, bigQuery, kafkaKeyFieldName,
+    boolean autoAddNewFields = config.getBoolean(config.ADD_NEW_BQ_FIELDS_CONFIG);
+    boolean changeReqToNullable = config.getBoolean(config.CHANGE_REQ_BQ_FIELDS_TO_NULLABLE_CONFIG);
+    return new SchemaManager(schemaRetriever, schemaConverter, bigQuery, autoAddNewFields, changeReqToNullable, kafkaKeyFieldName,
                              kafkaDataFieldName, timestampPartitionFieldName, clusteringFieldName);
   }
 
@@ -337,7 +341,7 @@ public class BigQuerySinkTask extends SinkTask {
         BucketInfo bucketInfo = BucketInfo.of(bucketName);
         bucket = gcs.create(bucketInfo);
       }
-      else throw new ConfigException("Bucket does not exist. Set "+ config.AUTO_CREATE_BUCKET_CONFIG + "to true");
+      else throw new ConfigException("Bucket does not exist. Set "+ config.AUTO_CREATE_BUCKET_CONFIG + " to true");
     }
     GCSToBQLoadRunnable loadRunnable = new GCSToBQLoadRunnable(getBigQuery(), bucket);
 

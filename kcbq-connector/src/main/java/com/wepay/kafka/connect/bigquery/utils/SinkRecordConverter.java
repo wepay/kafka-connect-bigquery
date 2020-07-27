@@ -2,7 +2,6 @@ package com.wepay.kafka.connect.bigquery.utils;
 
 import com.google.cloud.bigquery.InsertAllRequest;
 import com.wepay.kafka.connect.bigquery.api.KafkaSchemaRecordType;
-import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig;
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkTaskConfig;
 import com.wepay.kafka.connect.bigquery.convert.KafkaDataBuilder;
 import com.wepay.kafka.connect.bigquery.convert.RecordConverter;
@@ -16,8 +15,8 @@ import java.util.Optional;
  */
 
 public class SinkRecordConverter {
-    private final BigQuerySinkTaskConfig config;
-    private final RecordConverter<Map<String, Object>> recordConverter;
+    private BigQuerySinkTaskConfig config;
+    private RecordConverter<Map<String, Object>> recordConverter;
 
     public SinkRecordConverter(BigQuerySinkTaskConfig config) {
         this.config = config;

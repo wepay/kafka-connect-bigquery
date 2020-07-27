@@ -48,10 +48,7 @@ import java.io.InputStream;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 
 public class BigQueryConnectorIntegrationTest {
   public static final String TEST_PROPERTIES_FILENAME = "/test.properties";
@@ -176,8 +173,15 @@ public class BigQueryConnectorIntegrationTest {
     List<Object> result = new ArrayList<>();
     assert (rowSchema.size() == row.size());
 
+    for (int i=0; i < rowSchema.size(); i++) {
+      if (rowSchema.get(i).getName().equals("row")) {
+        result.add(convertField(rowSchema.get(i), row.get(i)));
+      }
+    }
     for (int i = 0; i < rowSchema.size(); i++) {
-      result.add(convertField(rowSchema.get(i), row.get(i)));
+      if (!rowSchema.get(i).getName().equals("row")) {
+        result.add(convertField(rowSchema.get(i), row.get(i)));
+      }
     }
 
     return result;
@@ -373,6 +377,8 @@ public class BigQueryConnectorIntegrationTest {
     for (List<Object> testRow : testRows) {
       int rowNumber = (int) (((Long) testRow.get(0)).longValue());
       List<Object> expectedRow = expectedRows.get(rowNumber - 1);
+      expectedRow.sort(Comparator.nullsLast(Comparator.comparing(Object::toString)));
+      testRow.sort(Comparator.nullsLast(Comparator.comparing(Object::toString)));
       assertEquals(
           "Row " + rowNumber + " (if these look identical, it's probably a type mismatch)",
           expectedRow,

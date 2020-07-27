@@ -223,12 +223,28 @@ public class BigQuerySinkConfig extends AbstractConfig {
   private static final String TABLE_CREATE_DOC =
           "Automatically create BigQuery tables if they don't already exist";
 
-  public static final String AUTO_CREATE_BUCKET_CONFIG = "AutoCreateBucket";
-  private static final ConfigDef.Type AUTO_CREATE_BUCKET_TYPE = ConfigDef.Type.BOOLEAN;
-  public static final Boolean AUTO_CREATE_BUCKET_DEFAULT = false;
+  public static final String AUTO_CREATE_BUCKET_CONFIG =                "autoCreateBucket";
+  private static final ConfigDef.Type AUTO_CREATE_BUCKET_TYPE =          ConfigDef.Type.BOOLEAN;
+  public static final Boolean AUTO_CREATE_BUCKET_DEFAULT =                true;
   private static final ConfigDef.Importance AUTO_CREATE_BUCKET_IMPORTANCE = ConfigDef.Importance.MEDIUM;
   private static final String AUTO_CREATE_BUCKET_DOC =
-          "Whether or not to automatically create a bucket";
+          "Whether to automatically create the given bucket, if it does not exist";
+
+  public static final String ADD_NEW_BQ_FIELDS_CONFIG =                 "addNewBigQueryFields";
+  private static final ConfigDef.Type ADD_NEW_BQ_FIELDS_TYPE =          ConfigDef.Type.BOOLEAN;
+  public static final Boolean ADD_NEW_BQ_FIELDS_DEFAULT =               false;
+  private static final ConfigDef.Importance ADD_NEW_BQ_FIELDS_IMPORTANCE = ConfigDef.Importance.MEDIUM;
+  private static final String ADD_NEW_BQ_FIELDS_DOC =
+          "If true, new fields can be added to BigQuery tables during subsequent schema updates"
+          + "and would be NULLABLE";
+
+  public static final String CHANGE_REQ_BQ_FIELDS_TO_NULLABLE_CONFIG =   "changeRequiredFieldsToNullable";
+  private static final ConfigDef.Type CHANGE_REQ_BQ_FIELDS_TO_NULLABLE_TYPE = ConfigDef.Type.BOOLEAN;
+  public static final Boolean CHANGE_REQ_BQ_FIELDS_TO_NULLABLE_DEFAULT =      false;
+  private static final ConfigDef.Importance CHANGE_REQ_BQ_FIELDS_TO_NULLABLE_IMPORTANCE = ConfigDef.Importance.MEDIUM;
+  private static final String CHANGE_REQ_BQ_FIELDS_TO_NULLABLE_DOC =
+          "If true, fields in BigQuery Schema can be changed from REQUIRED to NULLABLE";
+
   static {
     config = new ConfigDef()
         .define(
@@ -361,6 +377,18 @@ public class BigQuerySinkConfig extends AbstractConfig {
             AUTO_CREATE_BUCKET_DEFAULT,
             AUTO_CREATE_BUCKET_IMPORTANCE,
             AUTO_CREATE_BUCKET_DOC
+        ).define(
+            ADD_NEW_BQ_FIELDS_CONFIG,
+            ADD_NEW_BQ_FIELDS_TYPE,
+            ADD_NEW_BQ_FIELDS_DEFAULT,
+            ADD_NEW_BQ_FIELDS_IMPORTANCE,
+            ADD_NEW_BQ_FIELDS_DOC
+        ).define(
+            CHANGE_REQ_BQ_FIELDS_TO_NULLABLE_CONFIG,
+            CHANGE_REQ_BQ_FIELDS_TO_NULLABLE_TYPE,
+            CHANGE_REQ_BQ_FIELDS_TO_NULLABLE_DEFAULT,
+            CHANGE_REQ_BQ_FIELDS_TO_NULLABLE_IMPORTANCE,
+            CHANGE_REQ_BQ_FIELDS_TO_NULLABLE_DOC
         );
   }
     /**
