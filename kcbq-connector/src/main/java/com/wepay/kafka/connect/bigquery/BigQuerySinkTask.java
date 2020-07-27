@@ -141,7 +141,6 @@ public class BigQuerySinkTask extends SinkTask {
     }
   }
 
-
   private PartitionedTableId getRecordTable(SinkRecord record) {
 
     // SMT RegexTransformation replaces the topic with <Dataset>=<TableName>

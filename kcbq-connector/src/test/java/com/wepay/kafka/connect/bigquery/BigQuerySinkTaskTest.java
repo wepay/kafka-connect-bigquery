@@ -257,7 +257,6 @@ public class BigQuerySinkTaskTest {
     BigQuerySinkTask testTask = new BigQuerySinkTask(bigQuery, schemaRetriever, storage, schemaManager);
     testTask.initialize(sinkTaskContext);
     testTask.start(properties);
-
     testTask.put(Collections.singletonList(spoofSinkRecord(topic, "value", "message text",
         TimestampType.CREATE_TIME, 1509007584334L)));
     testTask.flush(Collections.emptyMap());
@@ -291,6 +290,7 @@ public class BigQuerySinkTaskTest {
     BigQuerySinkTask testTask = new BigQuerySinkTask(bigQuery, schemaRetriever, storage, schemaManager);
     testTask.initialize(sinkTaskContext);
     testTask.start(properties);
+
     testTask.put(Collections.singletonList(spoofSinkRecord(topic, "value", "message text",
         TimestampType.NO_TIMESTAMP_TYPE, null)));
   }

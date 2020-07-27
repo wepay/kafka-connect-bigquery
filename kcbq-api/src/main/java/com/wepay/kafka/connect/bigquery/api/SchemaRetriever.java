@@ -31,5 +31,4 @@ public interface SchemaRetriever {
    */
   Schema retrieveValueSchema(SinkRecord record);
 
-
 }

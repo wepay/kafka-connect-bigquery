@@ -35,7 +35,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
 
-
 /**
  * A simple BigQueryWriter implementation. Sends the request to BigQuery, and throws an exception if
  * any errors occur as a result.

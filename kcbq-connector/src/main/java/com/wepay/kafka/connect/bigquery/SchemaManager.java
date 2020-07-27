@@ -5,7 +5,6 @@ import com.google.cloud.bigquery.*;
 
 import com.google.cloud.bigquery.TimePartitioning.Type;
 import com.wepay.kafka.connect.bigquery.api.SchemaRetriever;
-
 import com.wepay.kafka.connect.bigquery.convert.KafkaDataBuilder;
 import com.wepay.kafka.connect.bigquery.convert.SchemaConverter;
 import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
@@ -32,7 +31,6 @@ public class SchemaManager {
   private final Optional<String> kafkaDataFieldName;
   private final Optional<String> timestampPartitionFieldName;
   private final Optional<List<String>> clusteringFieldName;
-
 
   /**
    * @param schemaRetriever Used to determine the Kafka Connect Schema that should be used for a
