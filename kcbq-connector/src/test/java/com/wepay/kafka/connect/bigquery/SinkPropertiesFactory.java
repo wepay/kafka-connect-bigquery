@@ -36,7 +36,7 @@ public class SinkPropertiesFactory {
     properties.put(BigQuerySinkConfig.TABLE_CREATE_CONFIG, "false");
     properties.put(BigQuerySinkConfig.TOPICS_CONFIG, "kcbq-test");
     properties.put(BigQuerySinkConfig.PROJECT_CONFIG, "test-project");
-    properties.put(BigQuerySinkConfig.DEFAULT_DATASET_CONFIG, "kcbq-test-table");
+    properties.put(BigQuerySinkConfig.DEFAULT_DATASET_CONFIG, "kcbq-test");
 
     properties.put(BigQuerySinkConfig.KEYFILE_CONFIG, "key.json");
 
