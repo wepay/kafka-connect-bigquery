@@ -45,7 +45,7 @@ public class TableClearer {
     BigQuery bigQuery = new BigQueryHelper().setKeySource(keySource).connect(args[1], args[0]);
     Page<Table> tables = bigQuery.listTables(args[2]);
     logger.info("Deleting the tables in {} dataset", args[2]);
-    for (Table table: tables.iterateAll()) {
+    for (Table table : tables.iterateAll()) {
       table.delete();
     }
   }

@@ -18,7 +18,6 @@ package com.wepay.kafka.connect.bigquery.write.batch;
  */
 
 
-import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 import org.apache.kafka.connect.sink.SinkRecord;
 
 /**

@@ -47,8 +47,6 @@ public class SchemaManagerTest {
   private String testDatasetName = "testDataset";
   private String testDoc = "test doc";
   private TableId tableId = TableId.of(testDatasetName, testTableName);
-  private boolean autoAddNewFields = false;
-  private boolean changeReqToNullable = false;
 
   private SchemaRetriever mockSchemaRetriever;
   private SchemaConverter<com.google.cloud.bigquery.Schema> mockSchemaConverter;
@@ -72,7 +70,7 @@ public class SchemaManagerTest {
     Optional<String> kafkaKeyFieldName = Optional.of("kafkaKey");
     Optional<String> kafkaDataFieldName = Optional.of("kafkaData");
     SchemaManager schemaManager = new SchemaManager(mockSchemaRetriever, mockSchemaConverter,
-        mockBigQuery, autoAddNewFields, changeReqToNullable, kafkaKeyFieldName, kafkaDataFieldName, Optional.empty(), Optional.empty());
+        mockBigQuery, false, false, kafkaKeyFieldName, kafkaDataFieldName, Optional.empty(), Optional.empty());
 
     when(mockSchemaConverter.convertSchema(mockKafkaSchema)).thenReturn(fakeBigQuerySchema);
     when(mockKafkaSchema.doc()).thenReturn(testDoc);
@@ -90,7 +88,7 @@ public class SchemaManagerTest {
   public void testTimestampPartitionSet() {
     Optional<String> testField = Optional.of("testField");
     SchemaManager schemaManager = new SchemaManager(mockSchemaRetriever, mockSchemaConverter,
-        mockBigQuery, autoAddNewFields, changeReqToNullable, Optional.empty(), Optional.empty(), testField, Optional.empty());
+        mockBigQuery, false, false, Optional.empty(), Optional.empty(), testField, Optional.empty());
 
     when(mockSchemaConverter.convertSchema(mockKafkaSchema)).thenReturn(fakeBigQuerySchema);
     when(mockKafkaSchema.doc()).thenReturn(testDoc);
@@ -110,7 +108,7 @@ public class SchemaManagerTest {
     Optional<String> timestampPartitionFieldName = Optional.of("testField");
     Optional<List<String>> testField = Optional.of(Arrays.asList("column1", "column2"));
     SchemaManager schemaManager = new SchemaManager(mockSchemaRetriever, mockSchemaConverter,
-        mockBigQuery, autoAddNewFields, changeReqToNullable, Optional.empty(), Optional.empty(), timestampPartitionFieldName, testField);
+        mockBigQuery, false, false, Optional.empty(), Optional.empty(), timestampPartitionFieldName, testField);
 
     when(mockSchemaConverter.convertSchema(mockKafkaSchema)).thenReturn(fakeBigQuerySchema);
     when(mockKafkaSchema.doc()).thenReturn(testDoc);

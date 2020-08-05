@@ -48,7 +48,12 @@ import java.io.InputStream;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Properties;
+
 
 public class BigQueryConnectorIntegrationTest {
   public static final String TEST_PROPERTIES_FILENAME = "/test.properties";
@@ -173,7 +178,7 @@ public class BigQueryConnectorIntegrationTest {
     List<Object> result = new ArrayList<>();
     assert (rowSchema.size() == row.size());
 
-    for (int i=0; i < rowSchema.size(); i++) {
+    for (int i = 0; i < rowSchema.size(); i++) {
       if (rowSchema.get(i).getName().equals("row")) {
         result.add(convertField(rowSchema.get(i), row.get(i)));
       }

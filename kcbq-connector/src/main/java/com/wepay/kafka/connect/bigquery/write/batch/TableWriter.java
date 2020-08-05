@@ -30,7 +30,13 @@ import org.apache.kafka.connect.sink.SinkRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
+
 
 /**
  * Simple Table Writer that attempts to write all the rows it is given at once.
@@ -69,7 +75,7 @@ public class TableWriter implements Runnable {
     List<Map.Entry<SinkRecord, RowToInsert>> rowsList = new ArrayList<>(rows.entrySet());
     try {
       while (currentIndex < rows.size()) {
-        List<Map.Entry<SinkRecord,RowToInsert>> currentBatchList =
+        List<Map.Entry<SinkRecord, RowToInsert>> currentBatchList =
                 rowsList.subList(currentIndex, Math.min(currentIndex + currentBatchSize, rows.size()));
         try {
           SortedMap<SinkRecord, RowToInsert> currentBatch = new TreeMap<>(rows.comparator());

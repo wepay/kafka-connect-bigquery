@@ -40,7 +40,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+import java.util.SortedMap;
+
 
 /**
  * A class for batch writing list of rows to BigQuery through GCS.
@@ -98,7 +104,6 @@ public class GCSToBQWriter {
    * @param blobName the name of the GCS blob to write.
    * @throws InterruptedException if interrupted.
    */
-  // writeRows -> needs to be changed
   public void writeRows(SortedMap<SinkRecord, RowToInsert> rows,
                         TableId tableId,
                         String bucketName,
@@ -196,8 +201,8 @@ public class GCSToBQWriter {
 
   private void attemptTableCreate(TableId tableId, Set<SinkRecord> records) {
     try {
+      logger.info("Table {} does not exist, auto-creating table ", tableId);
       schemaManager.createTable(tableId, records);
-      logger.info("Table {} does not exist, auto-created table ", tableId);
     } catch (BigQueryException exception) {
       throw new BigQueryConnectException(
               "Failed to create table " + tableId, exception);

@@ -22,8 +22,6 @@ import com.google.cloud.bigquery.BigQuery;
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig;
 import com.wepay.kafka.connect.bigquery.exception.SinkConfigConnectException;
 
-
-
 import com.wepay.kafka.connect.bigquery.utils.Version;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -39,7 +37,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 
 /**
  * A {@link SinkConnector} used to delegate BigQuery data writes to
@@ -79,7 +76,6 @@ public class BigQuerySinkConnector extends SinkConnector {
     return config.getConfig();
   }
 
-
   @Override
   public void start(Map<String, String> properties) {
     logger.trace("connector.start()");
@@ -92,7 +88,6 @@ public class BigQuerySinkConnector extends SinkConnector {
           err
       );
     }
-
   }
 
   @Override

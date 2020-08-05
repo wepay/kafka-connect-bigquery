@@ -31,7 +31,10 @@ import org.apache.kafka.connect.sink.SinkRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.Comparator;
+import java.util.SortedMap;
+import java.util.TreeMap;
+
 
 /**
  * Batch Table Writer that uploads records to GCS as a blob

@@ -54,7 +54,6 @@ import java.util.Optional;
  */
 public class BigQuerySinkConfig extends AbstractConfig {
   private static final ConfigDef config;
-  private static final Validator validator = new Validator();
   private static final Logger logger = LoggerFactory.getLogger(BigQuerySinkConfig.class);
 
   // Values taken from https://github.com/apache/kafka/blob/1.1.1/connect/runtime/src/main/java/org/apache/kafka/connect/runtime/SinkConnectorConfig.java#L33
@@ -119,14 +118,11 @@ public class BigQuerySinkConfig extends AbstractConfig {
   private static final String PROJECT_DOC =
       "The BigQuery project to write to";
 
-  public static final String DATASETS_CONFIG =                     "datasets";
-  private static final ConfigDef.Type DATASETS_TYPE =              ConfigDef.Type.LIST;
-  private static final Object DATASETS_DEFAULT =                   ConfigDef.NO_DEFAULT_VALUE;
-  private static final ConfigDef.Validator DATASETS_VALIDATOR =    validator;
-  private static final ConfigDef.Importance DATASETS_IMPORTANCE =  ConfigDef.Importance.HIGH;
-  private static final String DATASETS_DOC =
-      "Names for the datasets kafka topics will write to "
-      + "(form of <topic regex>=<dataset>)";
+  public static final String DEFAULT_DATASET_CONFIG =             "defaultDataset";
+  private static final ConfigDef.Type DEFAULT_DATASET_TYPE =       ConfigDef.Type.STRING;
+  private static final Object DEFAULT_DATASET_DEFAULT =             ConfigDef.NO_DEFAULT_VALUE;
+  private static final ConfigDef.Importance DEFAULT_DATASET_IMPORTANCE = ConfigDef.Importance.HIGH;
+  private static final String DEFAULT_DATASET_DOC =                  "The default dataset to be used";
 
   public static final String SCHEMA_RETRIEVER_CONFIG =         "schemaRetriever";
   private static final ConfigDef.Type SCHEMA_RETRIEVER_TYPE =  ConfigDef.Type.CLASS;
@@ -228,21 +224,21 @@ public class BigQuerySinkConfig extends AbstractConfig {
   public static final Boolean AUTO_CREATE_BUCKET_DEFAULT =                true;
   private static final ConfigDef.Importance AUTO_CREATE_BUCKET_IMPORTANCE = ConfigDef.Importance.MEDIUM;
   private static final String AUTO_CREATE_BUCKET_DOC =
-          "Whether to automatically create the given bucket, if it does not exist";
+          "Whether to automatically create the given bucket, if it does not exist. " +
+                  "Only relevant if enableBatchLoad is configured.";
 
-  public static final String ADD_NEW_BQ_FIELDS_CONFIG =                 "addNewBigQueryFields";
-  private static final ConfigDef.Type ADD_NEW_BQ_FIELDS_TYPE =          ConfigDef.Type.BOOLEAN;
-  public static final Boolean ADD_NEW_BQ_FIELDS_DEFAULT =               false;
-  private static final ConfigDef.Importance ADD_NEW_BQ_FIELDS_IMPORTANCE = ConfigDef.Importance.MEDIUM;
-  private static final String ADD_NEW_BQ_FIELDS_DOC =
-          "If true, new fields can be added to BigQuery tables during subsequent schema updates"
-          + "and would be NULLABLE";
+  public static final String ALLOW_NEW_BIGQUERY_FIELDS_CONFIG =                 "allowNewBigQueryFields";
+  private static final ConfigDef.Type ALLOW_NEW_BIGQUERY_FIELDS_TYPE =          ConfigDef.Type.BOOLEAN;
+  public static final Boolean ALLOW_NEW_BIGQUERY_FIELDS_DEFAULT =               false;
+  private static final ConfigDef.Importance ALLOW_NEW_BIGQUERY_FIELDS_IMPORTANCE = ConfigDef.Importance.MEDIUM;
+  private static final String ALLOW_NEW_BIGQUERY_FIELDS_DOC =
+          "If true, new fields can be added to BigQuery tables during subsequent schema updates";
 
-  public static final String CHANGE_REQ_BQ_FIELDS_TO_NULLABLE_CONFIG =   "changeRequiredFieldsToNullable";
-  private static final ConfigDef.Type CHANGE_REQ_BQ_FIELDS_TO_NULLABLE_TYPE = ConfigDef.Type.BOOLEAN;
-  public static final Boolean CHANGE_REQ_BQ_FIELDS_TO_NULLABLE_DEFAULT =      false;
-  private static final ConfigDef.Importance CHANGE_REQ_BQ_FIELDS_TO_NULLABLE_IMPORTANCE = ConfigDef.Importance.MEDIUM;
-  private static final String CHANGE_REQ_BQ_FIELDS_TO_NULLABLE_DOC =
+  public static final String ALLOW_BIGQUERY_REQUIRED_FIELD_RELAXATION_CONFIG =   "allowBigQueryRequiredFieldRelaxation";
+  private static final ConfigDef.Type ALLOW_BIGQUERY_REQUIRED_FIELD_RELAXATION_TYPE = ConfigDef.Type.BOOLEAN;
+  public static final Boolean ALLOW_BIGQUERY_REQUIRED_FIELD_RELAXATION_DEFAULT =      false;
+  private static final ConfigDef.Importance ALLOW_BIGQUERY_REQUIRED_FIELD_RELAXATION_IMPORTANCE = ConfigDef.Importance.MEDIUM;
+  private static final String ALLOW_BIGQUERY_REQUIRED_FIELD_RELAXATION_DOC =
           "If true, fields in BigQuery Schema can be changed from REQUIRED to NULLABLE";
 
   static {
@@ -297,12 +293,11 @@ public class BigQuerySinkConfig extends AbstractConfig {
             PROJECT_IMPORTANCE,
             PROJECT_DOC
         ).define(
-            DATASETS_CONFIG,
-            DATASETS_TYPE,
-            DATASETS_DEFAULT,
-            DATASETS_VALIDATOR,
-            DATASETS_IMPORTANCE,
-            DATASETS_DOC
+            DEFAULT_DATASET_CONFIG,
+            DEFAULT_DATASET_TYPE,
+            DEFAULT_DATASET_DEFAULT,
+            DEFAULT_DATASET_IMPORTANCE,
+            DEFAULT_DATASET_DOC
         ).define(
             SCHEMA_RETRIEVER_CONFIG,
             SCHEMA_RETRIEVER_TYPE,
@@ -378,17 +373,17 @@ public class BigQuerySinkConfig extends AbstractConfig {
             AUTO_CREATE_BUCKET_IMPORTANCE,
             AUTO_CREATE_BUCKET_DOC
         ).define(
-            ADD_NEW_BQ_FIELDS_CONFIG,
-            ADD_NEW_BQ_FIELDS_TYPE,
-            ADD_NEW_BQ_FIELDS_DEFAULT,
-            ADD_NEW_BQ_FIELDS_IMPORTANCE,
-            ADD_NEW_BQ_FIELDS_DOC
+            ALLOW_NEW_BIGQUERY_FIELDS_CONFIG,
+            ALLOW_NEW_BIGQUERY_FIELDS_TYPE,
+            ALLOW_NEW_BIGQUERY_FIELDS_DEFAULT,
+            ALLOW_NEW_BIGQUERY_FIELDS_IMPORTANCE,
+            ALLOW_NEW_BIGQUERY_FIELDS_DOC
         ).define(
-            CHANGE_REQ_BQ_FIELDS_TO_NULLABLE_CONFIG,
-            CHANGE_REQ_BQ_FIELDS_TO_NULLABLE_TYPE,
-            CHANGE_REQ_BQ_FIELDS_TO_NULLABLE_DEFAULT,
-            CHANGE_REQ_BQ_FIELDS_TO_NULLABLE_IMPORTANCE,
-            CHANGE_REQ_BQ_FIELDS_TO_NULLABLE_DOC
+            ALLOW_BIGQUERY_REQUIRED_FIELD_RELAXATION_CONFIG,
+            ALLOW_BIGQUERY_REQUIRED_FIELD_RELAXATION_TYPE,
+            ALLOW_BIGQUERY_REQUIRED_FIELD_RELAXATION_DEFAULT,
+            ALLOW_BIGQUERY_REQUIRED_FIELD_RELAXATION_IMPORTANCE,
+            ALLOW_BIGQUERY_REQUIRED_FIELD_RELAXATION_DOC
         );
   }
     /**
@@ -420,181 +415,11 @@ public class BigQuerySinkConfig extends AbstractConfig {
         return topicsRegexStr != null && !topicsRegexStr.trim().isEmpty();
     }
 
-  @SuppressWarnings("unchecked")
-  public static class Validator implements ConfigDef.Validator {
-    @Override
-    public void ensureValid(String name, Object value) {
-      switch (name) {
-        case DATASETS_CONFIG:
-          ensureValidMap(name, (List<String>) value);
-          break;
-        default:
-          break;
-      }
-    }
-
-    protected static void ensureValidMap(String name, List<String> values) {
-      if (values == null) {
-        return;
-      }
-      values.forEach((entry) -> parseMapping(entry, name));
-    }
-
-    /**
-    * Ensures the mapping given is valid, then returns an entry containing its key and value.
-    * Checks to make sure that the given String adheres to the specified format, and throws
-    * an exception if it does not. Trims leading and trailing whitespace, and then checks to make
-    * sure that both Strings are still non-empty.
-    *
-    * @param mapping The mapping to parse (should be of the form &lt;key&gt;=&lt;value&gt;)
-    * @param name The name of the field. Used in error messages.
-    * @return A Map.Entry containing the parsed key/value pair.
-    */
-    protected static Map.Entry<String, String> parseMapping(String mapping, String name) {
-      String[] keyValue = mapping.split("=");
-      if (keyValue.length != 2) {
-        throw new ConfigException(
-            "Invalid mapping for " + name
-            + " property: '" + mapping
-            + "' (must follow format '<key>=<value>')"
-        );
-      }
-
-      String key = keyValue[0].trim();
-      if (key.isEmpty()) {
-        throw new ConfigException(
-            "Empty key found in mapping '" + mapping
-            + "' for " + name + " property"
-        );
-      }
-
-      String value = keyValue[1].trim();
-      if (value.isEmpty()) {
-        throw new ConfigException(
-            "Empty value found in mapping '" + mapping
-            + "' for " + name + " property"
-        );
-      }
-
-      return new AbstractMap.SimpleEntry<>(key, value);
-    }
-  }
-
   /**
    * Returns the keyfile
    */
   public String getKeyFile() {
     return Optional.ofNullable(getPassword(KEYFILE_CONFIG)).map(Password::value).orElse(null);
-  }
-
-  /**
-   * Parses a config map, which must be provided as a list of Strings of the form
-   * '&lt;key&gt;=&lt;value&gt;' into a Map. Locates that list, splits its key and value pairs, and
-   * returns they Map they represent.
-   *
-   * @param name The name of the property the mapping is given for. Used in exception messages.
-   * @return A Map containing the given key and value pairs.
-   */
-  public Map<String, String> getMap(String name) {
-    List<String> assocList = getList(name);
-    Map<String, String> configMap = new HashMap<>();
-    if (assocList != null) {
-      for (String mapping : assocList) {
-        Map.Entry<String, String> entry = validator.parseMapping(mapping, name);
-        configMap.put(entry.getKey(), entry.getValue());
-      }
-    }
-    return configMap;
-  }
-
-  /**
-   * Given a config property that contains a list of [regex]=[string] mappings, returns a map from
-   * the regex patterns to the strings.
-   *
-   * @param property The config name containing regex pattern key/value pairs.
-   * @return A map of regex patterns to strings.
-   */
-  public List<Map.Entry<Pattern, String>> getSinglePatterns(String property) {
-    List<String> propList = getList(property);
-    List<Map.Entry<Pattern, String>> patternList = new ArrayList<>();
-    if (propList != null) {
-      for (String propValue : propList) {
-        Map.Entry<String, String> mapping = validator.parseMapping(propValue, property);
-        Pattern propPattern = Pattern.compile(mapping.getKey());
-        Map.Entry<Pattern, String> patternEntry =
-            new AbstractMap.SimpleEntry<>(propPattern, mapping.getValue());
-        patternList.add(patternEntry);
-      }
-    }
-    return patternList;
-  }
-
-  private Map<String, String> getSingleMatches(
-      List<Map.Entry<Pattern, String>> patterns,
-      List<String> values,
-      String valueProperty,
-      String patternProperty) {
-    Map<String, String> matches = new HashMap<>();
-    for (String value : values) {
-      String match = null;
-      for (Map.Entry<Pattern, String> pattern : patterns) {
-        Matcher patternMatcher = pattern.getKey().matcher(value);
-        if (patternMatcher.matches()) {
-          if (match != null) {
-            String secondMatch = pattern.getValue();
-            throw new ConfigException(
-                "Value '" + value
-                + "' for property '" + valueProperty
-                + "' matches " + patternProperty
-                + " regexes for both '" + match
-                + "' and '" + secondMatch + "'"
-            );
-          }
-          match = pattern.getValue();
-        }
-      }
-      if (match == null) {
-        throw new ConfigException(
-            "Value '" + value
-            + "' for property '" + valueProperty
-            + "' failed to match any of the provided " + patternProperty
-            + " regexes"
-        );
-      }
-      matches.put(value, match);
-    }
-    return matches;
-  }
-
-  /**
-   * Return a String detailing which BigQuery dataset topic should write to.
-   *
-   * @param topicName The name of the topic for which dataset needs to be fetched.
-   * @return A String associating Kafka topic name to BigQuery dataset.
-   */
-  public String getTopicToDataset(String topicName) {
-    // Do not check for missing key in map as default empty map shall be returned.
-    return getSingleMatches(
-        getSinglePatterns(DATASETS_CONFIG),
-        Collections.singletonList(topicName),
-        TOPICS_CONFIG,
-        DATASETS_CONFIG
-    ).get(topicName);
-  }
-
-
-  /**
-   * Return a Map detailing which BigQuery dataset each topic should write to.
-   *
-   * @return A Map associating Kafka topic names to BigQuery dataset.
-   */
-  public Map<String, String> getTopicsToDatasets() {
-    return getSingleMatches(
-        getSinglePatterns(DATASETS_CONFIG),
-        getList(TOPICS_CONFIG),
-        TOPICS_CONFIG,
-        DATASETS_CONFIG
-    );
   }
 
   /**
@@ -717,6 +542,16 @@ public class BigQuerySinkConfig extends AbstractConfig {
     }
   }
 
+  private void checkBigQuerySchemaUpdateConfigs() {
+    boolean allBQFieldsNullable = getBoolean(ALL_BQ_FIELDS_NULLABLE_CONFIG);
+    boolean allowBQRequiredFieldRelaxation = getBoolean(ALLOW_BIGQUERY_REQUIRED_FIELD_RELAXATION_CONFIG);
+    if (allBQFieldsNullable && !allowBQRequiredFieldRelaxation) {
+      throw new ConfigException(
+        "Conflicting Configs, allBQFieldsNullable can be true only if allowBigQueryFieldRelaxation is true"
+      );
+    }
+  }
+
   /**
    * Return the ConfigDef object used to define this config's fields.
    *
@@ -735,6 +570,7 @@ public class BigQuerySinkConfig extends AbstractConfig {
     super(config, properties);
     verifyBucketSpecified();
     checkAutoCreateTables();
+    checkBigQuerySchemaUpdateConfigs();
   }
 
 }

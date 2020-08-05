@@ -34,7 +34,12 @@ import org.apache.kafka.connect.sink.SinkRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.SortedMap;
+
 
 /**
  * A {@link BigQueryWriter} capable of updating BigQuery table schemas and creating non-existed tables automatically.
@@ -49,7 +54,6 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
 
   private final BigQuery bigQuery;
   private final SchemaManager schemaManager;
-  private final boolean autoUpdateSchemas;
   private final boolean autoCreateTables;
 
   /**
@@ -62,12 +66,10 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
                                 SchemaManager schemaManager,
                                 int retry,
                                 long retryWait,
-                                boolean autoUpdateSchemas,
                                 boolean autoCreateTables) {
     super(retry, retryWait);
     this.bigQuery = bigQuery;
     this.schemaManager = schemaManager;
-    this.autoUpdateSchemas = autoUpdateSchemas;
     this.autoCreateTables = autoCreateTables;
   }
 
@@ -101,14 +103,14 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
       writeResponse = bigQuery.insertAll(request);
       // Should only perform one schema update attempt.
       if (writeResponse.hasErrors()
-              && onlyContainsInvalidSchemaErrors(writeResponse.getInsertErrors()) && autoUpdateSchemas) {
+              && onlyContainsInvalidSchemaErrors(writeResponse.getInsertErrors())) {
         attemptSchemaUpdate(tableId, rows.keySet());
       }
     } catch (BigQueryException exception) {
       // Should only perform one table creation attempt.
       if (isTableNotExistedException(exception) && autoCreateTables && bigQuery.getTable(tableId.getBaseTableId()) == null) {
         attemptTableCreate(tableId.getBaseTableId(), rows.keySet());
-      } else if (isTableMissingSchema(exception) && autoUpdateSchemas) {
+      } else if (isTableMissingSchema(exception)) {
         attemptSchemaUpdate(tableId, rows.keySet());
       } else {
         throw exception;
@@ -159,8 +161,8 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
 
   private void attemptTableCreate(TableId tableId, Set<SinkRecord> records) {
     try {
+      logger.info("Table {} does not exist, auto-creating table", tableId);
       schemaManager.createTable(tableId, records);
-      logger.info("Table {} does not exist, auto-created table", tableId);
     } catch (BigQueryException exception) {
       throw new BigQueryConnectException(
               "Failed to create table " + tableId, exception);

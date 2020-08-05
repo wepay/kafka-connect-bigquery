@@ -23,7 +23,7 @@ import com.google.cloud.bigquery.BigQueryError;
 import com.google.cloud.bigquery.InsertAllRequest;
 import com.google.cloud.bigquery.InsertAllResponse;
 
-import com.wepay.kafka.connect.bigquery.config.BigQuerySinkTaskConfig;
+import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig;
 import com.wepay.kafka.connect.bigquery.utils.PartitionedTableId;
 
 import org.apache.kafka.connect.sink.SinkRecord;
@@ -66,9 +66,9 @@ public class SimpleBigQueryWriter extends BigQueryWriter {
     InsertAllResponse writeResponse = bigQuery.insertAll(request);
     if (writeResponse.hasErrors()) {
       logger.warn(
-          "You may want to enable auto schema updates by specifying "
-          + "{}=true in the properties file",
-          BigQuerySinkTaskConfig.SCHEMA_UPDATE_CONFIG
+          "You may want to enable schema updates by specifying "
+          + "{}=true or {}=true in the properties file",
+          BigQuerySinkConfig.ALLOW_NEW_BIGQUERY_FIELDS_CONFIG, BigQuerySinkConfig.ALLOW_BIGQUERY_REQUIRED_FIELD_RELAXATION_CONFIG
       );
       return writeResponse.getInsertErrors();
     } else {
