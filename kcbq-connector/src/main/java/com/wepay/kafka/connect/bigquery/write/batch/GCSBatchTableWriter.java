@@ -35,7 +35,6 @@ import java.util.Comparator;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-
 /**
  * Batch Table Writer that uploads records to GCS as a blob
  * and then triggers a load job from that GCS file to BigQuery.

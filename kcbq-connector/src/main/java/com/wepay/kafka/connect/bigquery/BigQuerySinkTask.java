@@ -136,9 +136,9 @@ public class BigQuerySinkTask extends SinkTask {
   private void maybeEnsureExistingTable(TableId table) {
     BigQuery bigQuery = getBigQuery();
     if (bigQuery.getTable(table) == null && !config.getBoolean(config.TABLE_CREATE_CONFIG)) {
-      logger.warn("You may want to enable auto table creation by setting {}=true in the properties file",
-              config.TABLE_CREATE_CONFIG);
-      throw new BigQueryConnectException("Table '" + table + "' does not exist");
+      throw new BigQueryConnectException("Table '" + table + "' does not exist. " +
+              "You may want to enable auto table creation by setting " + config.TABLE_CREATE_CONFIG
+              + "=true in the properties file");
     }
   }
 
@@ -154,7 +154,7 @@ public class BigQuerySinkTask extends SinkTask {
       tableName = smtReplacement[0];
     } else {
       throw new ConfigException("Incorrect regex replacement format. " +
-              "SMT replacement should either follow <dataset>:<tableName> format or replace by <tableName> only.");
+              "SMT replacement should either produce the <dataset>:<tableName> format or just the <tableName> format.");
     }
 
     if (sanitize) {

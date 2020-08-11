@@ -37,7 +37,6 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-
 /**
  * Simple Table Writer that attempts to write all the rows it is given at once.
  */

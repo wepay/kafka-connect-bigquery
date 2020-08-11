@@ -47,7 +47,6 @@ import java.util.Random;
 import java.util.Set;
 import java.util.SortedMap;
 
-
 /**
  * A class for batch writing list of rows to BigQuery through GCS.
  */

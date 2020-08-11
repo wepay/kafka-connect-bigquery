@@ -37,7 +37,6 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-
 /**
  * A class for writing lists of rows to a BigQuery table.
  */

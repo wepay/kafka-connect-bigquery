@@ -31,7 +31,6 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-
 /**
  * Class for managing Schemas of BigQuery tables (creating and updating).
  */

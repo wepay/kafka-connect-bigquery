@@ -54,7 +54,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Properties;
 
-
 public class BigQueryConnectorIntegrationTest {
   public static final String TEST_PROPERTIES_FILENAME = "/test.properties";
   public static final String KEYFILE_PROPERTY = "keyfile";
