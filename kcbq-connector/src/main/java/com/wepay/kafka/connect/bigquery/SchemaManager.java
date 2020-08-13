@@ -102,6 +102,12 @@ public class SchemaManager {
     bigQuery.update(tableInfo);
   }
 
+  /**
+   * Returns the {@link TableInfo} instance of a bigQuery Table
+   * @param table The BigQuery table to return the table info
+   * @param records The sink records used to determine the schema for constructing the table info
+   * @return The resulting BigQuery table information
+   */
   private TableInfo getTableInfo(TableId table, Set<SinkRecord> records) {
     List<com.google.cloud.bigquery.Schema> bigQuerySchemas = getSchemasList(table, records);
     com.google.cloud.bigquery.Schema schema;
@@ -116,6 +122,12 @@ public class SchemaManager {
     return tableInfo;
   }
 
+  /**
+   * Returns a list of BigQuery schemas of the specified table and the sink records
+   * @param table The BigQuery table's schema to add to the list of schemas
+   * @param records The sink records' schemas to add to the list of schemas
+   * @return List of BigQuery schemas
+   */
   private List<com.google.cloud.bigquery.Schema> getSchemasList(TableId table, Set<SinkRecord> records) {
     List<com.google.cloud.bigquery.Schema> bigQuerySchemas = new ArrayList<>();
     if (bigQuery.getTable(table) != null) {
@@ -131,6 +143,11 @@ public class SchemaManager {
     return bigQuerySchemas;
   }
 
+  /**
+   * Returns a unionized schema from a list of BigQuery schemas
+   * @param schemas The list of BigQuery schemas to unionize
+   * @return The resulting unionized BigQuery schema
+   */
   private com.google.cloud.bigquery.Schema getUnionizedSchema(List<com.google.cloud.bigquery.Schema> schemas) {
     com.google.cloud.bigquery.Schema currentSchema = schemas.get(0);
     for (int i = 1; i < schemas.size(); i++) {
@@ -139,29 +156,35 @@ public class SchemaManager {
     return currentSchema;
   }
 
-  private com.google.cloud.bigquery.Schema unionizeSchemas(com.google.cloud.bigquery.Schema currentSchema, com.google.cloud.bigquery.Schema newSchema) {
-    Map<String, Field> currentFields = currentSchema
+  /**
+   * Returns a single unionized BigQuery schema from two BigQuery schemas.
+   * @param firstSchema The first BigQuery schema to unionize
+   * @param secondSchema The second BigQuery schema to unionize
+   * @return The resulting unionized BigQuery schema
+   */
+  private com.google.cloud.bigquery.Schema unionizeSchemas(com.google.cloud.bigquery.Schema firstSchema, com.google.cloud.bigquery.Schema secondSchema) {
+    Map<String, Field> firstSchemaFields = firstSchema
             .getFields()
             .stream()
             .collect(Collectors.toMap(Field::getName, Function.identity()));
-    Map<String, Field> newFields = newSchema
+    Map<String, Field> secondSchemaFields = secondSchema
             .getFields()
             .stream()
             .collect(Collectors.toMap(Field::getName, Function.identity()));
-    for (Map.Entry<String, Field> entry : newFields.entrySet()) {
-      if (!currentFields.containsKey(entry.getKey())) {
+    for (Map.Entry<String, Field> entry : secondSchemaFields.entrySet()) {
+      if (!firstSchemaFields.containsKey(entry.getKey())) {
         if (allowNewBQFields && (entry.getValue().getMode().equals(Field.Mode.NULLABLE)
                 || (entry.getValue().getMode().equals(Field.Mode.REQUIRED) && allowBQRequiredFieldRelaxation))) {
-          currentFields.put(entry.getKey(), entry.getValue().toBuilder().setMode(Field.Mode.NULLABLE).build());
+          firstSchemaFields.put(entry.getKey(), entry.getValue().toBuilder().setMode(Field.Mode.NULLABLE).build());
         } else {
           throw new BigQueryConnectException("New Field found with the name " + entry.getKey()
                   + " Ensure that " + BigQuerySinkConfig.ALLOW_NEW_BIGQUERY_FIELDS_CONFIG + " is true and " + BigQuerySinkConfig.ALLOW_BIGQUERY_REQUIRED_FIELD_RELAXATION_CONFIG +
                   " is true if " + entry.getKey() + " has mode REQUIRED in order to update the Schema");
         }
       } else {
-        if (currentFields.get(entry.getKey()).getMode().equals(Field.Mode.REQUIRED) && newFields.get(entry.getKey()).getMode().equals(Field.Mode.NULLABLE)) {
+        if (firstSchemaFields.get(entry.getKey()).getMode().equals(Field.Mode.REQUIRED) && secondSchemaFields.get(entry.getKey()).getMode().equals(Field.Mode.NULLABLE)) {
           if (allowBQRequiredFieldRelaxation) {
-            currentFields.put(entry.getKey(), entry.getValue().toBuilder().setMode(Field.Mode.NULLABLE).build());
+            firstSchemaFields.put(entry.getKey(), entry.getValue().toBuilder().setMode(Field.Mode.NULLABLE).build());
           } else {
             throw new BigQueryConnectException( entry.getKey() + " has mode REQUIRED. Set " + BigQuerySinkConfig.ALLOW_BIGQUERY_REQUIRED_FIELD_RELAXATION_CONFIG
                     + " to true, to change the mode to NULLABLE");
@@ -169,9 +192,14 @@ public class SchemaManager {
         }
       }
     }
-    return com.google.cloud.bigquery.Schema.of(currentFields.values());
+    return com.google.cloud.bigquery.Schema.of(firstSchemaFields.values());
   }
 
+  /**
+   * Returns a unionized table description from a set of sink records going to the same BigQuery table.
+   * @param records The records used to get the unionized table description
+   * @return The resulting table description
+   */
   private String getUnionizedTableDescription(Set<SinkRecord> records) {
     String tableDescription = null;
     for (SinkRecord record : records) {

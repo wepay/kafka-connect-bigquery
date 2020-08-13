@@ -221,7 +221,7 @@ public class BigQueryConnectorIntegrationTest {
     // {"row":4,"f1":"Required string","f2":{"string":"Optional string"},"f3":null,"f4":null}
     expectedRows.add(Arrays.asList(4L, "Required string", "Optional string", null, null));
 
-    testRows(expectedRows, readAllRows("kcbq_test_nulls"));
+    testRows(expectedRows, readAllRows("test_nulls"));
   }
 
   @Test
@@ -256,7 +256,7 @@ public class BigQueryConnectorIntegrationTest {
         )
     ));
 
-    testRows(expectedRows, readAllRows("kcbq_test_matryoshka_dolls"));
+    testRows(expectedRows, readAllRows("test_matryoshka_dolls"));
   }
 
   @Test
@@ -285,7 +285,7 @@ public class BigQueryConnectorIntegrationTest {
         boxByteArray(new byte[] { 0x0, 0xf, 0x1E, 0x2D, 0x3C, 0x4B, 0x5A, 0x69, 0x78 })
     ));
 
-    testRows(expectedRows, readAllRows("kcbq_test_primitives"));
+    testRows(expectedRows, readAllRows("test_primitives"));
   }
 
   @Test
@@ -299,7 +299,7 @@ public class BigQueryConnectorIntegrationTest {
     // {"row": 3, "timestamp-test": 1468275102000, "date-test": 16993}
     expectedRows.add(Arrays.asList(3L, 1468275102000000L, 1468195200000L));
 
-    testRows(expectedRows, readAllRows("kcbq_test_logical_types"));
+    testRows(expectedRows, readAllRows("test_logical_types"));
   }
 
   @Test
@@ -370,7 +370,7 @@ public class BigQueryConnectorIntegrationTest {
         boxByteArray(new byte[] { 0x0, 0xf, 0x1E, 0x2D, 0x3C, 0x4B, 0x5A, 0x69, 0x78 })
     ));
 
-    testRows(expectedRows, readAllRows("kcbq_test_gcs_load"));
+    testRows(expectedRows, readAllRows("test_gcs_load"));
   }
 
   private void testRows(
