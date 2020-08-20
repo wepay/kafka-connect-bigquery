@@ -359,7 +359,7 @@ public class BigQuerySinkTask extends SinkTask {
       BucketInfo bucketInfo = BucketInfo.of(bucketName);
       bucket = gcs.create(bucketInfo);
     }
-    GCSToBQLoadRunnable loadRunnable = new GCSToBQLoadRunnable(getBigQuery(), bucket);
+    GCSToBQLoadRunnable loadRunnable = new GCSToBQLoadRunnable(getBigQuery(), bucket, topicsToBaseTableIds);
 
     int intervalSec = config.getInt(BigQuerySinkConfig.BATCH_LOAD_INTERVAL_SEC_CONFIG);
     gcsLoadExecutor.scheduleAtFixedRate(loadRunnable, intervalSec, intervalSec, TimeUnit.SECONDS);
