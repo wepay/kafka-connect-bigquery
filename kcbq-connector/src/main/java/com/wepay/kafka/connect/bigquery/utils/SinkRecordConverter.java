@@ -42,7 +42,7 @@ public class SinkRecordConverter {
         this.kafkaDataFieldName = kafkaDataFieldName;
     }
 
-    public InsertAllRequest.RowToInsert getRecordRow(SinkRecord record) {
+    public InsertAllRequest.RowToInsert getRecordRow(SinkRecord record, boolean ignoreRecordId) {
         Map<String, Object> convertedRecord = recordConverter.convertRecord(record, KafkaSchemaRecordType.VALUE);
         if (kafkaKeyFieldName.isPresent()) {
             convertedRecord.put(kafkaKeyFieldName.get(), recordConverter.convertRecord(record, KafkaSchemaRecordType.KEY));
@@ -53,7 +53,12 @@ public class SinkRecordConverter {
         if (sanitizeFieldName) {
             convertedRecord = FieldNameSanitizer.replaceInvalidKeys(convertedRecord);
         }
-        return InsertAllRequest.RowToInsert.of(getRowId(record), convertedRecord);
+
+        String rowId = getRowId(record);
+        if(ignoreRecordId)
+            rowId = null;
+
+        return InsertAllRequest.RowToInsert.of(rowId, convertedRecord);
     }
 
     private String getRowId(SinkRecord record) {

@@ -172,4 +172,12 @@ public class BigQuerySinkTaskConfigTest {
 
     new BigQuerySinkTaskConfig(badConfigProperties);
   }
+
+  /** Test that the default setting for ignore row id is false */
+  @Test
+  public void testDefaultIgnoreIdSetting() {
+    Map<String, String> properties = propertiesFactory.getProperties();
+    BigQuerySinkTaskConfig config = new BigQuerySinkTaskConfig(properties);
+    assertFalse(config.getBoolean(BigQuerySinkTaskConfig.BIGQUERY_IGNORE_INSERT_ID_CONFIG));
+  }
 }

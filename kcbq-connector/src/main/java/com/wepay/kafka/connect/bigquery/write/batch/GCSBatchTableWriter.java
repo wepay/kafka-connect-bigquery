@@ -129,7 +129,16 @@ public class GCSBatchTableWriter implements Runnable {
      * @param record the row to add
      */
     public void addRow(SinkRecord record) {
-      rows.put(record, recordConverter.getRecordRow(record));
+      rows.put(record, recordConverter.getRecordRow(record, false));
+    }
+
+    /**
+     * Add a record to the builder ignoring the id of the row.
+     *
+     * @param record the row to add
+     */
+    public void addRowWithoutId(SinkRecord record) {
+      rows.put(record, recordConverter.getRecordRow(record, true));
     }
 
     public GCSBatchTableWriter build() {

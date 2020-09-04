@@ -32,6 +32,13 @@ public interface TableWriterBuilder {
   void addRow(SinkRecord sinkRecord);
 
   /**
+   * Add a record to the builder ignoring the id of the row.
+   *
+   * @param record the row to add
+   */
+  void addRowWithoutId(SinkRecord record);
+
+  /**
    * Create a {@link TableWriter} from this builder.
    * @return a TableWriter containing the given writer, table, topic, and all added rows.
    */

@@ -120,6 +120,14 @@ public class BigQuerySinkTaskConfig extends BigQuerySinkConfig {
   private static final String BIGQUERY_CLUSTERING_FIELD_NAMES_DOC =
       "List of fields on which data should be clustered by in BigQuery, separated by commas";
 
+  public static final String BIGQUERY_IGNORE_INSERT_ID_CONFIG =                 "bigQueryIgnoreInsertId";
+  private static final ConfigDef.Type BIGQUERY_IGNORE_INSERT_ID_TYPE =           ConfigDef.Type.BOOLEAN;
+  private static final Boolean BIGQUERY_IGNORE_INSERT_ID_DEFAULT =               false;
+  private static final ConfigDef.Importance BIGQUERY_IGNORE_INSERT_ID_IMPORTANCE = ConfigDef.Importance.LOW;
+  private static final String BIGQUERY_IGNORE_INSERT_ID_DOC =
+          "If true, rows are not deduplicated by BigQuery. This is the recommended way to " +
+                  " get higher streaming ingest quotas in certain regions.";
+
   static {
     config = BigQuerySinkConfig.getConfig()
         .define(
@@ -174,6 +182,12 @@ public class BigQuerySinkTaskConfig extends BigQuerySinkConfig {
             BIGQUERY_CLUSTERING_FIELD_NAMES_DEFAULT,
             BIGQUERY_CLUSTERING_FIELD_NAMES_IMPORTANCE,
             BIGQUERY_CLUSTERING_FIELD_NAMES_DOC
+        ).define(
+            BIGQUERY_IGNORE_INSERT_ID_CONFIG,
+            BIGQUERY_IGNORE_INSERT_ID_TYPE,
+            BIGQUERY_IGNORE_INSERT_ID_DEFAULT,
+            BIGQUERY_IGNORE_INSERT_ID_IMPORTANCE,
+            BIGQUERY_IGNORE_INSERT_ID_DOC
         );
   }
 

@@ -211,7 +211,11 @@ public class BigQuerySinkTask extends SinkTask {
           }
           tableWriterBuilders.put(table, tableWriterBuilder);
         }
-        tableWriterBuilders.get(table).addRow(record);
+
+        if (config.getBoolean(BigQuerySinkTaskConfig.BIGQUERY_IGNORE_INSERT_ID_CONFIG))
+          tableWriterBuilders.get(table).addRowWithoutId(record);
+        else
+          tableWriterBuilders.get(table).addRow(record);
       }
     }
 
