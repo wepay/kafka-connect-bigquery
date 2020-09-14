@@ -30,30 +30,28 @@ else
 fi
 
 usage() {
-  echo -e "usage: $0\n" \
-       "[-k|--key-file <JSON key file or JSON key string>]\n" \
-       "[-k|--key-source <JSON or FILE>] (path must be absolute; relative paths will not work)\n" \
-       "[-p|--project <BigQuery project>]\n" \
-       "[-d|--dataset <BigQuery project>]\n" \
-       "[-b|--bucket <cloud Storage bucket>\n]" \
-       "[-f|--folder <cloud Storage folder under bucket>\n]" \
-       1>&2
-  echo 1>&2
-  echo "Options can also be specified via environment variable:" \
-       "KCBQ_TEST_KEYFILE, KCBQ_TEST_PROJECT, KCBQ_TEST_DATASET, KCBQ_TEST_BUCKET, and KCBQ_TEST_FOLDER" \
-       "respectively control the keyfile, project, dataset, and bucket." \
-       1>&2
-  echo 1>&2
-  echo "Options can also be specified in a file named 'test.conf'" \
-       "placed in the same directory as this script, with a series of <property>=<value> lines." \
-       "The properties are 'keyfile', 'project', 'dataset', and 'bucket'." \
-       1>&2
-  echo 1>&2
-  echo "The descending order of priority for each of these forms of specification is:" \
-       "command line option, environment variable, configuration file." \
-       1>&2
-  # Accept an optional exit value parameter
-  exit ${1:-0}
+	cat <<- EOF
+	usage: $0
+
+	[-k|--key-file <JSON key file or JSON key string>]
+	[-k|--key-source <JSON or FILE>] (path must be absolute; relative paths will not work)
+	[-p|--project <BigQuery project>]
+	[-d|--dataset <BigQuery project>]
+	[-b|--bucket <cloud Storage bucket>
+	[-f|--folder <cloud Storage folder under bucket>
+
+	Options can also be specified via environment variable:
+	KCBQ_TEST_KEYFILE, KCBQ_TEST_PROJECT, KCBQ_TEST_DATASET, KCBQ_TEST_BUCKET, and KCBQ_TEST_FOLDER
+	respectively control the keyfile, project, dataset, and bucket.
+
+	Options can also be specified in a file named 'test.conf'
+	placed in the same directory as this script, with a series of <property>=<value> lines.
+	The properties are 'keyfile', 'project', 'dataset', and 'bucket'.
+
+	The descending order of priority for each of these forms of specification is:
+	command line option, environment variable, configuration file.
+EOF
+	exit 0
 }
 
 msg() { printf "$1%s: $2$NORMAL\n" "$(basename $0)"; }
