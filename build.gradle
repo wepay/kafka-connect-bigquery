@@ -8,6 +8,14 @@ allprojects {
 
     sourceCompatibility = JavaVersion.VERSION_1_8
     targetCompatibility = JavaVersion.VERSION_1_8
+
+    configurations {
+        deployerJars
+    }
+
+    dependencies {
+        deployerJars "com.allogy.maven.wagon:maven-s3-wagon:1.2.0"
+    }
 }
 
 def withoutKafka = {
@@ -16,20 +24,23 @@ def withoutKafka = {
     exclude group: 'org.apache.kafka', module: 'kafka-clients'
 }
 
+
+
 // END ALL PROJECTS
 
 project.ext {
-    apacheHttpClientVersion = '4.5.6'
-    avroVersion = '1.8.1'
+    apacheHttpClientVersion = '4.5.12'
+    avroVersion = '1.9.2'
     debeziumVersion = '0.6.1'
-    googleCloudVersion = '1.79.0'
-    googleAuthVersion = '0.9.0'
-    googleCloudGsonVersion = '2.8.5'
-    ioConfluentVersion = '5.5.0'
+    googleCloudVersion = '1.122.1'
+    googleCloudStorageVersion = '1.113.1'
+    googleAuthVersion = '0.21.1'
+    googleCloudGsonVersion = '2.8.6'
+    ioConfluentVersion = '6.0.0'
     junitVersion = '4.12'
-    kafkaVersion = '2.5.0'
+    kafkaVersion = '2.6.0'
     mockitoVersion = '3.2.4'
-    slf4jVersion = '1.6.1'
+    slf4jVersion = '1.7.30'
 }
 
 // BEGIN SUBPROJECTS //
@@ -79,16 +90,22 @@ subprojects { subproject ->
     uploadArchives {
         repositories {
             mavenDeployer {
+                configuration = configurations.deployerJars
                 beforeDeployment {
                     MavenDeployment deployment -> signing.signPom(deployment)
                 }
 
-                repository(url: 'https://oss.sonatype.org/service/local/staging/deploy/maven2') {
+                /*repository(url: 'https://oss.sonatype.org/service/local/staging/deploy/maven2') {
                     authentication(userName: findProperty('ossrhUsername') ?: '', password: findProperty('ossrhPassword') ?: '')
                 }
 
                 snapshotRepository(url: 'https://oss.sonatype.org/content/repositories/snapshots') {
                     authentication(userName: findProperty('ossrhUsername') ?: '', password: findProperty('ossrhPassword') ?: '')
+                }*/
+                // .s3.eu-central-1.amazonaws.com
+                repository(url: "s3://lightricks-repo/release") {
+                    /*authentication(userName: aws_access_key,
+                            passphrase: aws_secret_pass)*/
                 }
 
                 pom.project {
@@ -210,16 +227,16 @@ project(':kcbq-connector') {
                 project(':kcbq-api'),
 
                 "com.google.cloud:google-cloud-bigquery:$googleCloudVersion",
-                "com.google.cloud:google-cloud-storage:$googleCloudVersion",
+                "com.google.cloud:google-cloud-storage:$googleCloudStorageVersion",
                 "com.google.auth:google-auth-library-oauth2-http:$googleAuthVersion",
                 "com.google.code.gson:gson:$googleCloudGsonVersion",
-                "org.slf4j:slf4j-api:$slf4jVersion",
         )
 
         compile "io.debezium:debezium-core:$debeziumVersion", withoutKafka
 
         compileOnly (
-                "org.apache.kafka:connect-api:$kafkaVersion"
+                "org.apache.kafka:connect-api:$kafkaVersion",
+                "org.slf4j:slf4j-api:$slf4jVersion"
         )
 
         testCompile (
@@ -327,8 +344,7 @@ project('kcbq-confluent') {
                 project(':kcbq-connector'),
                 project(':kcbq-api'),
 
-                "org.apache.avro:avro:$avroVersion",
-                "org.slf4j:slf4j-api:$slf4jVersion",
+                "org.apache.avro:avro:$avroVersion"
         )
 
         compile "io.confluent:kafka-connect-avro-converter:$ioConfluentVersion", withoutKafka
@@ -336,7 +352,8 @@ project('kcbq-confluent') {
 
         compileOnly (
                 "org.apache.kafka:connect-api:$kafkaVersion",
-                "org.apache.kafka:kafka-clients:$kafkaVersion"
+                "org.apache.kafka:kafka-clients:$kafkaVersion",
+                "org.slf4j:slf4j-api:$slf4jVersion"
         )
 
         testCompile (
