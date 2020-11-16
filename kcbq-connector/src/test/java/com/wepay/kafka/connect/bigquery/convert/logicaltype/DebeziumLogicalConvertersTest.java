@@ -36,11 +36,11 @@ import org.junit.Test;
 
 public class DebeziumLogicalConvertersTest {
 
-  //corresponds to March 1 2017, 22:20:38.808(123) UTC
-  //              (March 1 2017, 14:20:38.808(123)-8:00)
+  //corresponds to March 1 2017, 22:20:38.008(123) UTC
+  //              (March 1 2017, 14:20:38.008(123)-8:00)
   private static final Integer DAYS_TIMESTAMP = 17226;
-  private static final Long MILLI_TIMESTAMP = 1488406838808L;
-  private static final Long MICRO_TIMESTAMP = 1488406838808123L;
+  private static final Long MILLI_TIMESTAMP = 1488406838008L;
+  private static final Long MICRO_TIMESTAMP = 1488406838008123L;
 
   @Test
   public void testDateConversion() {
@@ -53,7 +53,7 @@ public class DebeziumLogicalConvertersTest {
     } catch (Exception ex) {
       fail("Expected encoding type check to succeed.");
     }
-    
+
     String formattedDate = converter.convert(DAYS_TIMESTAMP);
     assertEquals("2017-03-01", formattedDate);
   }
@@ -71,7 +71,7 @@ public class DebeziumLogicalConvertersTest {
     }
 
     String formattedMicroTime = converter.convert(MICRO_TIMESTAMP);
-    assertEquals("22:20:38.808123", formattedMicroTime);
+    assertEquals("22:20:38.008123", formattedMicroTime);
   }
 
   @Test
@@ -87,7 +87,7 @@ public class DebeziumLogicalConvertersTest {
     }
 
     String formattedMicroTimestamp = converter.convert(MICRO_TIMESTAMP);
-    assertEquals("2017-03-01 22:20:38.808123", formattedMicroTimestamp);
+    assertEquals("2017-03-01 22:20:38.008123", formattedMicroTimestamp);
   }
 
   @Test
@@ -103,7 +103,7 @@ public class DebeziumLogicalConvertersTest {
     }
 
     String formattedTime = converter.convert(MILLI_TIMESTAMP);
-    assertEquals("22:20:38.808", formattedTime);
+    assertEquals("22:20:38.008", formattedTime);
   }
 
   @Test
@@ -119,7 +119,7 @@ public class DebeziumLogicalConvertersTest {
     }
 
     String formattedTimestamp = converter.convert(MILLI_TIMESTAMP);
-    assertEquals("2017-03-01 22:20:38.808", formattedTimestamp);
+    assertEquals("2017-03-01 22:20:38.008", formattedTimestamp);
   }
 
   @Test
