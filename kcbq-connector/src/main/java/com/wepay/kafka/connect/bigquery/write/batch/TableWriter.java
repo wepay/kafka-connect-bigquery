@@ -53,6 +53,7 @@ public class TableWriter implements Runnable {
   private static final int BAD_REQUEST_CODE = 400;
   private static final String INVALID_REASON = "invalid";
   private static final String PAYLOAD_TOO_LARGE_REASON = "Request payload size exceeds the limit:";
+  private static final String TOO_MANY_ROWS_REASON = "too many rows present in the request";
 
   private final BigQueryWriter writer;
   private final PartitionedTableId table;
@@ -159,7 +160,8 @@ public class TableWriter implements Runnable {
       return true;
     } else if (exception.getCode() == BAD_REQUEST_CODE
         && exception.getMessage() != null
-        && exception.getMessage().contains(PAYLOAD_TOO_LARGE_REASON)) {
+        && (exception.getMessage().contains(PAYLOAD_TOO_LARGE_REASON)
+        || exception.getMessage().contains(TOO_MANY_ROWS_REASON))) {
       return true;
     }
     return false;
