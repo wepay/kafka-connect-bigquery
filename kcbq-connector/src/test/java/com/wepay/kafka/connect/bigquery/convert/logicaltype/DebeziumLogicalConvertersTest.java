@@ -35,6 +35,8 @@ import org.apache.kafka.connect.data.Schema;
 
 import org.junit.Test;
 
+import java.time.LocalTime;
+
 public class DebeziumLogicalConvertersTest {
 
   //corresponds to March 1 2017, 22:20:38.808(123) UTC
@@ -105,6 +107,11 @@ public class DebeziumLogicalConvertersTest {
 
     String formattedTime = converter.convert(MILLI_TIMESTAMP);
     assertEquals("22:20:38.808", formattedTime);
+
+    // Cover test when the Debezium.time.Time field is integer.
+    Integer milliseconds = MILLI_TIMESTAMP.intValue();
+    String sqlServerFormattedTime = converter.convert(milliseconds);
+    System.out.println(sqlServerFormattedTime);
   }
 
   @Test
