@@ -58,6 +58,7 @@ import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.record.TimestampType;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.RetriableException;
+import org.apache.kafka.connect.sink.ErrantRecordReporter;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
 import org.slf4j.Logger;
@@ -112,6 +113,9 @@ public class BigQuerySinkTask extends SinkTask {
 
   private Map<TableId, Table> cache;
   private Map<String, String> topic2TableMap;
+
+  private ErrantRecordReporter reporter;
+  private ErrantRecordChecker errantRecordChecker;
 
   /**
    * Create a new BigquerySinkTask.
@@ -256,34 +260,57 @@ public class BigQuerySinkTask extends SinkTask {
 
     for (SinkRecord record : records) {
       if (record.value() != null || config.getBoolean(BigQuerySinkConfig.DELETE_ENABLED_CONFIG)) {
-        PartitionedTableId table = getRecordTable(record);
-        if (!tableWriterBuilders.containsKey(table)) {
-          TableWriterBuilder tableWriterBuilder;
-          if (config.getList(BigQuerySinkConfig.ENABLE_BATCH_CONFIG).contains(record.topic())) {
-            String topic = record.topic();
-            String gcsBlobName = topic + "_" + uuid + "_" + Instant.now().toEpochMilli();
-            String gcsFolderName = config.getString(BigQuerySinkConfig.GCS_FOLDER_NAME_CONFIG);
-            if (gcsFolderName != null && !"".equals(gcsFolderName)) {
-              gcsBlobName = gcsFolderName + "/" + gcsBlobName;
+
+        try {
+          PartitionedTableId table = getRecordTable(record);
+          if (!tableWriterBuilders.containsKey(table)) {
+            TableWriterBuilder tableWriterBuilder;
+            if (config.getList(BigQuerySinkConfig.ENABLE_BATCH_CONFIG).contains(record.topic())) {
+              String topic = record.topic();
+              String gcsBlobName = topic + "_" + uuid + "_" + Instant.now().toEpochMilli();
+              String gcsFolderName = config.getString(BigQuerySinkConfig.GCS_FOLDER_NAME_CONFIG);
+              if (gcsFolderName != null && !"".equals(gcsFolderName)) {
+                gcsBlobName = gcsFolderName + "/" + gcsBlobName;
+              }
+              tableWriterBuilder = new GCSBatchTableWriter.Builder(
+                      gcsToBQWriter,
+                      table.getBaseTableId(),
+                      config.getString(BigQuerySinkConfig.GCS_BUCKET_NAME_CONFIG),
+                      gcsBlobName,
+                      recordConverter);
+            } else {
+              TableWriter.Builder simpleTableWriterBuilder =
+                      new TableWriter.Builder(bigQueryWriter, table, recordConverter);
+              if (upsertDelete) {
+                simpleTableWriterBuilder.onFinish(rows ->
+                        mergeBatches.onRowWrites(table.getBaseTableId(), rows));
+              }
+              tableWriterBuilder = simpleTableWriterBuilder;
             }
-            tableWriterBuilder = new GCSBatchTableWriter.Builder(
-                gcsToBQWriter,
-                table.getBaseTableId(),
-                config.getString(BigQuerySinkConfig.GCS_BUCKET_NAME_CONFIG),
-                gcsBlobName,
-                recordConverter);
-          } else {
-            TableWriter.Builder simpleTableWriterBuilder =
-                new TableWriter.Builder(bigQueryWriter, table, recordConverter);
-            if (upsertDelete) {
-              simpleTableWriterBuilder.onFinish(rows ->
-                  mergeBatches.onRowWrites(table.getBaseTableId(), rows));
-            }
-            tableWriterBuilder = simpleTableWriterBuilder;
+            tableWriterBuilders.put(table, tableWriterBuilder);
           }
-          tableWriterBuilders.put(table, tableWriterBuilder);
+          tableWriterBuilders.get(table).addRow(record, table.getBaseTableId());
+        } catch (Exception e) {
+          if (reporter != null && errantRecordChecker.isEnabled()) {
+            if (errantRecordChecker.sendExceptionToDLQ(e)) {
+              // Send errant record to error reporter
+              Future<Void> future = reporter.report(record, e);
+              // Optionally wait till the failure's been recorded in Kafka
+              try {
+                future.get();
+              } catch (InterruptedException | ExecutionException ex) {
+                throw new ConnectException("Failed to send record to DLQ: ", e);
+              }
+            } else {
+              // It's not an errant record for the DLQ, so fail
+              throw e;
+            }
+          } else {
+            // There's no error reporter, so fail
+            throw e;
+          }
         }
-        tableWriterBuilders.get(table).addRow(record, table.getBaseTableId());
+
       }
     }
 
@@ -503,6 +530,14 @@ public class BigQuerySinkTask extends SinkTask {
 
     recordConverter = getConverter(config);
     topic2TableMap = config.getTopic2TableMap().orElse(null);
+
+    try {
+      reporter = context.errantRecordReporter(); // may be null if DLQ not enabled
+    } catch (NoClassDefFoundError e) {
+      // Will occur in Connect runtimes earlier than 2.6
+      reporter = null;
+    }
+    errantRecordChecker = new ErrantRecordChecker(config);
   }
 
   private void startGCSToBQLoadTask() {

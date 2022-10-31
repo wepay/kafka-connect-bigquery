@@ -531,6 +531,15 @@ public class BigQuerySinkConfig extends AbstractConfig {
   public static final List<String> CONNECTOR_RUNTIME_PROVIDER_TYPES = Stream.of("Confluent Platform", "Confluent Cloud")
           .collect(Collectors.toList());
 
+
+  public static final String ERRANT_RECORDS_REGEX_CONFIG =          "errant.records.regex";
+  private static final ConfigDef.Type ERRANT_RECORDS_REGEX_TYPE =   ConfigDef.Type.STRING;
+  public static final String ERRANT_RECORDS_REGEX_DEFAULT =         null;
+  private static final ConfigDef.Importance ERRANT_RECORDS_REGEX_IMPORTANCE = ConfigDef.Importance.MEDIUM;
+  private static final String ERRANT_RECORDS_REGEX_DOC =
+          "Provides a regex that exceptions coming from BigQuery must match to be sent as errant records to a DLQ "
+          + "instead of generating an exception and halting the task.";
+
   /**
    * Return the ConfigDef object used to define this config's fields.
    *
@@ -823,6 +832,12 @@ public class BigQuerySinkConfig extends AbstractConfig {
                     CONNECTOR_RUNTIME_PROVIDER_TYPE,
                     CONNECTOR_RUNTIME_PROVIDER_DEFAULT,
                     CONNECTOR_RUNTIME_PROVIDER_IMPORTANCE
+        ).define(
+            ERRANT_RECORDS_REGEX_CONFIG,
+            ERRANT_RECORDS_REGEX_TYPE,
+            ERRANT_RECORDS_REGEX_DEFAULT,
+            ERRANT_RECORDS_REGEX_IMPORTANCE,
+            ERRANT_RECORDS_REGEX_DOC
         );
   }
 
