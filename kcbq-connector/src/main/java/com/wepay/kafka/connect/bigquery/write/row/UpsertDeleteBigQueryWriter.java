@@ -51,13 +51,14 @@ public class UpsertDeleteBigQueryWriter extends AdaptiveBigQueryWriter {
                                     SchemaManager schemaManager,
                                     int retry,
                                     long retryWait,
+                                    boolean sendErrantRecordsToDLQ,
                                     boolean autoCreateTables,
                                     Map<TableId, TableId> intermediateToDestinationTables) {
     // Hardcode autoCreateTables to true in the superclass so that intermediate tables will be
     // automatically created
     // The super class will handle all of the logic for writing to, creating, and updating
     // intermediate tables; this class will handle logic for creating/updating the destination table
-    super(bigQuery, schemaManager.forIntermediateTables(), retry, retryWait, true);
+    super(bigQuery, schemaManager.forIntermediateTables(), retry, retryWait, sendErrantRecordsToDLQ, true);
     this.schemaManager = schemaManager;
     this.autoCreateTables = autoCreateTables;
     this.intermediateToDestinationTables = intermediateToDestinationTables;

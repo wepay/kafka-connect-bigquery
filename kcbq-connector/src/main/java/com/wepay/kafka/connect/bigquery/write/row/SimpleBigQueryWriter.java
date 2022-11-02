@@ -50,8 +50,8 @@ public class SimpleBigQueryWriter extends BigQueryWriter {
    * @param retry How many retries to make in the event of a 500/503 error.
    * @param retryWait How long to wait in between retries.
    */
-  public SimpleBigQueryWriter(BigQuery bigQuery, int retry, long retryWait) {
-    super(retry, retryWait);
+  public SimpleBigQueryWriter(BigQuery bigQuery, int retry, long retryWait, boolean sendErrantRecordsToDLQ) {
+    super(retry, retryWait, sendErrantRecordsToDLQ);
     this.bigQuery = bigQuery;
   }
 

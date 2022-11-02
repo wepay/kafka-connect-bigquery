@@ -68,8 +68,9 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
                                 SchemaManager schemaManager,
                                 int retry,
                                 long retryWait,
+                                boolean sendErrantRecordsToDLQ,
                                 boolean autoCreateTables) {
-    super(retry, retryWait);
+    super(retry, retryWait, sendErrantRecordsToDLQ);
     this.bigQuery = bigQuery;
     this.schemaManager = schemaManager;
     this.autoCreateTables = autoCreateTables;

@@ -49,6 +49,7 @@ public abstract class BigQueryWriter {
 
   private final int retries;
   private final long retryWaitMs;
+  private final boolean sendErrantRecordsToDLQ;
   private final Random random;
 
   /**
@@ -57,9 +58,10 @@ public abstract class BigQueryWriter {
    * @param retryWaitMs the amount of time to wait in between reattempting a request if BQ returns
    *                    an internal service error or a service unavailable error.
    */
-  public BigQueryWriter(int retries, long retryWaitMs) {
+  public BigQueryWriter(int retries, long retryWaitMs, boolean sendErrantRecordsToDLQ) {
     this.retries = retries;
     this.retryWaitMs = retryWaitMs;
+    this.sendErrantRecordsToDLQ = sendErrantRecordsToDLQ;
 
     this.random = new Random();
   }
@@ -102,6 +104,7 @@ public abstract class BigQueryWriter {
 
     Exception mostRecentException = null;
     Map<Long, List<BigQueryError>> failedRowsMap = null;
+    Set<SinkRecord> recordsForDLQ = null;
 
     int retryCount = 0;
     do {
@@ -118,11 +121,18 @@ public abstract class BigQueryWriter {
               rows.size() - failedRowsMap.size(), failedRowsMap.size());
           // update insert rows and retry in case of partial failure
           rows = getFailedRows(rows, failedRowsMap.keySet(), table);
-          mostRecentException = new BigQueryConnectException(table.toString(), failedRowsMap);
+          if (this.sendErrantRecordsToDLQ) {
+            recordsForDLQ = rows.keySet();
+          }
+          mostRecentException = new BigQueryConnectException(table.toString(), failedRowsMap, recordsForDLQ);
+
           retryCount++;
         } else {
           // throw an exception in case of complete failure
-          throw new BigQueryConnectException(table.toString(), failedRowsMap);
+          if (this.sendErrantRecordsToDLQ) {
+            recordsForDLQ = rows.keySet();
+          }
+          throw new BigQueryConnectException(table.toString(), failedRowsMap, recordsForDLQ);
         }
       } catch (BigQueryException err) {
         mostRecentException = err;
