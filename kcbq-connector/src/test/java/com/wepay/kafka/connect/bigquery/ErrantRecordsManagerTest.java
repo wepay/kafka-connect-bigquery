@@ -1,6 +1,5 @@
 package com.wepay.kafka.connect.bigquery;
 
-import com.google.cloud.bigquery.InsertAllRequest;
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig;
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkTaskConfig;
 import junit.framework.TestCase;
@@ -10,10 +9,9 @@ import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-public class ErrantRecordCheckerTest extends TestCase {
+public class ErrantRecordsManagerTest extends TestCase {
 
     public void setUp() throws Exception {
         super.setUp();
@@ -33,14 +31,14 @@ public class ErrantRecordCheckerTest extends TestCase {
         properties.put(BigQuerySinkConfig.ERRANT_RECORDS_REGEX_CONFIG, "yes");
         BigQuerySinkTaskConfig config = new BigQuerySinkTaskConfig(properties);
 
-        ErrantRecordChecker recordChecker = new ErrantRecordChecker(config);
+        ErrantRecordsManager recordChecker = new ErrantRecordsManager(config, null);
 
         Exception e = new Exception("yes");
-        boolean sent = recordChecker.sendExceptionToDLQ(e);
+        boolean sent = recordChecker.hasExceptionsToSendToDLQ(e);
         assertTrue(sent);
 
         e = new Exception("no");
-        sent = recordChecker.sendExceptionToDLQ(e);
+        sent = recordChecker.hasExceptionsToSendToDLQ(e);
         assertFalse(sent);
     }
 
@@ -55,14 +53,14 @@ public class ErrantRecordCheckerTest extends TestCase {
         properties.put(BigQuerySinkConfig.ERRANT_RECORDS_REGEX_CONFIG, "yes|no");
         BigQuerySinkTaskConfig config = new BigQuerySinkTaskConfig(properties);
 
-        ErrantRecordChecker recordChecker = new ErrantRecordChecker(config);
+        ErrantRecordsManager recordChecker = new ErrantRecordsManager(config, null);
 
         Exception e = new Exception("yes");
-        boolean sent = recordChecker.sendExceptionToDLQ(e);
+        boolean sent = recordChecker.hasExceptionsToSendToDLQ(e);
         assertTrue(sent);
 
         e = new Exception("no");
-        sent = recordChecker.sendExceptionToDLQ(e);
+        sent = recordChecker.hasExceptionsToSendToDLQ(e);
         assertTrue(sent);
     }
 
@@ -77,14 +75,14 @@ public class ErrantRecordCheckerTest extends TestCase {
         properties.put(BigQuerySinkConfig.ERRANT_RECORDS_REGEX_CONFIG, "^[Ee]rror");
         BigQuerySinkTaskConfig config = new BigQuerySinkTaskConfig(properties);
 
-        ErrantRecordChecker recordChecker = new ErrantRecordChecker(config);
+        ErrantRecordsManager recordChecker = new ErrantRecordsManager(config, null);
 
         Exception e = new Exception("Error blah");
-        boolean sent = recordChecker.sendExceptionToDLQ(e);
+        boolean sent = recordChecker.hasExceptionsToSendToDLQ(e);
         assertTrue(sent);
 
         e = new Exception("Does not start with error");
-        sent = recordChecker.sendExceptionToDLQ(e);
+        sent = recordChecker.hasExceptionsToSendToDLQ(e);
         assertFalse(sent);
     }
 }

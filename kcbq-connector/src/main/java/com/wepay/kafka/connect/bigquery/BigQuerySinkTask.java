@@ -35,7 +35,6 @@ import com.wepay.kafka.connect.bigquery.api.SchemaRetriever;
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig;
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkTaskConfig;
 import com.wepay.kafka.connect.bigquery.convert.SchemaConverter;
-import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
 import com.wepay.kafka.connect.bigquery.utils.FieldNameSanitizer;
 import com.wepay.kafka.connect.bigquery.utils.PartitionedTableId;
 import com.wepay.kafka.connect.bigquery.utils.SinkRecordConverter;
@@ -52,10 +51,8 @@ import com.wepay.kafka.connect.bigquery.write.row.BigQueryWriter;
 import com.wepay.kafka.connect.bigquery.write.row.GCSToBQWriter;
 import com.wepay.kafka.connect.bigquery.write.row.SimpleBigQueryWriter;
 import com.wepay.kafka.connect.bigquery.write.row.UpsertDeleteBigQueryWriter;
-import java.io.IOException;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.record.TimestampType;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.RetriableException;
@@ -70,7 +67,6 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig.TOPIC2TABLE_MAP_CONFIG;
 import static com.wepay.kafka.connect.bigquery.utils.TableNameUtils.intTable;
 
 /**
@@ -112,7 +108,7 @@ public class BigQuerySinkTask extends SinkTask {
   private Map<String, String> topic2TableMap;
 
   private ErrantRecordReporter reporter;
-  private ErrantRecordChecker errantRecordChecker;
+  private ErrantRecordsManager errantRecordsManager;
 
   /**
    * Create a new BigquerySinkTask.
@@ -248,30 +244,7 @@ public class BigQuerySinkTask extends SinkTask {
   @Override
   public void put(Collection<SinkRecord> records) {
     // Periodically poll for errors here instead of doing a stop-the-world check in flush()
-    try {
-      executor.maybeThrowEncounteredError();
-    }
-    catch (BigQueryConnectException e) {
-      if (reporter != null && errantRecordChecker.isEnabled()) {
-        if (errantRecordChecker.sendExceptionToDLQ(e)) {
-          // Send errant records to error reporter (they're in: e.cause.recordsForDLQ)
-          Set<SinkRecord> recordsForDLQ = ((BigQueryConnectException)e.getCause()).getRecordsForDLQ();
-          for (SinkRecord r : recordsForDLQ) {
-            reporter.report(r, e); // TODO return a Future and wait for all of them?
-          }
-          logger.debug("Sending {} records to the DLQ (as requested in the config by {}).",
-                  recordsForDLQ.size(),
-                  BigQuerySinkTaskConfig.ERRANT_RECORDS_REGEX_CONFIG);
-          // TODO remove records that have failed
-       } else {
-          // not for the DLQ, so fail
-          throw e;
-        }
-      } else {
-        // There's no error reporter, so fail
-        throw e;
-      }
-    }
+    executor.maybeThrowEncounteredError();
 
     logger.debug("Putting {} records in the sink.", records.size());
 
@@ -283,69 +256,34 @@ public class BigQuerySinkTask extends SinkTask {
 
         logger.info("new record: {}", record.value());
 
-        /* to force every message to go to the DLQ
-
-        if (reporter != null && errantRecordChecker.isEnabled()) {
-          Exception e = new Exception(record.value().toString());
-          if (errantRecordChecker.sendExceptionToDLQ(e)) {
-            // Send errant record to error reporter
-            reporter.report(record, e);
-          }
-          continue;
-        }
-        */
-
-        try {
-          PartitionedTableId table = getRecordTable(record);
-          if (!tableWriterBuilders.containsKey(table)) {
-            TableWriterBuilder tableWriterBuilder;
-            if (config.getList(BigQuerySinkConfig.ENABLE_BATCH_CONFIG).contains(record.topic())) {
-              String topic = record.topic();
-              String gcsBlobName = topic + "_" + uuid + "_" + Instant.now().toEpochMilli();
-              String gcsFolderName = config.getString(BigQuerySinkConfig.GCS_FOLDER_NAME_CONFIG);
-              if (gcsFolderName != null && !"".equals(gcsFolderName)) {
-                gcsBlobName = gcsFolderName + "/" + gcsBlobName;
-              }
-              tableWriterBuilder = new GCSBatchTableWriter.Builder(
-                      gcsToBQWriter,
-                      table.getBaseTableId(),
-                      config.getString(BigQuerySinkConfig.GCS_BUCKET_NAME_CONFIG),
-                      gcsBlobName,
-                      recordConverter);
-            } else {
-              TableWriter.Builder simpleTableWriterBuilder =
-                      new TableWriter.Builder(bigQueryWriter, table, recordConverter);
-              if (upsertDelete) {
-                simpleTableWriterBuilder.onFinish(rows ->
-                        mergeBatches.onRowWrites(table.getBaseTableId(), rows));
-              }
-              tableWriterBuilder = simpleTableWriterBuilder;
+        PartitionedTableId table = getRecordTable(record);
+        if (!tableWriterBuilders.containsKey(table)) {
+          TableWriterBuilder tableWriterBuilder;
+          if (config.getList(BigQuerySinkConfig.ENABLE_BATCH_CONFIG).contains(record.topic())) {
+            String topic = record.topic();
+            String gcsBlobName = topic + "_" + uuid + "_" + Instant.now().toEpochMilli();
+            String gcsFolderName = config.getString(BigQuerySinkConfig.GCS_FOLDER_NAME_CONFIG);
+            if (gcsFolderName != null && !"".equals(gcsFolderName)) {
+              gcsBlobName = gcsFolderName + "/" + gcsBlobName;
             }
-            tableWriterBuilders.put(table, tableWriterBuilder);
-          }
-          tableWriterBuilders.get(table).addRow(record, table.getBaseTableId());
-        }
-        catch (Exception e) {
-          if (reporter != null && errantRecordChecker.isEnabled()) {
-            if (errantRecordChecker.sendExceptionToDLQ(e)) {
-              // Send errant record to error reporter
-              Future<Void> future = reporter.report(record, e);
-              // Optionally wait till the failure's been recorded in Kafka
-              try {
-                future.get();
-              } catch (InterruptedException | ExecutionException ex) {
-                throw new ConnectException("Failed to send record to DLQ: ", e);
-              }
-            } else {
-              // It's not an errant record for the DLQ, so fail
-              throw e;
-            }
+            tableWriterBuilder = new GCSBatchTableWriter.Builder(
+                    gcsToBQWriter,
+                    table.getBaseTableId(),
+                    config.getString(BigQuerySinkConfig.GCS_BUCKET_NAME_CONFIG),
+                    gcsBlobName,
+                    recordConverter);
           } else {
-            // There's no error reporter, so fail
-            throw e;
+            TableWriter.Builder simpleTableWriterBuilder =
+                    new TableWriter.Builder(bigQueryWriter, table, recordConverter);
+            if (upsertDelete) {
+              simpleTableWriterBuilder.onFinish(rows ->
+                      mergeBatches.onRowWrites(table.getBaseTableId(), rows));
+            }
+            tableWriterBuilder = simpleTableWriterBuilder;
           }
+          tableWriterBuilders.put(table, tableWriterBuilder);
         }
-
+        tableWriterBuilders.get(table).addRow(record, table.getBaseTableId());
       }
     }
 
@@ -460,13 +398,12 @@ public class BigQuerySinkTask extends SinkTask {
                              timestampPartitionFieldName, partitionExpiration, clusteringFieldName, timePartitioningType);
   }
 
-  private BigQueryWriter getBigQueryWriter() {
+  private BigQueryWriter getBigQueryWriter(ErrantRecordsManager errantRecordsManager) {
     boolean autoCreateTables = config.getBoolean(BigQuerySinkConfig.TABLE_CREATE_CONFIG);
     boolean allowNewBigQueryFields = config.getBoolean(BigQuerySinkConfig.ALLOW_NEW_BIGQUERY_FIELDS_CONFIG);
     boolean allowRequiredFieldRelaxation = config.getBoolean(BigQuerySinkConfig.ALLOW_BIGQUERY_REQUIRED_FIELD_RELAXATION_CONFIG);
     int retry = config.getInt(BigQuerySinkConfig.BIGQUERY_RETRY_CONFIG);
     long retryWait = config.getLong(BigQuerySinkConfig.BIGQUERY_RETRY_WAIT_CONFIG);
-    boolean sendErrantRecordsToDLQ = (config.getString(BigQuerySinkTaskConfig.ERRANT_RECORDS_REGEX_CONFIG) != null);
 
     BigQuery bigQuery = getBigQuery();
     if (upsertDelete) {
@@ -474,7 +411,7 @@ public class BigQuerySinkTask extends SinkTask {
                                             getSchemaManager(),
                                             retry,
                                             retryWait,
-                                            sendErrantRecordsToDLQ,
+              errantRecordsManager,
                                             autoCreateTables,
                                             mergeBatches.intermediateToDestinationTables());
     } else if (autoCreateTables || allowNewBigQueryFields || allowRequiredFieldRelaxation) {
@@ -482,10 +419,10 @@ public class BigQuerySinkTask extends SinkTask {
                                         getSchemaManager(),
                                         retry,
                                         retryWait,
-                                        sendErrantRecordsToDLQ,
+              errantRecordsManager,
                                         autoCreateTables);
     } else {
-      return new SimpleBigQueryWriter(bigQuery, retry, retryWait, sendErrantRecordsToDLQ);
+      return new SimpleBigQueryWriter(bigQuery, retry, retryWait, errantRecordsManager);
     }
   }
 
@@ -548,8 +485,16 @@ public class BigQuerySinkTask extends SinkTask {
       mergeBatches = new MergeBatches(intermediateTableSuffix);
     }
 
+    try {
+      reporter = context.errantRecordReporter(); // may be null if DLQ not enabled
+    } catch (NoClassDefFoundError e) {
+      // Will occur in Connect runtimes earlier than 2.6
+      reporter = null;
+    }
+    errantRecordsManager = new ErrantRecordsManager(config, reporter);
+
     cache = getCache();
-    bigQueryWriter = getBigQueryWriter();
+    bigQueryWriter = getBigQueryWriter(errantRecordsManager);
     gcsToBQWriter = getGcsWriter();
     executor = new KCBQThreadPoolExecutor(config, new LinkedBlockingQueue<>());
     topicPartitionManager = new TopicPartitionManager();
@@ -570,13 +515,6 @@ public class BigQuerySinkTask extends SinkTask {
     recordConverter = getConverter(config);
     topic2TableMap = config.getTopic2TableMap().orElse(null);
 
-    try {
-      reporter = context.errantRecordReporter(); // may be null if DLQ not enabled
-    } catch (NoClassDefFoundError e) {
-      // Will occur in Connect runtimes earlier than 2.6
-      reporter = null;
-    }
-    errantRecordChecker = new ErrantRecordChecker(config);
   }
 
   private void startGCSToBQLoadTask() {

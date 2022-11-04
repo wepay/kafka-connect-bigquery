@@ -22,6 +22,7 @@ package com.wepay.kafka.connect.bigquery.write.row;
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.BigQueryException;
 import com.google.cloud.bigquery.TableId;
+import com.wepay.kafka.connect.bigquery.ErrantRecordsManager;
 import com.wepay.kafka.connect.bigquery.SchemaManager;
 import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
 import com.wepay.kafka.connect.bigquery.utils.PartitionedTableId;
@@ -51,14 +52,14 @@ public class UpsertDeleteBigQueryWriter extends AdaptiveBigQueryWriter {
                                     SchemaManager schemaManager,
                                     int retry,
                                     long retryWait,
-                                    boolean sendErrantRecordsToDLQ,
+                                    ErrantRecordsManager errantRecordsManager,
                                     boolean autoCreateTables,
                                     Map<TableId, TableId> intermediateToDestinationTables) {
     // Hardcode autoCreateTables to true in the superclass so that intermediate tables will be
     // automatically created
     // The super class will handle all of the logic for writing to, creating, and updating
     // intermediate tables; this class will handle logic for creating/updating the destination table
-    super(bigQuery, schemaManager.forIntermediateTables(), retry, retryWait, sendErrantRecordsToDLQ, true);
+    super(bigQuery, schemaManager.forIntermediateTables(), retry, retryWait, errantRecordsManager, true);
     this.schemaManager = schemaManager;
     this.autoCreateTables = autoCreateTables;
     this.intermediateToDestinationTables = intermediateToDestinationTables;

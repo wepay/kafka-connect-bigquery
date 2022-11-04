@@ -33,7 +33,7 @@ import java.util.Set;
  * update failures, and table insertion failures.
  */
 public class BigQueryConnectException extends ConnectException {
-  private Set<SinkRecord> recordsForDLQ = null;
+  // private Set<SinkRecord> recordsForDLQ = null;
 
   public BigQueryConnectException(String msg) {
     super(msg);
@@ -49,14 +49,15 @@ public class BigQueryConnectException extends ConnectException {
 
   public BigQueryConnectException(String tableInfo, Map<Long, List<BigQueryError>> errors) {
     super(formatInsertAllErrors(tableInfo, errors));
-    this.recordsForDLQ = null;
   }
 
+/*
   public BigQueryConnectException(String tableInfo, Map<Long, List<BigQueryError>> errors,
                                   Set<SinkRecord> recordsForDLQ) {
     super(formatInsertAllErrors(tableInfo, errors));
     this.recordsForDLQ = recordsForDLQ;
   }
+*/
 
   private static String formatInsertAllErrors(String tableInfo, Map<Long, List<BigQueryError>> errorsMap) {
     StringBuilder messageBuilder = new StringBuilder();
@@ -81,7 +82,7 @@ public class BigQueryConnectException extends ConnectException {
         super.toString() + "\nCaused by: " + getCause().getLocalizedMessage() : super.toString();
   }
 
-  public Set<SinkRecord> getRecordsForDLQ() {
+/*  public Set<SinkRecord> getRecordsForDLQ() {
     return recordsForDLQ;
-  }
+  }*/
 }

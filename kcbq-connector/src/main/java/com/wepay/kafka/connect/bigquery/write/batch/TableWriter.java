@@ -23,6 +23,7 @@ import com.google.cloud.bigquery.BigQueryException;
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 
 import com.google.cloud.bigquery.TableId;
+import com.wepay.kafka.connect.bigquery.ErrantRecordsContext;
 import com.wepay.kafka.connect.bigquery.utils.SinkRecordConverter;
 import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
 import com.wepay.kafka.connect.bigquery.exception.ExpectedInterruptException;
@@ -90,7 +91,11 @@ public class TableWriter implements Runnable {
           for (Map.Entry<SinkRecord, RowToInsert> record: currentBatchList) {
             currentBatch.put(record.getKey(), record.getValue());
           }
-          writer.writeRows(table, currentBatch);
+          ErrantRecordsContext errantContext = writer.writeRows(table, currentBatch);
+          if (errantContext != null) {
+            writer.getErrantRecordChecker().sendRowsToDLQ(errantContext.getRows(), errantContext.getError());
+          }
+
           currentIndex += currentBatchSize;
           successCount++;
         } catch (BigQueryException err) {
