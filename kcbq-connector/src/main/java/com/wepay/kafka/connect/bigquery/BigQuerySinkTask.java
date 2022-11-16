@@ -107,9 +107,6 @@ public class BigQuerySinkTask extends SinkTask {
   private Map<TableId, Table> cache;
   private Map<String, String> topic2TableMap;
 
-  private ErrantRecordReporter reporter;
-  private ErrantRecordsManager errantRecordsManager;
-
   /**
    * Create a new BigquerySinkTask.
    */
@@ -485,13 +482,14 @@ public class BigQuerySinkTask extends SinkTask {
       mergeBatches = new MergeBatches(intermediateTableSuffix);
     }
 
+    ErrantRecordReporter reporter = null;
+
     try {
       reporter = context.errantRecordReporter(); // may be null if DLQ not enabled
     } catch (NoClassDefFoundError | NullPointerException e) {
       // Will occur in Connect runtimes earlier than 2.6
-      reporter = null;
     }
-    errantRecordsManager = new ErrantRecordsManager(config, reporter);
+    ErrantRecordsManager errantRecordsManager = new ErrantRecordsManager(config, reporter);
 
     cache = getCache();
     bigQueryWriter = getBigQueryWriter(errantRecordsManager);
