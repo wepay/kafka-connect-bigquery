@@ -487,7 +487,7 @@ public class BigQuerySinkTask extends SinkTask {
 
     try {
       reporter = context.errantRecordReporter(); // may be null if DLQ not enabled
-    } catch (NoClassDefFoundError e) {
+    } catch (NoClassDefFoundError | NullPointerException e) {
       // Will occur in Connect runtimes earlier than 2.6
       reporter = null;
     }

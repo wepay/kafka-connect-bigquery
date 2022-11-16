@@ -52,7 +52,7 @@ public abstract class BigQueryWriter {
   private final int retries;
   private final long retryWaitMs;
 
-  private static String REASON_STOPPED = "stopped";
+  private static final String REASON_STOPPED = "stopped";
 
   public ErrantRecordsManager getErrantRecordChecker() {
     return errantRecordsManager;
