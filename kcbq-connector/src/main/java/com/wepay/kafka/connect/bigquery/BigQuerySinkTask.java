@@ -408,7 +408,7 @@ public class BigQuerySinkTask extends SinkTask {
                                             getSchemaManager(),
                                             retry,
                                             retryWait,
-              errantRecordsManager,
+                                            errantRecordsManager,
                                             autoCreateTables,
                                             mergeBatches.intermediateToDestinationTables());
     } else if (autoCreateTables || allowNewBigQueryFields || allowRequiredFieldRelaxation) {
@@ -416,7 +416,7 @@ public class BigQuerySinkTask extends SinkTask {
                                         getSchemaManager(),
                                         retry,
                                         retryWait,
-              errantRecordsManager,
+                                        errantRecordsManager,
                                         autoCreateTables);
     } else {
       return new SimpleBigQueryWriter(bigQuery, retry, retryWait, errantRecordsManager);

@@ -93,7 +93,7 @@ public class TableWriter implements Runnable {
           }
           ErrantRecordsContext errantContext = writer.writeRows(table, currentBatch);
           if (errantContext != null) {
-            writer.getErrantRecordChecker().sendRowsToDLQ(errantContext.getRows(), errantContext.getError());
+            writer.getErrantRecordManager().sendRowsToDLQ(errantContext.getRows(), errantContext.getError());
           }
 
           currentIndex += currentBatchSize;

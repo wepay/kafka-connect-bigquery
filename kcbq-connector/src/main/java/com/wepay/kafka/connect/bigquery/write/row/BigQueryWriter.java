@@ -58,7 +58,7 @@ public abstract class BigQueryWriter {
 
   private static final String REASON_STOPPED = "stopped";
 
-  public ErrantRecordsManager getErrantRecordChecker() {
+  public ErrantRecordsManager getErrantRecordManager() {
     return errantRecordsManager;
   }
 
