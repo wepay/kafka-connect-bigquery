@@ -19,6 +19,7 @@
 
 package com.wepay.kafka.connect.bigquery;
 
+import com.google.api.gax.retrying.RetrySettings;
 import com.google.api.gax.rpc.FixedHeaderProvider;
 import com.google.api.gax.rpc.HeaderProvider;
 import com.google.auth.oauth2.GoogleCredentials;
@@ -32,6 +33,7 @@ import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
 import com.wepay.kafka.connect.bigquery.utils.Version;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.threeten.bp.Duration;
 
 import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
@@ -145,7 +147,12 @@ public abstract class GcpClientBuilder<Client> {
       BigQueryOptions.Builder builder = BigQueryOptions.newBuilder()
           .setProjectId(project)
           .setHeaderProvider(headerProvider);
-
+      RetrySettings retrySettings = RetrySettings
+          .newBuilder()
+          .setInitialRetryDelay(Duration.ofSeconds(10))
+          .setMaxAttempts(30)
+          .build();
+      builder.setRetrySettings(retrySettings);
       if (credentials != null) {
         builder.setCredentials(credentials);
       } else {
