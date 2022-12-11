@@ -1,7 +1,7 @@
-package com.wepay.kafka.connect.bigquery.convert;
-
 /*
- * Copyright 2016 WePay, Inc.
+ * Copyright 2020 Confluent, Inc.
+ *
+ * This software contains code derived from the WePay BigQuery Kafka Connector, Copyright WePay, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package com.wepay.kafka.connect.bigquery.convert;
  * under the License.
  */
 
+package com.wepay.kafka.connect.bigquery.convert;
 
 import com.google.cloud.bigquery.FieldList;
 import com.google.cloud.bigquery.LegacySQLTypeName;
@@ -27,8 +28,10 @@ import com.wepay.kafka.connect.bigquery.convert.logicaltype.LogicalConverterRegi
 import com.wepay.kafka.connect.bigquery.convert.logicaltype.LogicalTypeConverter;
 import com.wepay.kafka.connect.bigquery.exception.ConversionConnectException;
 
+import com.wepay.kafka.connect.bigquery.utils.FieldNameSanitizer;
 import org.apache.kafka.connect.data.Schema;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -81,9 +84,16 @@ public class BigQuerySchemaConverter implements SchemaConverter<com.google.cloud
   }
 
   private final boolean allFieldsNullable;
+  private final boolean sanitizeFieldNames;
 
-  public BigQuerySchemaConverter(boolean allFieldsNullable) {
+  // visible for testing
+  BigQuerySchemaConverter(boolean allFieldsNullable) {
+    this(allFieldsNullable, false);
+  }
+
+  public BigQuerySchemaConverter(boolean allFieldsNullable, boolean sanitizeFieldNames) {
     this.allFieldsNullable = allFieldsNullable;
+    this.sanitizeFieldNames = sanitizeFieldNames;
   }
 
   /**
@@ -97,10 +107,13 @@ public class BigQuerySchemaConverter implements SchemaConverter<com.google.cloud
    *         existing one.
    */
   public com.google.cloud.bigquery.Schema convertSchema(Schema kafkaConnectSchema) {
+    // TODO: Permit non-struct keys
     if (kafkaConnectSchema.type() != Schema.Type.STRUCT) {
       throw new
           ConversionConnectException("Top-level Kafka Connect schema must be of type 'struct'");
     }
+
+    throwOnCycle(kafkaConnectSchema, new ArrayList<>());
 
     List<com.google.cloud.bigquery.Field> fields = kafkaConnectSchema.fields().stream()
         .flatMap(kafkaConnectField ->
@@ -114,10 +127,43 @@ public class BigQuerySchemaConverter implements SchemaConverter<com.google.cloud
     return com.google.cloud.bigquery.Schema.of(fields);
   }
 
+  private void throwOnCycle(Schema kafkaConnectSchema, List<Schema> seenSoFar) {
+    if (PRIMITIVE_TYPE_MAP.containsKey(kafkaConnectSchema.type())) {
+      return;
+    }
+
+    if (seenSoFar.contains(kafkaConnectSchema)) {
+      throw new ConversionConnectException("Kafka Connect schema contains cycle");
+    }
+
+    seenSoFar.add(kafkaConnectSchema);
+    switch(kafkaConnectSchema.type()) {
+      case ARRAY:
+        throwOnCycle(kafkaConnectSchema.valueSchema(), seenSoFar);
+        break;
+      case MAP:
+        throwOnCycle(kafkaConnectSchema.keySchema(), seenSoFar);
+        throwOnCycle(kafkaConnectSchema.valueSchema(), seenSoFar);
+        break;
+      case STRUCT:
+        kafkaConnectSchema.fields().forEach(f -> throwOnCycle(f.schema(), seenSoFar));
+        break;
+      default:
+        throw new ConversionConnectException(
+            "Unrecognized schema type: " + kafkaConnectSchema.type()
+        );
+    }
+    seenSoFar.remove(seenSoFar.size() - 1);
+  }
+
   private Optional<com.google.cloud.bigquery.Field.Builder> convertField(Schema kafkaConnectSchema,
                                                                          String fieldName) {
     Optional<com.google.cloud.bigquery.Field.Builder> result;
     Schema.Type kafkaConnectSchemaType = kafkaConnectSchema.type();
+    if (sanitizeFieldNames) {
+      fieldName = FieldNameSanitizer.sanitizeName(fieldName);
+    }
+
     if (LogicalConverterRegistry.isRegisteredLogicalType(kafkaConnectSchema.name())) {
       result = Optional.of(convertLogical(kafkaConnectSchema, fieldName));
     } else if (PRIMITIVE_TYPE_MAP.containsKey(kafkaConnectSchemaType)) {

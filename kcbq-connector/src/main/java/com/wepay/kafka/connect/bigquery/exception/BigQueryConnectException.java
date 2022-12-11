@@ -1,7 +1,7 @@
-package com.wepay.kafka.connect.bigquery.exception;
-
 /*
- * Copyright 2016 WePay, Inc.
+ * Copyright 2020 Confluent, Inc.
+ *
+ * This software contains code derived from the WePay BigQuery Kafka Connector, Copyright WePay, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package com.wepay.kafka.connect.bigquery.exception;
  * under the License.
  */
 
+package com.wepay.kafka.connect.bigquery.exception;
 
 import com.google.cloud.bigquery.BigQueryError;
 
@@ -42,23 +43,30 @@ public class BigQueryConnectException extends ConnectException {
     super(thr);
   }
 
-  public BigQueryConnectException(Map<Long, List<BigQueryError>> errors) {
-    super(formatInsertAllErrors(errors));
+  public BigQueryConnectException(String tableInfo, Map<Long, List<BigQueryError>> errors) {
+    super(formatInsertAllErrors(tableInfo, errors));
   }
 
-  private static String formatInsertAllErrors(Map<Long, List<BigQueryError>> errorsMap) {
+  private static String formatInsertAllErrors(String tableInfo, Map<Long, List<BigQueryError>> errorsMap) {
     StringBuilder messageBuilder = new StringBuilder();
-    messageBuilder.append("table insertion failed for the following rows:");
+    messageBuilder.append(String.format("table: %s insertion failed for the following rows:", tableInfo));
     for (Map.Entry<Long, List<BigQueryError>> errorsEntry : errorsMap.entrySet()) {
       for (BigQueryError error : errorsEntry.getValue()) {
         messageBuilder.append(String.format(
-            "%n\t[row index %d]: %s: %s",
+            "%n\t[row index %d] (location %s, reason: %s): %s",
             errorsEntry.getKey(),
+            error.getLocation(),
             error.getReason(),
             error.getMessage()
         ));
       }
     }
     return messageBuilder.toString();
+  }
+
+  @Override
+  public String toString() {
+    return getCause() != null ?
+        super.toString() + "\nCaused by: " + getCause().getLocalizedMessage() : super.toString();
   }
 }

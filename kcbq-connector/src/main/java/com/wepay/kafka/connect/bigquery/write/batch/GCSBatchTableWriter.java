@@ -1,7 +1,7 @@
-package com.wepay.kafka.connect.bigquery.write.batch;
-
 /*
- * Copyright 2016 WePay, Inc.
+ * Copyright 2020 Confluent, Inc.
+ *
+ * This software contains code derived from the WePay BigQuery Kafka Connector, Copyright WePay, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package com.wepay.kafka.connect.bigquery.write.batch;
  * under the License.
  */
 
+package com.wepay.kafka.connect.bigquery.write.batch;
 
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 import com.google.cloud.bigquery.TableId;
@@ -47,7 +48,7 @@ public class GCSBatchTableWriter implements Runnable {
   private final String bucketName;
   private final String blobName;
 
-  private SortedMap<SinkRecord, RowToInsert> rows;
+  private final SortedMap<SinkRecord, RowToInsert> rows;
   private final GCSToBQWriter writer;
 
   /**
@@ -90,7 +91,7 @@ public class GCSBatchTableWriter implements Runnable {
     private String blobName;
     private final TableId tableId;
 
-    private SortedMap<SinkRecord, RowToInsert> rows;
+    private final SortedMap<SinkRecord, RowToInsert> rows;
     private final SinkRecordConverter recordConverter;
     private final GCSToBQWriter writer;
 
@@ -119,19 +120,12 @@ public class GCSBatchTableWriter implements Runnable {
       this.writer = writer;
     }
 
-    public Builder setBlobName(String blobName) {
-      this.blobName = blobName;
-      return this;
+    @Override
+    public void addRow(SinkRecord record, TableId table) {
+      rows.put(record, recordConverter.getRecordRow(record, table));
     }
 
-    /**
-     * Adds a record to the builder.
-     * @param record the row to add
-     */
-    public void addRow(SinkRecord record) {
-      rows.put(record, recordConverter.getRecordRow(record));
-    }
-
+    @Override
     public GCSBatchTableWriter build() {
       return new GCSBatchTableWriter(rows, writer, tableId, bucketName, blobName);
     }

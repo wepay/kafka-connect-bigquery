@@ -1,7 +1,7 @@
-package com.wepay.kafka.connect.bigquery.write.row;
-
 /*
- * Copyright 2016 WePay, Inc.
+ * Copyright 2020 Confluent, Inc.
+ *
+ * This software contains code derived from the WePay BigQuery Kafka Connector, Copyright WePay, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package com.wepay.kafka.connect.bigquery.write.row;
  * under the License.
  */
 
+package com.wepay.kafka.connect.bigquery.write.row;
 
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.TableId;
@@ -28,16 +29,17 @@ import com.google.cloud.bigquery.InsertAllResponse;
 import com.wepay.kafka.connect.bigquery.SchemaManager;
 import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
 
+import com.wepay.kafka.connect.bigquery.exception.ExpectedInterruptException;
 import com.wepay.kafka.connect.bigquery.utils.PartitionedTableId;
 
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.SortedMap;
 
 /**
@@ -47,8 +49,8 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
   private static final Logger logger = LoggerFactory.getLogger(AdaptiveBigQueryWriter.class);
 
   // The maximum number of retries we will attempt to write rows after creating a table or updating a BQ table schema.
-  private static final int RETRY_LIMIT = 5;
-  // Wait for about 30s between each retry since both creating table and updating schema take up to 2~3 minutes to take effect.
+  private static final int RETRY_LIMIT = 30;
+  // Wait for about 30s between each retry to avoid hammering BigQuery with requests
   private static final int RETRY_WAIT_TIME = 30000;
 
   private final BigQuery bigQuery;
@@ -60,6 +62,7 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
    * @param schemaManager Used to update BigQuery tables.
    * @param retry How many retries to make in the event of a 500/503 error.
    * @param retryWait How long to wait in between retries.
+   * @param autoCreateTables Whether tables should be automatically created
    */
   public AdaptiveBigQueryWriter(BigQuery bigQuery,
                                 SchemaManager schemaManager,
@@ -70,18 +73,6 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
     this.bigQuery = bigQuery;
     this.schemaManager = schemaManager;
     this.autoCreateTables = autoCreateTables;
-  }
-
-  private boolean isTableMissingSchema(BigQueryException exception) {
-    // If a table is missing a schema, it will raise a BigQueryException that the input is invalid
-    // For more information about BigQueryExceptions, see: https://cloud.google.com/bigquery/troubleshooting-errors
-    return exception.getReason() != null && exception.getReason().equalsIgnoreCase("invalid");
-  }
-
-  private boolean isTableNotExistedException(BigQueryException exception) {
-    // If a table does not exist, it will raise a BigQueryException that the input is notFound
-    // Referring to Google Cloud Error Codes Doc: https://cloud.google.com/bigquery/docs/error-messages?hl=en
-    return exception.getCode() == 404;
   }
 
   /**
@@ -103,14 +94,14 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
       // Should only perform one schema update attempt.
       if (writeResponse.hasErrors()
               && onlyContainsInvalidSchemaErrors(writeResponse.getInsertErrors())) {
-        attemptSchemaUpdate(tableId, rows.keySet());
+        attemptSchemaUpdate(tableId, new ArrayList<>(rows.keySet()));
       }
     } catch (BigQueryException exception) {
       // Should only perform one table creation attempt.
-      if (isTableNotExistedException(exception) && autoCreateTables && bigQuery.getTable(tableId.getBaseTableId()) == null) {
-        attemptTableCreate(tableId.getBaseTableId(), rows.keySet());
-      } else if (isTableMissingSchema(exception)) {
-        attemptSchemaUpdate(tableId, rows.keySet());
+      if (BigQueryErrorResponses.isNonExistentTableError(exception) && autoCreateTables) {
+        attemptTableCreate(tableId.getBaseTableId(), new ArrayList<>(rows.keySet()));
+      } else if (BigQueryErrorResponses.isTableMissingSchemaError(exception)) {
+        attemptSchemaUpdate(tableId, new ArrayList<>(rows.keySet()));
       } else {
         throw exception;
       }
@@ -128,7 +119,14 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
           logger.debug("re-attempting insertion");
           writeResponse = bigQuery.insertAll(request);
         } catch (BigQueryException exception) {
-          // no-op, we want to keep retrying the insert
+          if ((BigQueryErrorResponses.isNonExistentTableError(exception) && autoCreateTables)
+              || BigQueryErrorResponses.isTableMissingSchemaError(exception)
+          ) {
+            // no-op, we want to keep retrying the insert
+            logger.debug("insertion failed", exception);
+          } else {
+            throw exception;
+          }
         }
       } else {
         return writeResponse.getInsertErrors();
@@ -142,14 +140,14 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
       try {
         Thread.sleep(RETRY_WAIT_TIME);
       } catch (InterruptedException e) {
-        // no-op, we want to keep retrying the insert
+        throw new ExpectedInterruptException("Interrupted while waiting to retry write");
       }
     }
     logger.debug("table insertion completed successfully");
     return new HashMap<>();
   }
 
-  private void attemptSchemaUpdate(PartitionedTableId tableId, Set<SinkRecord> records) {
+  protected void attemptSchemaUpdate(PartitionedTableId tableId, List<SinkRecord> records) {
     try {
       schemaManager.updateSchema(tableId.getBaseTableId(), records);
     } catch (BigQueryException exception) {
@@ -158,9 +156,8 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
     }
   }
 
-  private void attemptTableCreate(TableId tableId, Set<SinkRecord> records) {
+  protected void attemptTableCreate(TableId tableId, List<SinkRecord> records) {
     try {
-      logger.info("Table {} does not exist, auto-creating table", tableId);
       schemaManager.createTable(tableId, records);
     } catch (BigQueryException exception) {
       throw new BigQueryConnectException(
@@ -178,12 +175,13 @@ public class AdaptiveBigQueryWriter extends BigQueryWriter {
    * This is why we can't have nice things, Google.
    */
   private boolean onlyContainsInvalidSchemaErrors(Map<Long, List<BigQueryError>> errors) {
+    logger.trace("write response contained errors: \n{}", errors);
     boolean invalidSchemaError = false;
     for (List<BigQueryError> errorList : errors.values()) {
       for (BigQueryError error : errorList) {
-        if (error.getReason().equals("invalid") && (error.getMessage().contains("no such field") || error.getMessage().contains("Missing required field"))) {
+        if (BigQueryErrorResponses.isMissingRequiredFieldError(error) || BigQueryErrorResponses.isUnrecognizedFieldError(error)) {
           invalidSchemaError = true;
-        } else if (!error.getReason().equals("stopped")) {
+        } else if (!BigQueryErrorResponses.isStoppedError(error)) {
           /* if some rows are in the old schema format, and others aren't, the old schema
            * formatted rows will show up as error: stopped. We still want to continue if this is
            * the case, because these errors don't represent a unique error if there are also

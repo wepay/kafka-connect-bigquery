@@ -1,7 +1,7 @@
-package com.wepay.kafka.connect.bigquery.write.row;
-
 /*
- * Copyright 2016 WePay, Inc.
+ * Copyright 2020 Confluent, Inc.
+ *
+ * This software contains code derived from the WePay BigQuery Kafka Connector, Copyright WePay, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package com.wepay.kafka.connect.bigquery.write.row;
  * under the License.
  */
 
+package com.wepay.kafka.connect.bigquery.write.row;
 
 import com.google.cloud.bigquery.BigQueryError;
 import com.google.cloud.bigquery.BigQueryException;
@@ -42,21 +43,13 @@ import java.util.TreeMap;
  */
 public abstract class BigQueryWriter {
 
-  private static final int FORBIDDEN = 403;
-  private static final int INTERNAL_SERVICE_ERROR = 500;
-  private static final int BAD_GATEWAY = 502;
-  private static final int SERVICE_UNAVAILABLE = 503;
-  private static final String QUOTA_EXCEEDED_REASON = "quotaExceeded";
-  private static final String RATE_LIMIT_EXCEEDED_REASON = "rateLimitExceeded";
-
   private static final int WAIT_MAX_JITTER = 1000;
 
   private static final Logger logger = LoggerFactory.getLogger(BigQueryWriter.class);
 
-  private static final Random random = new Random();
-
-  private int retries;
-  private long retryWaitMs;
+  private final int retries;
+  private final long retryWaitMs;
+  private final Random random;
 
   /**
    * @param retries the number of times to retry a request if BQ returns an internal service error
@@ -67,6 +60,8 @@ public abstract class BigQueryWriter {
   public BigQueryWriter(int retries, long retryWaitMs) {
     this.retries = retries;
     this.retryWaitMs = retryWaitMs;
+
+    this.random = new Random();
   }
 
   /**
@@ -123,35 +118,25 @@ public abstract class BigQueryWriter {
               rows.size() - failedRowsMap.size(), failedRowsMap.size());
           // update insert rows and retry in case of partial failure
           rows = getFailedRows(rows, failedRowsMap.keySet(), table);
-          mostRecentException = new BigQueryConnectException(failedRowsMap);
+          mostRecentException = new BigQueryConnectException(table.toString(), failedRowsMap);
           retryCount++;
         } else {
           // throw an exception in case of complete failure
-          throw new BigQueryConnectException(failedRowsMap);
+          throw new BigQueryConnectException(table.toString(), failedRowsMap);
         }
       } catch (BigQueryException err) {
         mostRecentException = err;
-        if (err.getCode() == INTERNAL_SERVICE_ERROR
-            || err.getCode() == SERVICE_UNAVAILABLE
-            || err.getCode() == BAD_GATEWAY) {
-          // backend error: https://cloud.google.com/bigquery/troubleshooting-errors
-          /* for BAD_GATEWAY: https://cloud.google.com/storage/docs/json_api/v1/status-codes
-             todo possibly this page is inaccurate for bigquery, but the message we are getting
-             suggest it's an internal backend error and we should retry, so lets take that at face
-             value. */
+        if (BigQueryErrorResponses.isBackendError(err)) {
           logger.warn("BQ backend error: {}, attempting retry", err.getCode());
           retryCount++;
-        } else if (err.getCode() == FORBIDDEN
-                   && err.getError() != null
-                   && QUOTA_EXCEEDED_REASON.equals(err.getReason())) {
-          // quota exceeded error
+        } else if (BigQueryErrorResponses.isQuotaExceededError(err)) {
           logger.warn("Quota exceeded for table {}, attempting retry", table);
           retryCount++;
-        } else if (err.getCode() == FORBIDDEN
-                   && err.getError() != null
-                   && RATE_LIMIT_EXCEEDED_REASON.equals(err.getReason())) {
-          // rate limit exceeded error
+        } else if (BigQueryErrorResponses.isRateLimitExceededError(err)) {
           logger.warn("Rate limit exceeded for table {}, attempting retry", table);
+          retryCount++;
+        } else if (BigQueryErrorResponses.isIOError(err)){
+          logger.warn("IO Exception: {}, attempting retry", err.getCause().getMessage());
           retryCount++;
         } else {
           throw err;

@@ -1,7 +1,7 @@
-package com.wepay.kafka.connect.bigquery.write.batch;
-
 /*
- * Copyright 2016 WePay, Inc.
+ * Copyright 2020 Confluent, Inc.
+ *
+ * This software contains code derived from the WePay BigQuery Kafka Connector, Copyright WePay, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,21 +17,20 @@ package com.wepay.kafka.connect.bigquery.write.batch;
  * under the License.
  */
 
+package com.wepay.kafka.connect.bigquery.write.batch;
 
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkTaskConfig;
 import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
+import com.wepay.kafka.connect.bigquery.exception.ExpectedInterruptException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * ThreadPoolExecutor for writing Rows to BigQuery.
@@ -43,9 +42,7 @@ public class KCBQThreadPoolExecutor extends ThreadPoolExecutor {
 
   private static final Logger logger = LoggerFactory.getLogger(KCBQThreadPoolExecutor.class);
 
-
-  private ConcurrentHashMap.KeySetView<Throwable, Boolean> encounteredErrors =
-      ConcurrentHashMap.newKeySet();
+  private final AtomicReference<Throwable> encounteredError = new AtomicReference<>();
 
   /**
    * @param config the {@link BigQuerySinkTaskConfig}
@@ -64,12 +61,11 @@ public class KCBQThreadPoolExecutor extends ThreadPoolExecutor {
   protected void afterExecute(Runnable runnable, Throwable throwable) {
     super.afterExecute(runnable, throwable);
 
-    if (throwable != null) {
-      logger.error("Task failed with {} error: {}",
-                   throwable.getClass().getName(),
-                   throwable.getMessage());
-      logger.debug("Error Task Stacktrace:", throwable);
-      encounteredErrors.add(throwable);
+    if (throwable != null && !(throwable instanceof ExpectedInterruptException)) {
+      // Log at debug level since this will be shown to the user at error level by the Connect framework if it causes
+      // the task to fail, and will otherwise just pollute logs and potentially mislead users
+      logger.debug("A write thread has failed with an unrecoverable error", throwable);
+      encounteredError.compareAndSet(null, throwable);
     }
   }
 
@@ -91,19 +87,18 @@ public class KCBQThreadPoolExecutor extends ThreadPoolExecutor {
       execute(new CountDownRunnable(countDownLatch));
     }
     countDownLatch.await();
-    if (encounteredErrors.size() > 0) {
-      String errorString = createErrorString(encounteredErrors);
-      encounteredErrors.clear();
-      throw new BigQueryConnectException("Some write threads encountered unrecoverable errors: "
-                                         + errorString + "; See logs for more detail");
-    }
+    maybeThrowEncounteredError();
   }
 
-  private static String createErrorString(Collection<Throwable> errors) {
-    List<String> exceptionTypeStrings = new ArrayList<>(errors.size());
-    exceptionTypeStrings.addAll(errors.stream()
-                        .map(throwable -> throwable.getClass().getName())
-                        .collect(Collectors.toList()));
-    return String.join(", ", exceptionTypeStrings);
+  /**
+   * Immediately throw an exception if any unrecoverable errors were encountered by any of the write
+   * tasks.
+   *
+   * @throws BigQueryConnectException if any of the tasks failed.
+   */
+  public void maybeThrowEncounteredError() {
+    Optional.ofNullable(encounteredError.get()).ifPresent(t -> {
+      throw new BigQueryConnectException("A write thread has failed with an unrecoverable error", t);
+    });
   }
 }

@@ -1,7 +1,7 @@
-package com.wepay.kafka.connect.bigquery.convert.logicaltype;
-
 /*
- * Copyright 2016 WePay, Inc.
+ * Copyright 2020 Confluent, Inc.
+ *
+ * This software contains code derived from the WePay BigQuery Kafka Connector, Copyright WePay, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package com.wepay.kafka.connect.bigquery.convert.logicaltype;
  * under the License.
  */
 
+package com.wepay.kafka.connect.bigquery.convert.logicaltype;
 
 import com.google.cloud.bigquery.LegacySQLTypeName;
 
@@ -46,6 +47,7 @@ public class DebeziumLogicalConverters {
     LogicalConverterRegistry.register(MicroTimestamp.SCHEMA_NAME, new MicroTimestampConverter());
     LogicalConverterRegistry.register(Time.SCHEMA_NAME, new TimeConverter());
     LogicalConverterRegistry.register(ZonedTimestamp.SCHEMA_NAME, new ZonedTimestampConverter());
+    LogicalConverterRegistry.register(Timestamp.SCHEMA_NAME, new TimestampConverter());
   }
 
   private static final int MICROS_IN_SEC = 1000000;
@@ -150,7 +152,7 @@ public class DebeziumLogicalConverters {
 
     @Override
     public String convert(Object kafkaConnectObject) {
-      java.util.Date date = new java.util.Date((Long) kafkaConnectObject);
+      java.util.Date date = new java.util.Date((Integer) kafkaConnectObject);
       return getBQTimeFormat().format(date);
     }
   }

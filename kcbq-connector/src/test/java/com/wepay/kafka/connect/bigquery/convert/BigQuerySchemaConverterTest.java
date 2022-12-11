@@ -1,7 +1,7 @@
-package com.wepay.kafka.connect.bigquery.convert;
-
 /*
- * Copyright 2016 WePay, Inc.
+ * Copyright 2020 Confluent, Inc.
+ *
+ * This software contains code derived from the WePay BigQuery Kafka Connector, Copyright WePay, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,14 +17,17 @@ package com.wepay.kafka.connect.bigquery.convert;
  * under the License.
  */
 
+package com.wepay.kafka.connect.bigquery.convert;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.LegacySQLTypeName;
 
 import com.wepay.kafka.connect.bigquery.exception.ConversionConnectException;
 
+import com.wepay.kafka.connect.bigquery.utils.FieldNameSanitizer;
 import org.apache.kafka.connect.data.Date;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
@@ -32,6 +35,8 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Timestamp;
 
 import org.junit.Test;
+
+import io.confluent.connect.avro.AvroData;
 
 public class BigQuerySchemaConverterTest {
 
@@ -418,6 +423,28 @@ public class BigQuerySchemaConverterTest {
   }
 
   @Test
+  public void testFieldNameSanitized() {
+    final String fieldName = "String Array";
+    com.google.cloud.bigquery.Schema bigQueryExpectedSchema =
+        com.google.cloud.bigquery.Schema.of(
+            com.google.cloud.bigquery.Field.newBuilder(
+                FieldNameSanitizer.sanitizeName(fieldName),
+                LegacySQLTypeName.STRING
+            ).setMode(com.google.cloud.bigquery.Field.Mode.REPEATED).build()
+        );
+
+    Schema kafkaConnectArraySchema = SchemaBuilder.array(Schema.STRING_SCHEMA).build();
+    Schema kafkaConnectTestSchema = SchemaBuilder
+        .struct()
+        .field(fieldName, kafkaConnectArraySchema)
+        .build();
+
+    com.google.cloud.bigquery.Schema bigQueryTestSchema =
+        new BigQuerySchemaConverter(false, true).convertSchema(kafkaConnectTestSchema);
+    assertEquals(bigQueryExpectedSchema, bigQueryTestSchema);
+  }
+
+  @Test
   public void testBytes() {
     final String fieldName = "Bytes";
 
@@ -627,6 +654,46 @@ public class BigQuerySchemaConverterTest {
     com.google.cloud.bigquery.Schema bigQueryTestSchema =
         new BigQuerySchemaConverter(true).convertSchema(kafkaConnectTestSchema);
     assertEquals(bigQueryExpectedSchema, bigQueryTestSchema);
+  }
 
+  @Test
+  public void testSimpleRecursiveSchemaThrows() {
+    final String fieldName = "RecursiveField";
+
+    // Construct Avro schema with recursion since we cannot directly construct Connect schema with cycle
+    org.apache.avro.Schema recursiveAvroSchema = org.apache.avro.SchemaBuilder
+        .record("RecursiveItem")
+        .namespace("com.example")
+        .fields()
+        .name(fieldName)
+        .type().unionOf().nullType().and().type("RecursiveItem").endUnion()
+        .nullDefault()
+        .endRecord();
+
+    Schema connectSchema = new AvroData(100).toConnectSchema(recursiveAvroSchema);
+    ConversionConnectException e = assertThrows(ConversionConnectException.class, () ->
+        new BigQuerySchemaConverter(true).convertSchema(connectSchema));
+    assertEquals("Kafka Connect schema contains cycle", e.getMessage());
+  }
+
+  @Test
+  public void testComplexRecursiveSchemaThrows() {
+    final String fieldName = "RecursiveField";
+
+    // Construct Avro schema with recursion since we cannot directly construct Connect schema with cycle
+    org.apache.avro.Schema recursiveAvroSchema = org.apache.avro.SchemaBuilder
+        .record("RecursiveItem")
+        .namespace("com.example")
+        .fields()
+        .name(fieldName)
+        .type()
+            .array().items()
+                .map().values().type("RecursiveItem").noDefault()
+        .endRecord();
+
+    Schema connectSchema = new AvroData(100).toConnectSchema(recursiveAvroSchema);
+    ConversionConnectException e = assertThrows(ConversionConnectException.class, () ->
+        new BigQuerySchemaConverter(true).convertSchema(connectSchema));
+    assertEquals("Kafka Connect schema contains cycle", e.getMessage());
   }
 }

@@ -1,7 +1,7 @@
-package com.wepay.kafka.connect.bigquery.write.batch;
-
 /*
- * Copyright 2016 WePay, Inc.
+ * Copyright 2020 Confluent, Inc.
+ *
+ * This software contains code derived from the WePay BigQuery Kafka Connector, Copyright WePay, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,9 @@ package com.wepay.kafka.connect.bigquery.write.batch;
  * under the License.
  */
 
+package com.wepay.kafka.connect.bigquery.write.batch;
 
+import com.google.cloud.bigquery.TableId;
 import org.apache.kafka.connect.sink.SinkRecord;
 
 /**
@@ -28,8 +30,9 @@ public interface TableWriterBuilder {
   /**
    * Add a record to the builder.
    * @param sinkRecord the row to add.
+   * @param table the table the row will be written to.
    */
-  void addRow(SinkRecord sinkRecord);
+  void addRow(SinkRecord sinkRecord, TableId table);
 
   /**
    * Create a {@link TableWriter} from this builder.

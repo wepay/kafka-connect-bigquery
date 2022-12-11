@@ -1,7 +1,7 @@
-package com.wepay.kafka.connect.bigquery.utils;
-
 /*
- * Copyright 2016 WePay, Inc.
+ * Copyright 2020 Confluent, Inc.
+ *
+ * This software contains code derived from the WePay BigQuery Kafka Connector, Copyright WePay, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,15 +17,22 @@ package com.wepay.kafka.connect.bigquery.utils;
  * under the License.
  */
 
+package com.wepay.kafka.connect.bigquery.utils;
 
 import com.google.cloud.bigquery.TableId;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 
 /**
  * A TableId with separate base table name and partition information.
+ * Note that this class only supports partitioning by day; even though BigQuery supports other time partitioning types
+ * for tables partitioned by ingestion time, it doesn't support decorator syntax (i.e., appending "$YYYYMMDD" to the
+ * name of a table being streamed to) for these other time partitioning types.
  */
 public class PartitionedTableId {
 

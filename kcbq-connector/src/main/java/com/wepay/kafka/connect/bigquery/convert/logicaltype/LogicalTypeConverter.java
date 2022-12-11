@@ -1,7 +1,7 @@
-package com.wepay.kafka.connect.bigquery.convert.logicaltype;
-
 /*
- * Copyright 2016 WePay, Inc.
+ * Copyright 2020 Confluent, Inc.
+ *
+ * This software contains code derived from the WePay BigQuery Kafka Connector, Copyright WePay, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package com.wepay.kafka.connect.bigquery.convert.logicaltype;
  * under the License.
  */
 
+package com.wepay.kafka.connect.bigquery.convert.logicaltype;
 
 import com.google.cloud.bigquery.LegacySQLTypeName;
 
@@ -87,10 +88,10 @@ public abstract class LogicalTypeConverter {
     return bqTimestampFormat;
   }
 
-  protected static SimpleDateFormat getBQDatetimeFormat() {
-    SimpleDateFormat bqDateTimeFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
-    bqDateTimeFormat.setTimeZone(utcTimeZone);
-    return bqDateTimeFormat;
+  protected SimpleDateFormat getBqTimeFormat() {
+    SimpleDateFormat bqTimestampFormat = new SimpleDateFormat("HH:mm:ss.SSS");
+    bqTimestampFormat.setTimeZone(utcTimeZone);
+    return bqTimestampFormat;
   }
 
   protected static SimpleDateFormat getBQDateFormat() {
