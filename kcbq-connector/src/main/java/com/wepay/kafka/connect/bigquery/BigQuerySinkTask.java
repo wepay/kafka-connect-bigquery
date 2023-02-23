@@ -51,10 +51,8 @@ import com.wepay.kafka.connect.bigquery.write.row.BigQueryWriter;
 import com.wepay.kafka.connect.bigquery.write.row.GCSToBQWriter;
 import com.wepay.kafka.connect.bigquery.write.row.SimpleBigQueryWriter;
 import com.wepay.kafka.connect.bigquery.write.row.UpsertDeleteBigQueryWriter;
-import java.io.IOException;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.record.TimestampType;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.RetriableException;
@@ -72,7 +70,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig.TOPIC2TABLE_MAP_CONFIG;
 import static com.wepay.kafka.connect.bigquery.utils.TableNameUtils.intTable;
 
 /**
@@ -112,6 +109,8 @@ public class BigQuerySinkTask extends SinkTask {
 
   private Map<TableId, Table> cache;
   private Map<String, String> topic2TableMap;
+  private int remainingRetries;
+  private boolean enableRetries;
 
   /**
    * Create a new BigquerySinkTask.
@@ -233,7 +232,7 @@ public class BigQuerySinkTask extends SinkTask {
       if (useMessageTimeDatePartitioning) {
         if (record.timestampType() == TimestampType.NO_TIMESTAMP_TYPE) {
           throw new ConnectException(
-              "Message has no timestamp type, cannot use message timestamp to partition.");
+                  "Message has no timestamp type, cannot use message timestamp to partition.");
         }
         setTimePartitioningForTimestamp(baseTableId, builder, timePartitioning, record.timestamp());
       } else {
@@ -256,7 +255,24 @@ public class BigQuerySinkTask extends SinkTask {
 
     for (SinkRecord record : records) {
       if (record.value() != null || config.getBoolean(BigQuerySinkConfig.DELETE_ENABLED_CONFIG)) {
-        PartitionedTableId table = getRecordTable(record);
+        PartitionedTableId table;
+        if(enableRetries) {
+            try {
+              table = getRecordTable(record);
+            } catch (RetriableException e) {
+              if(remainingRetries == 0) {
+                throw new ConnectException(e);
+              } else {
+                remainingRetries--;
+                throw e;
+              }
+            } catch (Exception e) {
+              throw e;
+            }
+            remainingRetries = config.getInt(BigQuerySinkConfig.MAX_RETRIES_CONFIG);
+        } else {
+          table = getRecordTable(record);
+        }
         if (!tableWriterBuilders.containsKey(table)) {
           TableWriterBuilder tableWriterBuilder;
           if (config.getList(BigQuerySinkConfig.ENABLE_BATCH_CONFIG).contains(record.topic())) {
@@ -359,6 +375,8 @@ public class BigQuerySinkTask extends SinkTask {
     } catch (BigQueryException e) {
       if (BigQueryErrorResponses.isIOError(e)) {
         throw new RetriableException("Failed to retrieve information for table " + tableId, e);
+      } else if (BigQueryErrorResponses.isAuthenticationError(e)) {
+        throw new BigQueryException(e.getCode(), "Failed to authenticate client for table " + tableId + " with error " + e);
       } else {
         throw e;
       }
@@ -504,6 +522,8 @@ public class BigQuerySinkTask extends SinkTask {
 
     recordConverter = getConverter(config);
     topic2TableMap = config.getTopic2TableMap().orElse(null);
+    remainingRetries = config.getInt(BigQuerySinkConfig.MAX_RETRIES_CONFIG);
+    enableRetries = config.getBoolean(BigQuerySinkConfig.ENABLE_RETRIES_CONFIG);
   }
 
   private void startGCSToBQLoadTask() {

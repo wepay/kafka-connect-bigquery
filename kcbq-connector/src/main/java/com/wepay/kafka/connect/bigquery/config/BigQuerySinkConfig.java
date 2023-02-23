@@ -534,6 +534,17 @@ public class BigQuerySinkConfig extends AbstractConfig {
   public static final List<String> CONNECTOR_RUNTIME_PROVIDER_TYPES = Stream.of("Confluent Platform", "Confluent Cloud")
           .collect(Collectors.toList());
 
+  public static final String MAX_RETRIES_CONFIG = "max.retries";
+  private static final ConfigDef.Type MAX_RETRIES_TYPE = ConfigDef.Type.LONG;
+  private static final int MAX_RETRIES_DEFAULT = 10;
+  private static final ConfigDef.Validator MAX_RETRIES_VALIDATOR = ConfigDef.Range.atLeast(1);
+  private static final ConfigDef.Importance MAX_RETRIES_IMPORTANCE = ConfigDef.Importance.MEDIUM;
+  private static final String MAX_RETRIES_DOC = "The maximum number of times to retry on errors before failing the task.";
+
+  public static final String ENABLE_RETRIES_CONFIG = "enableRetries";
+  private static final ConfigDef.Type ENABLE_RETRIES_TYPE = ConfigDef.Type.BOOLEAN;
+  public static final Boolean ENABLE_RETRIES_DEFAULT = false;
+  private static final ConfigDef.Importance ENABLE_RETRIES_IMPORTANCE = ConfigDef.Importance.MEDIUM;
   /**
    * Return the ConfigDef object used to define this config's fields.
    *
@@ -821,11 +832,23 @@ public class BigQuerySinkConfig extends AbstractConfig {
             BIGQUERY_PARTITION_EXPIRATION_VALIDATOR,
             BIGQUERY_PARTITION_EXPIRATION_IMPORTANCE,
             BIGQUERY_PARTITION_EXPIRATION_DOC
+        ).define(
+            MAX_RETRIES_CONFIG,
+            MAX_RETRIES_TYPE,
+            MAX_RETRIES_DEFAULT,
+            MAX_RETRIES_VALIDATOR,
+            MAX_RETRIES_IMPORTANCE,
+            MAX_RETRIES_DOC
         ).defineInternal(
                     CONNECTOR_RUNTIME_PROVIDER_CONFIG,
                     CONNECTOR_RUNTIME_PROVIDER_TYPE,
                     CONNECTOR_RUNTIME_PROVIDER_DEFAULT,
                     CONNECTOR_RUNTIME_PROVIDER_IMPORTANCE
+        ).defineInternal(
+                    ENABLE_RETRIES_CONFIG,
+                    ENABLE_RETRIES_TYPE,
+                    ENABLE_RETRIES_DEFAULT,
+                    ENABLE_RETRIES_IMPORTANCE
         );
   }
 

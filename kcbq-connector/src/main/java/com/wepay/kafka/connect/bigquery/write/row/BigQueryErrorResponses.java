@@ -34,6 +34,7 @@ import java.util.function.Function;
 public class BigQueryErrorResponses {
 
   private static final int BAD_REQUEST_CODE = 400;
+  private static final int AUTHENTICATION_ERROR_CODE = 401;
   private static final int FORBIDDEN_CODE = 403;
   private static final int NOT_FOUND_CODE = 404;
   private static final int INTERNAL_SERVICE_ERROR_CODE = 500;
@@ -111,6 +112,15 @@ public class BigQueryErrorResponses {
   public static boolean isIOError(BigQueryException error) {
     return BigQueryException.UNKNOWN_CODE == error.getCode()
         && error.getCause() instanceof IOException;
+  }
+  public static boolean isAuthenticationError(BigQueryException error) {
+    return (BAD_REQUEST_CODE == error.getCode() || AUTHENTICATION_ERROR_CODE == error.getCode())
+            &&
+            (message(error.getError()).contains("invalid_request") ||
+            message(error.getError()).contains("invalid_client") ||
+            message(error.getError()).contains("invalid_grant") ||
+            message(error.getError()).contains("unauthorized_client") ||
+            message(error.getError()).contains("unsupported_grant_type"));
   }
 
   public static boolean isUnrecognizedFieldError(BigQueryError error) {
