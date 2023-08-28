@@ -1,7 +1,7 @@
-package com.wepay.kafka.connect.bigquery.write.row;
-
 /*
- * Copyright 2016 WePay, Inc.
+ * Copyright 2020 Confluent, Inc.
+ *
+ * This software contains code derived from the WePay BigQuery Kafka Connector, Copyright WePay, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,8 +17,10 @@ package com.wepay.kafka.connect.bigquery.write.row;
  * under the License.
  */
 
+package com.wepay.kafka.connect.bigquery.write.row;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -30,16 +32,17 @@ import com.google.cloud.bigquery.BigQueryError;
 import com.google.cloud.bigquery.BigQueryException;
 import com.google.cloud.bigquery.InsertAllRequest;
 import com.google.cloud.bigquery.InsertAllResponse;
+import com.google.cloud.bigquery.Table;
 import com.google.cloud.storage.Storage;
 
 import com.wepay.kafka.connect.bigquery.BigQuerySinkTask;
 import com.wepay.kafka.connect.bigquery.SchemaManager;
-import com.wepay.kafka.connect.bigquery.SinkTaskPropertiesFactory;
+import com.wepay.kafka.connect.bigquery.SinkPropertiesFactory;
 import com.wepay.kafka.connect.bigquery.api.SchemaRetriever;
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig;
-import com.wepay.kafka.connect.bigquery.config.BigQuerySinkTaskConfig;
 import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
 
+import com.wepay.kafka.connect.bigquery.retrieve.MemorySchemaRetriever;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -60,11 +63,11 @@ import java.util.Set;
 
 @SuppressWarnings("unchecked")
 public class BigQueryWriterTest {
-  private static SinkTaskPropertiesFactory propertiesFactory;
+  private static SinkPropertiesFactory propertiesFactory;
 
   @BeforeClass
   public static void initializePropertiesFactory() {
-    propertiesFactory = new SinkTaskPropertiesFactory();
+    propertiesFactory = new SinkPropertiesFactory();
   }
 
   @Test
@@ -106,7 +109,8 @@ public class BigQueryWriterTest {
     final String topic = "test_topic";
     final String dataset = "scratch";
     final Map<String, String> properties = makeProperties("3", "2000", topic, dataset);
-    properties.put(BigQuerySinkTaskConfig.TABLE_CREATE_CONFIG, "true");
+    properties.put(BigQuerySinkConfig.TABLE_CREATE_CONFIG, "true");
+    properties.put(BigQuerySinkConfig.SCHEMA_RETRIEVER_CONFIG, MemorySchemaRetriever.class.getName());
 
     BigQuery bigQuery = mock(BigQuery.class);
     Map<Long, List<BigQueryError>> emptyMap = mock(Map.class);
@@ -116,8 +120,7 @@ public class BigQueryWriterTest {
     when(insertAllResponse.hasErrors()).thenReturn(false);
     when(insertAllResponse.getInsertErrors()).thenReturn(emptyMap);
 
-    BigQueryException missTableException = mock(BigQueryException.class);
-    when(missTableException.getCode()).thenReturn(404);
+    BigQueryException missTableException = new BigQueryException(404, "Table is missing");
 
     when(bigQuery.insertAll(anyObject())).thenThrow(missTableException).thenReturn(insertAllResponse);
 
@@ -137,13 +140,15 @@ public class BigQueryWriterTest {
     verify(bigQuery, times(2)).insertAll(anyObject());
   }
 
-  @Test
+  @Test(expected = BigQueryConnectException.class)
   public void testNonAutoCreateTables() {
     final String topic = "test_topic";
     final String dataset = "scratch";
     final Map<String, String> properties = makeProperties("3", "2000", topic, dataset);
 
     BigQuery bigQuery = mock(BigQuery.class);
+    Table mockTable = mock(Table.class);
+    when(bigQuery.getTable(any())).thenReturn(mockTable);
 
     Map<Long, List<BigQueryError>> emptyMap = mock(Map.class);
     when(emptyMap.isEmpty()).thenReturn(true);
@@ -151,8 +156,7 @@ public class BigQueryWriterTest {
     when(insertAllResponse.hasErrors()).thenReturn(false);
     when(insertAllResponse.getInsertErrors()).thenReturn(emptyMap);
 
-    BigQueryException missTableException = mock(BigQueryException.class);
-    when(missTableException.getCode()).thenReturn(404);
+    BigQueryException missTableException = new BigQueryException(404, "Table is missing");
 
     when(bigQuery.insertAll(anyObject())).thenThrow(missTableException).thenReturn(insertAllResponse);
 
@@ -167,9 +171,6 @@ public class BigQueryWriterTest {
     testTask.put(
             Collections.singletonList(spoofSinkRecord(topic, 0, 0, "some_field", "some_value")));
     testTask.flush(Collections.emptyMap());
-
-    verify(schemaManager, times(0)).createTable(anyObject(), anyObject());
-    verify(bigQuery, times(2)).insertAll(anyObject());
   }
 
   @Test
@@ -285,8 +286,8 @@ public class BigQueryWriterTest {
                                             String topic,
                                             String dataset) {
     Map<String, String> properties = propertiesFactory.getProperties();
-    properties.put(BigQuerySinkTaskConfig.BIGQUERY_RETRY_CONFIG, bigqueryRetry);
-    properties.put(BigQuerySinkTaskConfig.BIGQUERY_RETRY_WAIT_CONFIG, bigqueryRetryWait);
+    properties.put(BigQuerySinkConfig.BIGQUERY_RETRY_CONFIG, bigqueryRetry);
+    properties.put(BigQuerySinkConfig.BIGQUERY_RETRY_WAIT_CONFIG, bigqueryRetryWait);
     properties.put(BigQuerySinkConfig.TOPICS_CONFIG, topic);
     properties.put(BigQuerySinkConfig.DATASETS_CONFIG, String.format(".*=%s", dataset));
     return properties;

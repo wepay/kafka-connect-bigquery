@@ -1,7 +1,7 @@
-package com.wepay.kafka.connect.bigquery.it.utils;
-
 /*
- * Copyright 2016 WePay, Inc.
+ * Copyright 2020 Confluent, Inc.
+ *
+ * This software contains code derived from the WePay BigQuery Kafka Connector, Copyright WePay, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,30 +17,29 @@ package com.wepay.kafka.connect.bigquery.it.utils;
  * under the License.
  */
 
-
-import com.google.cloud.storage.Bucket;
+package com.wepay.kafka.connect.bigquery.it.utils;
 
 import com.google.cloud.storage.Storage;
-import com.wepay.kafka.connect.bigquery.GCSBuilder;
+import com.wepay.kafka.connect.bigquery.GcpClientBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class BucketClearer {
 
   private static final Logger logger = LoggerFactory.getLogger(BucketClearer.class);
-  private static String keySource;
 
   /**
    * Clears tables in the given project and dataset, using a provided JSON service account key.
    */
   public static void main(String[] args) {
-    if (args.length < 4) {
+    if (args.length != 3) {
       usage();
     }
-    if (args.length == 4) {
-      keySource = args[3];
-    }
-    Storage gcs = new GCSBuilder(args[1]).setKey(args[0]).setKeySource(keySource).build();
+    Storage gcs = new GcpClientBuilder.GcsBuilder()
+        .withKeySource(GcpClientBuilder.KeySource.FILE)
+        .withKey(args[0])
+        .withProject(args[1])
+        .build();
 
     // if bucket exists, delete it.
     String bucketName = args[2];
@@ -53,7 +52,7 @@ public class BucketClearer {
 
   private static void usage() {
     System.err.println(
-        "usage: BucketClearer <key_file> <project_name> <key_source> <bucket_name>"
+        "usage: BucketClearer <key_file> <project_name> <bucket_name>"
     );
     System.exit(1);
   }

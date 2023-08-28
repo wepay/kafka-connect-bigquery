@@ -1,7 +1,7 @@
-package com.wepay.kafka.connect.bigquery;
-
 /*
- * Copyright 2016 WePay, Inc.
+ * Copyright 2020 Confluent, Inc.
+ *
+ * This software contains code derived from the WePay BigQuery Kafka Connector, Copyright WePay, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package com.wepay.kafka.connect.bigquery;
  * under the License.
  */
 
+package com.wepay.kafka.connect.bigquery;
 
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig;
 
@@ -34,9 +35,9 @@ public class SinkPropertiesFactory {
     Map<String, String> properties = new HashMap<>();
 
     properties.put(BigQuerySinkConfig.TABLE_CREATE_CONFIG, "false");
+    properties.put(BigQuerySinkConfig.SCHEMA_UPDATE_CONFIG, "false");
     properties.put(BigQuerySinkConfig.TOPICS_CONFIG, "kcbq-test");
     properties.put(BigQuerySinkConfig.PROJECT_CONFIG, "test-project");
-    properties.put(BigQuerySinkConfig.DATASETS_CONFIG, ".*=test");
     properties.put(BigQuerySinkConfig.DATASETS_CONFIG, "kcbq-test=kcbq-test-table");
 
     properties.put(BigQuerySinkConfig.KEYFILE_CONFIG, "key.json");
@@ -45,28 +46,5 @@ public class SinkPropertiesFactory {
     properties.put(BigQuerySinkConfig.AVRO_DATA_CACHE_SIZE_CONFIG, "10");
 
     return properties;
-  }
-
-  /**
-   * Make sure that each of the default configuration properties work nicely with the given
-   * configuration object.
-   *
-   * @param config The config object to test
-   */
-  public void testProperties(BigQuerySinkConfig config) {
-    config.getTopicsToDatasets();
-
-    config.getMap(config.DATASETS_CONFIG);
-    config.getMap(config.TOPICS_TO_TABLES_CONFIG);
-
-    config.getList(config.TOPICS_CONFIG);
-    config.getList(config.TOPICS_TO_TABLES_CONFIG);
-    config.getList(config.DATASETS_CONFIG);
-
-    config.getKeyFile();
-    config.getString(config.PROJECT_CONFIG);
-
-    config.getBoolean(config.SANITIZE_TOPICS_CONFIG);
-    config.getInt(config.AVRO_DATA_CACHE_SIZE_CONFIG);
   }
 }

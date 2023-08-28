@@ -1,7 +1,7 @@
-package com.wepay.kafka.connect.bigquery.it;
-
 /*
- * Copyright 2016 WePay, Inc.
+ * Copyright 2020 Confluent, Inc.
+ *
+ * This software contains code derived from the WePay BigQuery Kafka Connector, Copyright WePay, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,16 +17,7 @@ package com.wepay.kafka.connect.bigquery.it;
  * under the License.
  */
 
-
-import static com.google.cloud.bigquery.LegacySQLTypeName.BOOLEAN;
-import static com.google.cloud.bigquery.LegacySQLTypeName.BYTES;
-import static com.google.cloud.bigquery.LegacySQLTypeName.DATE;
-import static com.google.cloud.bigquery.LegacySQLTypeName.FLOAT;
-import static com.google.cloud.bigquery.LegacySQLTypeName.INTEGER;
-import static com.google.cloud.bigquery.LegacySQLTypeName.STRING;
-import static com.google.cloud.bigquery.LegacySQLTypeName.TIMESTAMP;
-
-import static org.junit.Assert.assertEquals;
+package com.wepay.kafka.connect.bigquery.it;
 
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.Field;
@@ -35,16 +26,13 @@ import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.Table;
 import com.google.cloud.bigquery.TableResult;
-
-import com.wepay.kafka.connect.bigquery.BigQueryHelper;
-import com.wepay.kafka.connect.bigquery.exception.SinkConfigConnectException;
-
+import com.wepay.kafka.connect.bigquery.GcpClientBuilder;
+import org.apache.kafka.common.config.ConfigException;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.FileNotFoundException;
 import java.io.InputStream;
-
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -53,17 +41,24 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 
+import static com.google.cloud.bigquery.LegacySQLTypeName.BOOLEAN;
+import static com.google.cloud.bigquery.LegacySQLTypeName.BYTES;
+import static com.google.cloud.bigquery.LegacySQLTypeName.DATE;
+import static com.google.cloud.bigquery.LegacySQLTypeName.FLOAT;
+import static com.google.cloud.bigquery.LegacySQLTypeName.INTEGER;
+import static com.google.cloud.bigquery.LegacySQLTypeName.STRING;
+import static com.google.cloud.bigquery.LegacySQLTypeName.TIMESTAMP;
+import static org.junit.Assert.assertEquals;
+
 public class BigQueryConnectorIntegrationTest {
   public static final String TEST_PROPERTIES_FILENAME = "/test.properties";
   public static final String KEYFILE_PROPERTY = "keyfile";
   public static final String PROJECT_PROPERTY = "project";
   public static final String DATASET_PROPERTY = "dataset";
-  public static final String KEY_SOURCE_PROPERTY = "keySource";
 
-  private static String keyfile;
+  private static String key;
   private static String project;
   private static String dataset;
-  private static String keySource;
 
   private static BigQuery bigQuery;
 
@@ -86,9 +81,9 @@ public class BigQueryConnectorIntegrationTest {
       Properties properties = new Properties();
       properties.load(propertiesFile);
 
-      keyfile = properties.getProperty(KEYFILE_PROPERTY);
-      if (keyfile == null) {
-        throw new SinkConfigConnectException(
+      key = properties.getProperty(KEYFILE_PROPERTY);
+      if (key == null) {
+        throw new ConfigException(
             "'" + KEYFILE_PROPERTY
             + "' property must be specified in test properties file"
         );
@@ -96,7 +91,7 @@ public class BigQueryConnectorIntegrationTest {
 
       project = properties.getProperty(PROJECT_PROPERTY);
       if (project == null) {
-        throw new SinkConfigConnectException(
+        throw new ConfigException(
             "'" + PROJECT_PROPERTY
             + "' property must be specified in test properties file"
         );
@@ -104,18 +99,20 @@ public class BigQueryConnectorIntegrationTest {
 
       dataset = properties.getProperty(DATASET_PROPERTY);
       if (dataset == null) {
-        throw new SinkConfigConnectException(
+        throw new ConfigException(
             "'" + DATASET_PROPERTY
             + "' property must be specified in test properties file"
         );
       }
-
-      keySource = properties.getProperty(KEY_SOURCE_PROPERTY);
     }
   }
 
-  private static void initializeBigQuery() throws Exception {
-    bigQuery = new BigQueryHelper().setKeySource(keySource).connect(project, keyfile);
+  private static void initializeBigQuery() {
+     bigQuery = new GcpClientBuilder.BigQueryBuilder()
+        .withKeySource(GcpClientBuilder.KeySource.FILE)
+         .withKey(key)
+        .withProject(project)
+        .build();
   }
 
   private static List<Byte> boxByteArray(byte[] bytes) {

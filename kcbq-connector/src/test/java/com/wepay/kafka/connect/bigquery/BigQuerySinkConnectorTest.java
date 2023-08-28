@@ -1,7 +1,7 @@
-package com.wepay.kafka.connect.bigquery;
-
 /*
- * Copyright 2016 WePay, Inc.
+ * Copyright 2020 Confluent, Inc.
+ *
+ * This software contains code derived from the WePay BigQuery Kafka Connector, Copyright WePay, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,33 +17,15 @@ package com.wepay.kafka.connect.bigquery;
  * under the License.
  */
 
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotSame;
-
-import static org.mockito.Matchers.any;
-
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+package com.wepay.kafka.connect.bigquery;
 
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.Table;
 import com.google.cloud.bigquery.TableId;
-
 import com.wepay.kafka.connect.bigquery.api.KafkaSchemaRecordType;
 import com.wepay.kafka.connect.bigquery.api.SchemaRetriever;
-
 import com.wepay.kafka.connect.bigquery.config.BigQuerySinkConfig;
-
-import com.wepay.kafka.connect.bigquery.exception.BigQueryConnectException;
-import com.wepay.kafka.connect.bigquery.exception.SinkConfigConnectException;
-import org.apache.kafka.common.config.ConfigException;
-
 import org.apache.kafka.connect.data.Schema;
-
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -51,30 +33,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 public class BigQuerySinkConnectorTest {
-  private static SinkConnectorPropertiesFactory propertiesFactory;
-
-  // Would just use Mockito, but can't provide the name of an anonymous class to the config file
-  public static class MockSchemaRetriever implements SchemaRetriever {
-    @Override
-    public void configure(Map<String, String> properties) {
-      // Shouldn't be called
-    }
-
-    @Override
-    public Schema retrieveSchema(TableId table, String topic, KafkaSchemaRecordType schemaType) {
-      // Shouldn't be called
-      return null;
-    }
-
-    @Override
-    public void setLastSeenSchema(TableId table, String topic, Schema schema) {
-    }
-  }
+  private static SinkPropertiesFactory propertiesFactory;
 
   @BeforeClass
   public static void initializePropertiesFactory() {
-    propertiesFactory = new SinkConnectorPropertiesFactory();
+    propertiesFactory = new SinkPropertiesFactory();
   }
 
   @Test
@@ -86,15 +57,10 @@ public class BigQuerySinkConnectorTest {
   public void testTaskConfigs() {
     Map<String, String> properties = propertiesFactory.getProperties();
 
-    Table fakeTable = mock(Table.class);
+    BigQuerySinkConnector testConnector = new BigQuerySinkConnector();
 
-    BigQuery bigQuery = mock(BigQuery.class);
-    when(bigQuery.getTable(any(TableId.class))).thenReturn(fakeTable);
-
-    SchemaManager schemaManager = mock(SchemaManager.class);
-    BigQuerySinkConnector testConnector = new BigQuerySinkConnector(bigQuery, schemaManager);
-
-    testConnector.start(properties);
+    testConnector.configProperties = properties;
+    testConnector.config = new BigQuerySinkConfig(properties);
 
     for (int i : new int[] { 1, 2, 10, 100 }) {
       Map<String, String> expectedProperties = new HashMap<>(properties);
@@ -126,20 +92,7 @@ public class BigQuerySinkConnectorTest {
 
   @Test
   public void testConfig() {
-    assertEquals(BigQuerySinkConfig.getConfig(), new BigQuerySinkConnector().config());
-  }
-
-  // Make sure that a config exception is properly translated into a SinkConfigConnectException
-  @Test(expected = SinkConfigConnectException.class)
-  public void testConfigException() {
-    try {
-      Map<String, String> badProperties = propertiesFactory.getProperties();
-      badProperties.remove(BigQuerySinkConfig.TOPICS_CONFIG);
-      BigQuerySinkConfig.validate(badProperties);
-      new BigQuerySinkConnector().start(badProperties);
-    } catch (ConfigException e) {
-      throw new SinkConfigConnectException(e);
-    }
+    assertNotNull(new BigQuerySinkConnector().config());
   }
 
   @Test

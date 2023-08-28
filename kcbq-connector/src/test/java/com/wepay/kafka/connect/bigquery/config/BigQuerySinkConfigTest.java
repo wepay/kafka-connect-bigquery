@@ -1,7 +1,7 @@
-package com.wepay.kafka.connect.bigquery.config;
-
 /*
- * Copyright 2016 WePay, Inc.
+ * Copyright 2020 Confluent, Inc.
+ *
+ * This software contains code derived from the WePay BigQuery Kafka Connector, Copyright WePay, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,8 +17,10 @@ package com.wepay.kafka.connect.bigquery.config;
  * under the License.
  */
 
+package com.wepay.kafka.connect.bigquery.config;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -31,8 +33,12 @@ import org.apache.kafka.common.config.ConfigException;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class BigQuerySinkConfigTest {
   private SinkPropertiesFactory propertiesFactory;
@@ -47,7 +53,11 @@ public class BigQuerySinkConfigTest {
   public void metaTestBasicConfigProperties() {
     Map<String, String> basicConfigProperties = propertiesFactory.getProperties();
     BigQuerySinkConfig config = new BigQuerySinkConfig(basicConfigProperties);
-    propertiesFactory.testProperties(config);
+    config.getList(BigQuerySinkConfig.TOPICS_CONFIG);
+    config.getString(BigQuerySinkConfig.PROJECT_CONFIG);
+    config.getKey();
+    config.getBoolean(BigQuerySinkConfig.SANITIZE_TOPICS_CONFIG);
+    config.getInt(BigQuerySinkConfig.AVRO_DATA_CACHE_SIZE_CONFIG);
   }
 
   @Test
@@ -206,5 +216,75 @@ public class BigQuerySinkConfigTest {
     );
 
     new BigQuerySinkConfig(badConfigProperties);
+  }
+
+  /**
+   * Test the default for the field name is not present.
+   */
+  @Test
+  public void testEmptyTimestampPartitionFieldName() {
+    Map<String, String> configProperties = propertiesFactory.getProperties();
+    BigQuerySinkConfig testConfig = new BigQuerySinkConfig(configProperties);
+    assertFalse(testConfig.getTimestampPartitionFieldName().isPresent());
+  }
+
+  /**
+   * Test the field name being non-empty and the decorator set to false works correctly.
+   */
+  @Test
+  public void testTimestampPartitionFieldName() {
+    Map<String, String> configProperties = propertiesFactory.getProperties();
+    configProperties.put(BigQuerySinkConfig.BIGQUERY_TIMESTAMP_PARTITION_FIELD_NAME_CONFIG, "name");
+    configProperties.put(BigQuerySinkConfig.BIGQUERY_PARTITION_DECORATOR_CONFIG, "false");
+    BigQuerySinkConfig testConfig = new BigQuerySinkConfig(configProperties);
+    assertTrue(testConfig.getTimestampPartitionFieldName().isPresent());
+    assertFalse(testConfig.getBoolean(BigQuerySinkConfig.BIGQUERY_PARTITION_DECORATOR_CONFIG));
+  }
+
+  /**
+   * Test the default for the field names is not present.
+   */
+  @Test
+  public void testEmptyClusteringFieldNames() {
+    Map<String, String> configProperties = propertiesFactory.getProperties();
+    BigQuerySinkConfig testConfig = new BigQuerySinkConfig(configProperties);
+    assertFalse(testConfig.getClusteringPartitionFieldNames().isPresent());
+  }
+
+  /**
+   * Test if the field names are more than four fields errors correctly.
+   */
+  @Test (expected = ConfigException.class)
+  public void testClusteringPartitionFieldNamesWithMoreThanFourFieldsError() {
+    Map<String, String> configProperties = propertiesFactory.getProperties();
+    configProperties.put(BigQuerySinkConfig.BIGQUERY_PARTITION_DECORATOR_CONFIG, "true");
+    configProperties.put(
+        BigQuerySinkConfig.BIGQUERY_CLUSTERING_FIELD_NAMES_CONFIG,
+        "column1,column2,column3,column4,column5"
+    );
+    new BigQuerySinkConfig(configProperties);
+  }
+
+  /**
+   * Test the field names being non-empty and the partitioning field exists works correctly.
+   */
+  @Test
+  public void testClusteringFieldNames() {
+    Map<String, String> configProperties = propertiesFactory.getProperties();
+    configProperties.put(BigQuerySinkConfig.BIGQUERY_TIMESTAMP_PARTITION_FIELD_NAME_CONFIG, "name");
+    configProperties.put(BigQuerySinkConfig.BIGQUERY_PARTITION_DECORATOR_CONFIG, "false");
+    configProperties.put(
+        BigQuerySinkConfig.BIGQUERY_CLUSTERING_FIELD_NAMES_CONFIG,
+        "column1,column2"
+    );
+
+    ArrayList<String> expectedClusteringPartitionFieldName = new ArrayList<>(
+        Arrays.asList("column1", "column2")
+    );
+
+    BigQuerySinkConfig testConfig = new BigQuerySinkConfig(configProperties);
+    Optional<List<String>> testClusteringPartitionFieldName = testConfig.getClusteringPartitionFieldNames();
+    assertTrue(testClusteringPartitionFieldName.isPresent());
+    assertEquals(expectedClusteringPartitionFieldName, testClusteringPartitionFieldName.get());
   }
 }

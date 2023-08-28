@@ -1,7 +1,7 @@
-package com.wepay.kafka.connect.bigquery.convert;
-
 /*
- * Copyright 2016 WePay, Inc.
+ * Copyright 2020 Confluent, Inc.
+ *
+ * This software contains code derived from the WePay BigQuery Kafka Connector, Copyright WePay, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package com.wepay.kafka.connect.bigquery.convert;
  * under the License.
  */
 
+package com.wepay.kafka.connect.bigquery.convert;
 
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 import com.wepay.kafka.connect.bigquery.api.KafkaSchemaRecordType;
@@ -53,6 +54,7 @@ public class BigQueryRecordConverter implements RecordConverter<Map<String, Obje
                   Integer.class, Long.class, Float.class, Double.class, String.class)
           );
   private boolean shouldConvertSpecialDouble;
+  private boolean shouldConvertDebeziumTimestampToInteger;
 
   static {
     // force registration
@@ -60,8 +62,9 @@ public class BigQueryRecordConverter implements RecordConverter<Map<String, Obje
     new KafkaLogicalConverters();
   }
 
-  public BigQueryRecordConverter(boolean shouldConvertDoubleSpecial) {
+  public BigQueryRecordConverter(boolean shouldConvertDoubleSpecial, boolean shouldConvertDebeziumTimestampToInteger) {
     this.shouldConvertSpecialDouble = shouldConvertDoubleSpecial;
+    this.shouldConvertDebeziumTimestampToInteger = shouldConvertDebeziumTimestampToInteger;
   }
 
   /**
@@ -235,6 +238,10 @@ public class BigQueryRecordConverter implements RecordConverter<Map<String, Obje
                                 Schema kafkaConnectSchema) {
     LogicalTypeConverter converter =
         LogicalConverterRegistry.getConverter(kafkaConnectSchema.name());
+
+    if(shouldConvertDebeziumTimestampToInteger && converter instanceof DebeziumLogicalConverters.TimestampConverter) {
+      return (Long) kafkaConnectObject;
+    }
     return converter.convert(kafkaConnectObject);
   }
 
